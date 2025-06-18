@@ -6,6 +6,25 @@ const navbar = document.querySelector('.navbar');
 const sections = document.querySelectorAll('section');
 const ctaButton = document.querySelector('.cta-button');
 const contactForm = document.querySelector('.contact-form');
+const clientCoordinatesFormBlock = document.querySelector('#client-coordinates-form-block');
+
+// Trigger smooth opening animation for client coordinates form block
+window.addEventListener('load', () => {
+    // Add loading animation for body
+    document.body.style.opacity = '0';
+    document.body.style.transition = 'opacity 0.5s ease';
+    
+    setTimeout(() => {
+        document.body.style.opacity = '1';
+    }, 100);
+    
+    // Trigger animation for client coordinates form block
+    if (clientCoordinatesFormBlock) {
+        setTimeout(() => {
+            clientCoordinatesFormBlock.classList.add('animate-in');
+        }, 300); // Small delay for better visual effect
+    }
+});
 
 // Mobile Navigation Toggle
 hamburger.addEventListener('click', () => {
@@ -255,16 +274,6 @@ if (aboutSection) {
     
     aboutObserver.observe(aboutSection);
 }
-
-// Add loading animation
-window.addEventListener('load', () => {
-    document.body.style.opacity = '0';
-    document.body.style.transition = 'opacity 0.5s ease';
-    
-    setTimeout(() => {
-        document.body.style.opacity = '1';
-    }, 100);
-});
 
 // Keyboard navigation support
 document.addEventListener('keydown', (e) => {

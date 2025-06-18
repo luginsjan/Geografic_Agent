@@ -17,6 +17,118 @@ body {
     overflow-x: hidden;
 }
 
+/* App Container */
+#app-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+}
+
+/* Welcome Section */
+#welcome-section {
+    text-align: center;
+    margin-bottom: 3rem;
+    max-width: 600px;
+}
+
+#welcome-section h1 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 300;
+    color: #ffffff;
+    margin-bottom: 1.5rem;
+    letter-spacing: 1px;
+}
+
+#welcome-section p {
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    color: #a0a0a0;
+    line-height: 1.8;
+}
+
+/* Client Coordinates Form Block */
+#client-coordinates-form-block {
+    width: 100%;
+    max-width: 500px;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+#client-coordinates-form-block.animate-in {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#client-coordinates-form-block label {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #ffffff;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+#client-address-input {
+    width: 100%;
+    min-height: 120px;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+    transition: all 0.3s ease;
+    margin-bottom: 1.5rem;
+}
+
+#client-address-input:focus {
+    outline: none;
+    border-color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+#client-address-input::placeholder {
+    color: #a0a0a0;
+    font-style: italic;
+}
+
+#confirm-address-button {
+    width: 100%;
+    background: #ffffff;
+    color: #000000;
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 4px;
+}
+
+#confirm-address-button:hover {
+    background: #f0f0f0;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 255, 255, 0.2);
+}
+
+#confirm-address-button:active {
+    transform: translateY(0);
+}
+
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
     font-weight: 500;
@@ -400,6 +512,18 @@ section {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+    #app-container {
+        padding: 1rem;
+    }
+    
+    #welcome-section {
+        margin-bottom: 2rem;
+    }
+    
+    #client-coordinates-form-block {
+        max-width: 100%;
+    }
+    
     .nav-menu {
         position: fixed;
         left: -100%;
@@ -462,6 +586,19 @@ section {
 }
 
 @media (max-width: 480px) {
+    #welcome-section h1 {
+        font-size: clamp(1.5rem, 5vw, 2rem);
+    }
+    
+    #welcome-section p {
+        font-size: clamp(0.9rem, 3vw, 1rem);
+    }
+    
+    #client-address-input {
+        min-height: 100px;
+        padding: 1rem;
+    }
+    
     .hero-content {
         padding: 0 1rem;
     }
