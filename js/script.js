@@ -7,6 +7,11 @@ const sections = document.querySelectorAll('section');
 const ctaButton = document.querySelector('.cta-button');
 const contactForm = document.querySelector('.contact-form');
 const clientCoordinatesFormBlock = document.querySelector('#client-coordinates-form-block');
+const confirmAddressButton = document.querySelector('#confirm-address-button');
+const appContainer = document.querySelector('#app-container');
+
+// N8N Webhook URL constant
+const n8nWebhookUrl = 'https://aigentinc.app.n8n.cloud/webhook-test/get-coordinates';
 
 // Trigger smooth opening animation for client coordinates form block
 window.addEventListener('load', () => {
@@ -25,6 +30,95 @@ window.addEventListener('load', () => {
         }, 300); // Small delay for better visual effect
     }
 });
+
+// Confirm Address Button Click Handler
+if (confirmAddressButton) {
+    confirmAddressButton.addEventListener('click', async () => {
+        // Get the value from the textarea
+        const clientAddressInput = document.querySelector('#client-address-input');
+        const clientAddress = clientAddressInput.value.trim();
+        
+        // Validate input
+        if (!clientAddress) {
+            console.log('No address provided');
+            return;
+        }
+        
+        // Prepare the request data
+        const requestData = {
+            clientAddress: clientAddress
+        };
+        
+        try {
+            console.log('Sending address data to n8n webhook:', requestData);
+            
+            // Send POST request to n8n webhook
+            const response = await fetch(n8nWebhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            // Check if the request was successful
+            if (response.ok) {
+                console.log('Successfully sent address data to n8n webhook');
+                const responseData = await response.json();
+                console.log('Response from webhook:', responseData);
+            } else {
+                console.error('Failed to send data to n8n webhook. Status:', response.status);
+                const errorText = await response.text();
+                console.error('Error response:', errorText);
+            }
+            
+        } catch (error) {
+            console.error('Error sending data to n8n webhook:', error);
+        } finally {
+            // Always trigger the smooth closing of the form block
+            console.log('Closing form block after webhook request');
+            
+            // Smoothly minimize the form block
+            clientCoordinatesFormBlock.classList.add('minimized');
+            
+            // Wait for the minimize animation to complete, then show edit button
+            setTimeout(() => {
+                // Create and append the edit address button
+                const editButton = document.createElement('a');
+                editButton.href = '#';
+                editButton.className = 'reopen-form-button';
+                editButton.textContent = 'Editar dirección';
+                
+                // Add click handler for the edit button
+                editButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    
+                    // Smoothly re-open the form block
+                    clientCoordinatesFormBlock.classList.remove('minimized');
+                    
+                    // Hide the edit button
+                    editButton.classList.remove('visible');
+                    
+                    // Remove the button after animation completes
+                    setTimeout(() => {
+                        if (editButton.parentNode) {
+                            editButton.remove();
+                        }
+                    }, 300);
+                });
+                
+                // Append to app container
+                appContainer.appendChild(editButton);
+                
+                // Show the edit button with animation
+                setTimeout(() => {
+                    editButton.classList.add('visible');
+                }, 50);
+                
+            }, 600); // Wait for minimize animation to complete
+        }
+    });
+}
 
 // Mobile Navigation Toggle
 hamburger.addEventListener('click', () => {
