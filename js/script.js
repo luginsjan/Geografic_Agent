@@ -223,6 +223,13 @@ if (confirmAddressButton) {
             }
             showStatusMessage('Procesando respuesta del servidor...', 'info');
             const responseData = await response.json();
+            
+            // **FIX**: The webhook returns an array, so we get the first element.
+            const results = Array.isArray(responseData) && responseData.length > 0 ? responseData[0] : null;
+            if (!results || (!results.trueResults && !results.falseResults)) {
+                throw new Error('La respuesta del servidor no tiene el formato esperado.');
+            }
+
             // Hide loading block
             loadingBlock.classList.remove('visible');
             setTimeout(() => {
@@ -230,7 +237,7 @@ if (confirmAddressButton) {
             }, 600);
             // Show and populate first results block
             setTimeout(() => {
-                populateResultsBlock(responseData);
+                populateResultsBlock(results); // Use the corrected 'results' object
                 firstResultsBlock.style.display = 'block';
                 setTimeout(() => {
                     firstResultsBlock.classList.add('visible');
@@ -345,29 +352,33 @@ function populateResultsBlock(responseData) {
     // Helper to create the elevation chart (dummy data for now)
     function createElevationChart(result, canvasId) {
         const canvas = document.getElementById(canvasId);
-        if (!canvas) return;
+        if (!canvas || !result.results || result.results.length === 0) {
+            if (canvas) canvas.parentElement.innerHTML += '<p class="no-data" style="color:#666;text-align:center;">No elevation data available.</p>';
+            return;
+        }
 
         const ctx = canvas.getContext('2d');
-        const points = 20;
-        const distance = result.distance_km;
         const hasObstructions = !result.lineOfSight?.hasLineOfSight;
+        const totalDistance = result.lineOfSight.totalDistanceKm;
 
-        const labels = [];
-        const elevationData = [];
-        const sightLineData = [];
+        // Use real elevation data from the webhook response
+        const labels = result.results.map((_, index) => {
+            const distancePoint = (totalDistance * index) / (result.results.length - 1);
+            return distancePoint.toFixed(2);
+        });
+        const elevationData = result.results.map(p => p.elevation);
 
-        for (let i = 0; i <= points; i++) {
-            const distancePoint = (distance * i) / points;
-            labels.push(distancePoint.toFixed(1));
-            let elevation = 600 + Math.sin(i * 0.3) * 20 + Math.random() * 10;
-            if (hasObstructions && i > points * 0.4 && i < points * 0.8) {
-                elevation += 20;
-            }
-            elevationData.push(elevation);
-            const startElevation = 650;
-            const endElevation = 605;
-            const sightLineHeight = startElevation - ((startElevation - endElevation) * i / points);
-            sightLineData.push(sightLineHeight);
+        // Generate the straight line of sight using adjusted start and end points
+        const startElevation = result.lineOfSight.firstPoint.adjustedElevation;
+        const endElevation = result.lineOfSight.lastPoint.adjustedElevation;
+        const sightLineData = result.results.map((_, index) => {
+             return startElevation - ((startElevation - endElevation) * index / (result.results.length - 1));
+        });
+
+        // Destroy existing chart to prevent rendering issues on updates
+        const existingChart = Chart.getChart(canvasId);
+        if (existingChart) {
+            existingChart.destroy();
         }
 
         new Chart(ctx, {
@@ -377,17 +388,19 @@ function populateResultsBlock(responseData) {
                 datasets: [{
                     label: 'Terrain Elevation',
                     data: elevationData,
-                    borderColor: hasObstructions ? '#ff4444' : '#4CAF50',
-                    backgroundColor: hasObstructions ? 'rgba(255, 68, 68, 0.1)' : 'rgba(76, 175, 80, 0.1)',
+                    borderColor: hasObstructions ? '#f44336' : '#4CAF50',
+                    backgroundColor: hasObstructions ? 'rgba(244, 67, 54, 0.1)' : 'rgba(76, 175, 80, 0.1)',
                     fill: true,
-                    tension: 0.4
+                    tension: 0.4,
+                    pointRadius: 1
                 }, {
                     label: 'Line of Sight',
                     data: sightLineData,
                     borderColor: '#2196F3',
                     backgroundColor: 'transparent',
                     borderDash: [5, 5],
-                    fill: false
+                    fill: false,
+                    pointRadius: 1
                 }]
             },
             options: {
