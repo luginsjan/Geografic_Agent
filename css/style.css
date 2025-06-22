@@ -235,15 +235,106 @@ body {
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255,255,255,0.3);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease, background-color 0.3s ease;
     margin-bottom: 10px;
     min-width: 0;
     display: flex;
     flex-direction: column;
+    cursor: pointer;
+    position: relative;
 }
+
 .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.3), 0 0 20px rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.98);
+}
+
+.card.is-selected {
+    border: 2px solid #4CAF50;
+    background: rgba(76, 175, 80, 0.05);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.3), 0 0 25px rgba(76, 175, 80, 0.3);
+    transform: translateY(-3px);
+}
+
+.card.is-selected:hover {
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4), 0 0 30px rgba(76, 175, 80, 0.4);
+}
+
+.card-select-button {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: rgba(76, 175, 80, 0.1);
+    color: #4CAF50;
+    border: 1px solid #4CAF50;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 10;
+    opacity: 0;
+    transform: scale(0.8);
+}
+
+.card:hover .card-select-button {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.card-select-button:hover {
+    background: #4CAF50;
+    color: white;
+    transform: scale(1.1);
+}
+
+.card.is-selected .card-select-button {
+    background: #4CAF50;
+    color: white;
+    opacity: 1;
+    transform: scale(1);
+}
+
+.card.is-selected .card-select-button:hover {
+    background: #45a049;
+    transform: scale(1.1);
+}
+
+#confirm-selection-button {
+    display: block;
+    margin: 30px auto 20px auto;
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    padding: 15px 30px;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.12);
+    transition: all 0.3s ease;
+    opacity: 0.5;
+    pointer-events: none;
+    transform: translateY(10px);
+}
+
+#confirm-selection-button.enabled {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateY(0);
+}
+
+#confirm-selection-button.enabled:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.18);
+    background: linear-gradient(135deg, #45a049, #4CAF50);
+}
+
+#confirm-selection-button:active {
+    transform: translateY(0);
 }
 
 .card-header {
@@ -895,6 +986,19 @@ section {
     .chart-container {
         padding: 5px;
         height: 180px;
+    }
+    
+    .card-select-button {
+        top: 10px;
+        right: 10px;
+        padding: 4px 8px;
+        font-size: 0.7rem;
+    }
+    
+    #confirm-selection-button {
+        padding: 12px 24px;
+        font-size: 1rem;
+        margin: 20px auto 15px auto;
     }
 }
 

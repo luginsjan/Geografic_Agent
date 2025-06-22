@@ -14,6 +14,30 @@ const firstResultsBlock = document.querySelector('#first-results-block');
 const statusMessage = document.getElementById('status-message');
 const loadExampleButton = document.getElementById('load-example-button');
 
+// Function to handle confirmation button click
+function handleConfirmSelection() {
+    const selectedCard = document.querySelector('.card.is-selected');
+    if (selectedCard) {
+        const sop = selectedCard.dataset.sop;
+        showStatusMessage(`Selection confirmed: ${sop}`, 'success');
+        
+        // Here you can add additional logic for what happens after selection
+        // For example, sending the selection to a server, showing more details, etc.
+        
+        // Optionally, you can disable the confirm button after selection
+        const confirmButton = document.getElementById('confirm-selection-button');
+        if (confirmButton) {
+            confirmButton.classList.remove('enabled');
+        }
+    }
+}
+
+// Add event listener for confirm selection button
+const confirmSelectionButton = document.getElementById('confirm-selection-button');
+if (confirmSelectionButton) {
+    confirmSelectionButton.addEventListener('click', handleConfirmSelection);
+}
+
 // N8N Webhook URL constant
 const n8nWebhookUrl = 'https://aigentinc.app.n8n.cloud/webhook/get-coordinates';
 
@@ -292,6 +316,7 @@ function populateResultsBlock(responseData) {
     function createCard(result, isSuccess) {
         const card = document.createElement('div');
         card.className = 'card';
+        card.dataset.sop = result.SOP;
 
         const statusClass = isSuccess ? 'status-success' : 'status-blocked';
         const statusText = isSuccess ? 'Clear' : 'Blocked';
@@ -299,6 +324,7 @@ function populateResultsBlock(responseData) {
 
         // Card header
         card.innerHTML = `
+            <button class="card-select-button">Select</button>
             <div class="card-header">
                 <div class="card-title">${result.SOP} - ${result.Plaza}</div>
                 <div class="status-badge ${statusClass}">${statusIcon} ${statusText}</div>
@@ -340,6 +366,22 @@ function populateResultsBlock(responseData) {
                 <canvas id="chart-${result.SOP.replace('-', '')}"></canvas>
             </div>
         `;
+
+        // Add click event listener to the card
+        card.addEventListener('click', (e) => {
+            // Don't trigger if clicking on the select button
+            if (e.target.classList.contains('card-select-button')) {
+                return;
+            }
+            selectCard(card);
+        });
+
+        // Add click event listener to the select button
+        const selectButton = card.querySelector('.card-select-button');
+        selectButton.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent card click event
+            selectCard(card);
+        });
 
         // Add chart after the card is added to DOM
         setTimeout(() => {
@@ -415,8 +457,32 @@ function populateResultsBlock(responseData) {
         });
     }
 
+    // Function to handle card selection
+    function selectCard(selectedCard) {
+        // Remove selection from all other cards
+        const allCards = document.querySelectorAll('.card');
+        allCards.forEach(card => {
+            card.classList.remove('is-selected');
+        });
+        
+        // Add selection to the clicked card
+        selectedCard.classList.add('is-selected');
+        
+        // Enable the confirm selection button
+        const confirmButton = document.getElementById('confirm-selection-button');
+        if (confirmButton) {
+            confirmButton.classList.add('enabled');
+        }
+    }
+
     // Clear and add sections
     resultsContainer.innerHTML = '';
+
+    // Reset confirm selection button state
+    const confirmButton = document.getElementById('confirm-selection-button');
+    if (confirmButton) {
+        confirmButton.classList.remove('enabled');
+    }
 
     // Success section
     if (responseData.trueResults && responseData.trueResults.length > 0) {
