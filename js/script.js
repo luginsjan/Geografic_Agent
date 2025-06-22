@@ -15,19 +15,79 @@ const statusMessage = document.getElementById('status-message');
 const loadExampleButton = document.getElementById('load-example-button');
 
 // Function to handle confirmation button click
-function handleConfirmSelection() {
+async function handleConfirmSelection() {
     const selectedCard = document.querySelector('.card.is-selected');
-    if (selectedCard) {
-        const sop = selectedCard.dataset.sop;
-        showStatusMessage(`Selection confirmed: ${sop}`, 'success');
+    if (!selectedCard) {
+        showStatusMessage('No card selected', 'error');
+        return;
+    }
+
+    // Extract the selected result ID (using data-sop as the identifier)
+    // Note: The cards use data-sop attribute which contains the SOP number (e.g., "SOP-00008")
+    // This serves as the unique identifier for each result
+    const selectedResultId = selectedCard.dataset.sop;
+    
+    if (!selectedResultId) {
+        showStatusMessage('Error: Could not identify selected result', 'error');
+        return;
+    }
+
+    // Prepare the request data
+    const requestData = {
+        selectedResultId: selectedResultId
+    };
+
+    try {
+        showStatusMessage('Sending selection to server...', 'info');
         
-        // Here you can add additional logic for what happens after selection
-        // For example, sending the selection to a server, showing more details, etc.
+        // Send POST request to n8n selection webhook
+        const response = await fetch(n8nSelectionWebhookUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server responded with error: ${response.status} ${response.statusText}`);
+        }
+
+        const responseData = await response.json();
         
-        // Optionally, you can disable the confirm button after selection
-        const confirmButton = document.getElementById('confirm-selection-button');
-        if (confirmButton) {
-            confirmButton.classList.remove('enabled');
+        // Log success
+        console.log('Selection sent successfully:', responseData);
+        showStatusMessage(`Selection confirmed: ${selectedResultId}`, 'success');
+        
+    } catch (error) {
+        // Log error
+        console.error('Error sending selection:', error);
+        showStatusMessage(`Error sending selection: ${error.message}`, 'error');
+    } finally {
+        // Always trigger the smooth closing of the first-results-block
+        if (firstResultsBlock) {
+            firstResultsBlock.classList.remove('visible');
+            setTimeout(() => {
+                firstResultsBlock.style.display = 'none';
+                // Clear the results container
+                const resultsContainer = firstResultsBlock.querySelector('.results-container');
+                if (resultsContainer) {
+                    resultsContainer.innerHTML = '';
+                }
+                // Reset the confirm button state
+                const confirmButton = document.getElementById('confirm-selection-button');
+                if (confirmButton) {
+                    confirmButton.classList.remove('enabled');
+                }
+                // Show the form block again
+                if (clientCoordinatesFormBlock) {
+                    clientCoordinatesFormBlock.classList.remove('minimized');
+                }
+                // Hide any status messages after a delay
+                setTimeout(() => {
+                    hideStatusMessage();
+                }, 3000);
+            }, 500);
         }
     }
 }
@@ -40,6 +100,9 @@ if (confirmSelectionButton) {
 
 // N8N Webhook URL constant
 const n8nWebhookUrl = 'https://aigentinc.app.n8n.cloud/webhook/get-coordinates';
+
+// N8N Selection Webhook URL constant
+const n8nSelectionWebhookUrl = 'https://aigentinc.app.n8n.cloud/webhook/get-SOP-selection';
 
 // Sample data for UX validation
 const sampleData = {
