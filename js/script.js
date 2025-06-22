@@ -9,9 +9,89 @@ const contactForm = document.querySelector('.contact-form');
 const clientCoordinatesFormBlock = document.querySelector('#client-coordinates-form-block');
 const confirmAddressButton = document.querySelector('#confirm-address-button');
 const appContainer = document.querySelector('#app-container');
+const loadingBlock = document.querySelector('#loading-block');
+const firstResultsBlock = document.querySelector('#first-results-block');
+const statusMessage = document.getElementById('status-message');
+const loadExampleButton = document.getElementById('load-example-button');
 
 // N8N Webhook URL constant
-const n8nWebhookUrl = 'https://aigentinc.app.n8n.cloud/webhook-test/get-coordinates';
+const n8nWebhookUrl = 'https://aigentinc.app.n8n.cloud/webhook/get-coordinates';
+
+// Sample data for UX validation
+const sampleData = {
+    trueResults: [
+        {
+            row_number: 5,
+            SOP: "SOP-00008",
+            Plaza: "Monterrey",
+            Coordenadas: "25.654627,-100.326208",
+            Terreno: 3,
+            "Altura (mts)": 21,
+            distance_km: 0.775,
+            user_coordinates: "25.6479154, -100.3282983",
+            lineOfSight: {
+                hasLineOfSight: true,
+                totalDistanceKm: 0.7751501078144118,
+                obstructionCount: 0,
+                summary: {
+                    canSee: true,
+                    recommendation: "Line of sight confirmed - connection possible"
+                }
+            }
+        },
+        {
+            row_number: 2,
+            SOP: "SOP-00014",
+            Plaza: "Monterrey",
+            Coordenadas: "25.661905,-100.403204",
+            Terreno: 9,
+            "Altura (mts)": 24,
+            distance_km: 7.667,
+            user_coordinates: "25.6479154, -100.3282983",
+            lineOfSight: {
+                hasLineOfSight: true,
+                totalDistanceKm: 7.667485754323918,
+                obstructionCount: 0,
+                summary: {
+                    canSee: true,
+                    recommendation: "Line of sight confirmed - connection possible"
+                }
+            }
+        }
+    ],
+    falseResults: [
+        {
+            row_number: 4,
+            SOP: "SOP-00022",
+            Plaza: "Monterrey",
+            Coordenadas: "25.664495,-100.353095",
+            Terreno: 60,
+            "Altura (mts)": 3,
+            distance_km: 3.095,
+            user_coordinates: "25.6479154, -100.3282983",
+            lineOfSight: {
+                hasLineOfSight: false,
+                totalDistanceKm: 3.0945225939266163,
+                obstructionCount: 6,
+                maxObstruction: 7.6369235041703405,
+                summary: {
+                    canSee: false,
+                    recommendation: "Antenna height at target should be increased by at least 9m for clear line of sight"
+                },
+                visualizationData: {
+                    obstructionPercentages: [
+                        { atDistance: "1.61km", blockage: "1.00m", percentOfPath: "52.0%" },
+                        { atDistance: "1.73km", blockage: "3.39m", percentOfPath: "56.0%" },
+                        { atDistance: "1.86km", blockage: "5.17m", percentOfPath: "60.0%" },
+                        { atDistance: "1.98km", blockage: "7.64m", percentOfPath: "64.0%" },
+                        { atDistance: "2.10km", blockage: "3.68m", percentOfPath: "68.0%" },
+                        { atDistance: "2.23km", blockage: "2.12m", percentOfPath: "72.0%" }
+                    ]
+                }
+            }
+        }
+    ]
+};
 
 // Trigger smooth opening animation for client coordinates form block
 window.addEventListener('load', () => {
@@ -31,27 +111,105 @@ window.addEventListener('load', () => {
     }
 });
 
+function showStatusMessage(message, type = 'info') {
+    statusMessage.textContent = message;
+    statusMessage.className = '';
+    statusMessage.style.display = 'block';
+    statusMessage.classList.add('status-' + type);
+}
+function hideStatusMessage() {
+    statusMessage.textContent = '';
+    statusMessage.className = '';
+    statusMessage.style.display = 'none';
+}
+
+function scrollToResults() {
+    setTimeout(() => {
+        const block = document.getElementById('first-results-block');
+        if (block && block.style.display !== 'none') {
+            // Use window.scrollTo with block's offsetTop for reliability
+            window.scrollTo({
+                top: block.getBoundingClientRect().top + window.scrollY - 30,
+                behavior: 'smooth'
+            });
+        }
+    }, 200);
+}
+
+function addCloseExampleButton() {
+    let closeBtn = document.getElementById('close-example-btn');
+    if (!closeBtn) {
+        closeBtn = document.createElement('button');
+        closeBtn.id = 'close-example-btn';
+        closeBtn.textContent = 'Cerrar Ejemplo';
+        closeBtn.style.cssText = 'display:block;margin:20px auto 0 auto;background:linear-gradient(135deg,#f44336,#d32f2f);color:white;border:none;border-radius:25px;font-size:1.1rem;font-weight:bold;padding:12px 28px;cursor:pointer;box-shadow:0 5px 15px rgba(0,0,0,0.12);transition:all 0.2s;';
+        closeBtn.onmouseover = function() { closeBtn.style.transform = 'translateY(-2px)'; closeBtn.style.boxShadow = '0 8px 25px rgba(0,0,0,0.18)'; };
+        closeBtn.onmouseout = function() { closeBtn.style.transform = ''; closeBtn.style.boxShadow = '0 5px 15px rgba(0,0,0,0.12)'; };
+        closeBtn.onclick = function() {
+            firstResultsBlock.classList.remove('visible');
+            setTimeout(() => {
+                firstResultsBlock.style.display = 'none';
+                firstResultsBlock.querySelector('.results-container').innerHTML = '';
+                closeBtn.remove();
+                clientCoordinatesFormBlock.classList.remove('minimized');
+                hideStatusMessage();
+            }, 500);
+        };
+        firstResultsBlock.parentNode.insertBefore(closeBtn, firstResultsBlock.nextSibling);
+    }
+}
+
+if (loadExampleButton) {
+    loadExampleButton.addEventListener('click', () => {
+        hideStatusMessage();
+        // Do NOT minimize the form block
+        // Show results below the form
+        loadingBlock.style.display = 'none';
+        loadingBlock.classList.remove('visible');
+        firstResultsBlock.style.display = 'block';
+        setTimeout(() => {
+            firstResultsBlock.classList.add('visible');
+        }, 50);
+        populateResultsBlock(sampleData);
+        addCloseExampleButton();
+        scrollToResults();
+    });
+}
+
 // Confirm Address Button Click Handler
 if (confirmAddressButton) {
     confirmAddressButton.addEventListener('click', async () => {
+        // Remove example close button and hide results if present
+        const closeBtn = document.getElementById('close-example-btn');
+        if (closeBtn) closeBtn.remove();
+        firstResultsBlock.classList.remove('visible');
+        setTimeout(() => {
+            firstResultsBlock.style.display = 'none';
+            firstResultsBlock.querySelector('.results-container').innerHTML = '';
+        }, 400);
         // Get the value from the textarea
         const clientAddressInput = document.querySelector('#client-address-input');
         const clientAddress = clientAddressInput.value.trim();
         
         // Validate input
         if (!clientAddress) {
-            console.log('No address provided');
+            showStatusMessage('Por favor, introduzca una dirección o coordenadas.', 'error');
             return;
         }
-        
+        hideStatusMessage();
         // Prepare the request data
         const requestData = {
             clientAddress: clientAddress
         };
         
         try {
-            console.log('Sending address data to n8n webhook:', requestData);
-            
+            showStatusMessage('Conectando con el servidor...', 'info');
+            // Show loading block
+            loadingBlock.style.display = 'block';
+            setTimeout(() => {
+                loadingBlock.classList.add('visible');
+            }, 50);
+            showStatusMessage('Enviando datos al servidor...', 'info');
             // Send POST request to n8n webhook
             const response = await fetch(n8nWebhookUrl, {
                 method: 'POST',
@@ -60,27 +218,35 @@ if (confirmAddressButton) {
                 },
                 body: JSON.stringify(requestData)
             });
-            
-            // Check if the request was successful
-            if (response.ok) {
-                console.log('Successfully sent address data to n8n webhook');
-                const responseData = await response.json();
-                console.log('Response from webhook:', responseData);
-            } else {
-                console.error('Failed to send data to n8n webhook. Status:', response.status);
-                const errorText = await response.text();
-                console.error('Error response:', errorText);
+            if (!response.ok) {
+                throw new Error('El servidor respondió con un error (' + response.status + ')');
             }
-            
+            showStatusMessage('Procesando respuesta del servidor...', 'info');
+            const responseData = await response.json();
+            // Hide loading block
+            loadingBlock.classList.remove('visible');
+            setTimeout(() => {
+                loadingBlock.style.display = 'none';
+            }, 600);
+            // Show and populate first results block
+            setTimeout(() => {
+                populateResultsBlock(responseData);
+                firstResultsBlock.style.display = 'block';
+                setTimeout(() => {
+                    firstResultsBlock.classList.add('visible');
+                }, 50);
+                showStatusMessage('¡Análisis completado!', 'success');
+                scrollToResults();
+            }, 700);
         } catch (error) {
-            console.error('Error sending data to n8n webhook:', error);
+            loadingBlock.classList.remove('visible');
+            setTimeout(() => {
+                loadingBlock.style.display = 'none';
+            }, 600);
+            showStatusMessage('Error: ' + (error.message || error), 'error');
         } finally {
             // Always trigger the smooth closing of the form block
-            console.log('Closing form block after webhook request');
-            
-            // Smoothly minimize the form block
             clientCoordinatesFormBlock.classList.add('minimized');
-            
             // Wait for the minimize animation to complete, then show edit button
             setTimeout(() => {
                 // Create and append the edit address button
@@ -88,36 +254,182 @@ if (confirmAddressButton) {
                 editButton.href = '#';
                 editButton.className = 'reopen-form-button';
                 editButton.textContent = 'Editar dirección';
-                
                 // Add click handler for the edit button
                 editButton.addEventListener('click', (e) => {
                     e.preventDefault();
-                    
-                    // Smoothly re-open the form block
                     clientCoordinatesFormBlock.classList.remove('minimized');
-                    
-                    // Hide the edit button
                     editButton.classList.remove('visible');
-                    
-                    // Remove the button after animation completes
                     setTimeout(() => {
                         if (editButton.parentNode) {
                             editButton.remove();
                         }
                     }, 300);
                 });
-                
                 // Append to app container
                 appContainer.appendChild(editButton);
-                
                 // Show the edit button with animation
                 setTimeout(() => {
                     editButton.classList.add('visible');
                 }, 50);
-                
-            }, 600); // Wait for minimize animation to complete
+            }, 600);
         }
     });
+}
+
+// Function to populate results block with dynamic content (card-based, sectioned)
+function populateResultsBlock(responseData) {
+    const resultsContainer = firstResultsBlock.querySelector('.results-container');
+    resultsContainer.innerHTML = '';
+
+    // Helper to create a card for each result
+    function createCard(result, isSuccess) {
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        const statusClass = isSuccess ? 'status-success' : 'status-blocked';
+        const statusText = isSuccess ? 'Clear' : 'Blocked';
+        const statusIcon = isSuccess ? '✓' : '✗';
+
+        // Card header
+        card.innerHTML = `
+            <div class="card-header">
+                <div class="card-title">${result.SOP} - ${result.Plaza}</div>
+                <div class="status-badge ${statusClass}">${statusIcon} ${statusText}</div>
+            </div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Distance</div>
+                    <div class="info-value">${result.distance_km} km</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Obstructions</div>
+                    <div class="info-value">${result.lineOfSight?.obstructionCount || 0}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Target Coords</div>
+                    <div class="info-value coordinates">${result.Coordenadas}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Antenna Height</div>
+                    <div class="info-value">${result['Altura (mts)']} m</div>
+                </div>
+            </div>
+            ${!isSuccess && result.lineOfSight?.visualizationData ? `
+                <div class="obstruction-details">
+                    <strong>Obstruction Details:</strong>
+                    ${result.lineOfSight.visualizationData.obstructionPercentages.map(obs => `
+                        <div class="obstruction-item">
+                            <span>At ${obs.atDistance} (${obs.percentOfPath})</span>
+                            <span><strong>${obs.blockage}</strong></span>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : ''}
+            <div class="recommendation">
+                <strong>Recommendation:</strong> ${result.lineOfSight?.summary?.recommendation || 'Analysis completed'}
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Elevation Profile</div>
+                <canvas id="chart-${result.SOP.replace('-', '')}"></canvas>
+            </div>
+        `;
+
+        // Add chart after the card is added to DOM
+        setTimeout(() => {
+            createElevationChart(result, `chart-${result.SOP.replace('-', '')}`);
+        }, 100);
+
+        return card;
+    }
+
+    // Helper to create the elevation chart (dummy data for now)
+    function createElevationChart(result, canvasId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const points = 20;
+        const distance = result.distance_km;
+        const hasObstructions = !result.lineOfSight?.hasLineOfSight;
+
+        const labels = [];
+        const elevationData = [];
+        const sightLineData = [];
+
+        for (let i = 0; i <= points; i++) {
+            const distancePoint = (distance * i) / points;
+            labels.push(distancePoint.toFixed(1));
+            let elevation = 600 + Math.sin(i * 0.3) * 20 + Math.random() * 10;
+            if (hasObstructions && i > points * 0.4 && i < points * 0.8) {
+                elevation += 20;
+            }
+            elevationData.push(elevation);
+            const startElevation = 650;
+            const endElevation = 605;
+            const sightLineHeight = startElevation - ((startElevation - endElevation) * i / points);
+            sightLineData.push(sightLineHeight);
+        }
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Terrain Elevation',
+                    data: elevationData,
+                    borderColor: hasObstructions ? '#ff4444' : '#4CAF50',
+                    backgroundColor: hasObstructions ? 'rgba(255, 68, 68, 0.1)' : 'rgba(76, 175, 80, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }, {
+                    label: 'Line of Sight',
+                    data: sightLineData,
+                    borderColor: '#2196F3',
+                    backgroundColor: 'transparent',
+                    borderDash: [5, 5],
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: 'Distance (km)' } },
+                    y: { title: { display: true, text: 'Elevation (m)' } }
+                },
+                plugins: { legend: { position: 'top' } }
+            }
+        });
+    }
+
+    // Clear and add sections
+    resultsContainer.innerHTML = '';
+
+    // Success section
+    if (responseData.trueResults && responseData.trueResults.length > 0) {
+        const successSection = document.createElement('div');
+        successSection.innerHTML = '<h2 class="section-title">✅ Successful Connections</h2>';
+        const successGrid = document.createElement('div');
+        successGrid.className = 'results-container';
+        responseData.trueResults.forEach(result => {
+            successGrid.appendChild(createCard(result, true));
+        });
+        successSection.appendChild(successGrid);
+        resultsContainer.appendChild(successSection);
+    }
+
+    // Blocked section
+    if (responseData.falseResults && responseData.falseResults.length > 0) {
+        const blockedSection = document.createElement('div');
+        blockedSection.innerHTML = '<h2 class="section-title">❌ Blocked Connections</h2>';
+        const blockedGrid = document.createElement('div');
+        blockedGrid.className = 'results-container';
+        responseData.falseResults.forEach(result => {
+            blockedGrid.appendChild(createCard(result, false));
+        });
+        blockedSection.appendChild(blockedGrid);
+        resultsContainer.appendChild(blockedSection);
+    }
 }
 
 // Mobile Navigation Toggle

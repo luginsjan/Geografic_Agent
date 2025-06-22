@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minimalistic Black</title>
+    <title>Agente Geográfico</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 </head>
 <body>
     <div id="app-container">
@@ -16,11 +17,29 @@
             <p>Para empezar, indique las coordenadas o la dirección de su cliente. Este formulario se adapta a sus datos.</p>
         </div>
         
+        <div id="status-message" style="display:none;"></div>
+        
         <div id="client-coordinates-form-block">
             <div class="form-box">
                 <label for="client-address-input">Coordenadas/Dirección del cliente</label>
                 <textarea id="client-address-input" placeholder="Introduzca la dirección o las coordenadas..."></textarea>
                 <button id="confirm-address-button">Confirmar</button>
+            </div>
+        </div>
+        
+        <button id="load-example-button" style="display:block;margin:20px auto 0 auto;">Cargar Ejemplo</button>
+        
+        <div id="loading-block" style="display: none;">
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Procesando datos geográficos...</p>
+            </div>
+        </div>
+        
+        <div id="first-results-block" style="display: none;">
+            <h2>Resultados del Análisis</h2>
+            <div class="results-container">
+                <!-- Dynamic content will be populated here -->
             </div>
         </div>
     </div>
