@@ -137,7 +137,7 @@ async function handleConfirmSelection() {
         return;
     }
 
-    // Get the complete SOP data
+    // Get the complete SOP data (should include all fields and elevation data)
     const completeSopData = allSopData[selectedResultId];
     
     if (!completeSopData) {
@@ -145,10 +145,10 @@ async function handleConfirmSelection() {
         return;
     }
     
-    // Store confirmed SOP for final report
+    // Store confirmed SOP for final report (store the full object)
     confirmedSOP = {
         id: selectedResultId,
-        data: completeSopData
+        data: JSON.parse(JSON.stringify(completeSopData)) // deep copy to avoid mutation
     };
     
     // Debug: Log the complete SOP data being sent (can be removed in production)
@@ -639,9 +639,10 @@ function populateSOPDetails() {
     const sopData = confirmedSOP.data;
     const isSuccess = sopData.status === 'Clear' || sopData.status === 'clear';
     const chartId = `report-chart-${sopData.SOP.replace('-', '')}`;
+    // Render all details as in SOP selection
     sopDetailsContainer.innerHTML = `
         <div class="card-header">
-            <div class="card-title" style="color:#222;">${sopData.SOP} - ${sopData.Plaza}</div>
+            <div class="card-title" style="color:#222;">${sopData.SOP || sopData.id || 'SOP'} - ${sopData.Plaza || sopData.plaza || ''}</div>
             <div class="status-badge ${isSuccess ? 'status-success' : 'status-blocked'}" style="color:#fff;">
                 ${isSuccess ? '✓ Clear' : '✗ Blocked'}
             </div>
@@ -649,11 +650,11 @@ function populateSOPDetails() {
         <div class="info-grid">
             <div class="info-item">
                 <div class="info-label" style="color:#333;">Distance</div>
-                <div class="info-value" style="color:#222;">${sopData.distance_km} km</div>
+                <div class="info-value" style="color:#222;">${sopData.distance_km || sopData.distance || 'N/A'} km</div>
             </div>
             <div class="info-item">
                 <div class="info-label" style="color:#333;">Coordinates</div>
-                <div class="info-value" style="color:#222;">${sopData.coordinates || 'N/A'}</div>
+                <div class="info-value" style="color:#222;">${sopData.Coordenadas || sopData.coordinates || 'N/A'}</div>
             </div>
             <div class="info-item">
                 <div class="info-label" style="color:#333;">Elevation</div>
@@ -663,6 +664,9 @@ function populateSOPDetails() {
                 <div class="info-label" style="color:#333;">Status</div>
                 <div class="info-value" style="color:#222;">${sopData.status || 'N/A'}</div>
             </div>
+        </div>
+        <div class="recommendation" style="margin-top:1rem;color:#222;">
+            <strong>Recommendation:</strong> ${sopData.lineOfSight?.summary?.recommendation || 'Analysis completed'}
         </div>
         <div class="chart-container" style="height:220px; margin-top:1.5rem;">
             <div class="chart-title" style="color:#222;">Elevation Profile</div>
@@ -1901,18 +1905,34 @@ function testFinalReport() {
 // Function to download PDF report
 async function downloadPDF() {
     console.log('Generating PDF report...');
-    
     const downloadButton = document.getElementById('download-pdf-button');
     if (downloadButton) {
         downloadButton.disabled = true;
         downloadButton.innerHTML = '<span class="download-icon">⏳</span> Generando PDF...';
     }
-    
     try {
-        // Create a clone of the report container for PDF generation
         const reportContainer = document.querySelector('.final-report-container');
+        // Wrap in a centering div for PDF
+        const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.justifyContent = 'center';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.minHeight = '1122px'; // A4 height at 96dpi
+        wrapper.style.background = '#f8f9fa';
+        wrapper.style.padding = '32px';
+        // Clone the report
         const pdfContainer = reportContainer.cloneNode(true);
-        
+        pdfContainer.style.background = 'white';
+        pdfContainer.style.color = '#222';
+        pdfContainer.style.padding = '32px';
+        pdfContainer.style.maxWidth = '700px';
+        pdfContainer.style.margin = '0 auto';
+        pdfContainer.style.fontFamily = 'Arial, sans-serif';
+        pdfContainer.style.boxSizing = 'border-box';
+        pdfContainer.style.width = '100%';
+        pdfContainer.style.borderRadius = '12px';
+        pdfContainer.style.boxShadow = '0 0 12px rgba(0,0,0,0.08)';
+        pdfContainer.style.border = '1.5px solid #e0e0e0';
         // Remove all canvas and re-render static images for charts
         const canvases = reportContainer.querySelectorAll('canvas');
         const pdfCanvases = pdfContainer.querySelectorAll('canvas');
@@ -1924,25 +1944,13 @@ async function downloadPDF() {
             img.style.height = '200px';
             pdfCanvases[idx].replaceWith(img);
         });
-        
         // Universal override for all text in PDF
         pdfContainer.querySelectorAll('*').forEach(el => {
             if (el.nodeType === 1) {
                 el.style.color = '#222';
             }
         });
-
-        // Add PDF-specific styles
-        pdfContainer.style.background = 'white';
-        pdfContainer.style.color = '#222';
-        pdfContainer.style.padding = '24px';
-        pdfContainer.style.maxWidth = '800px';
-        pdfContainer.style.margin = '0 auto';
-        pdfContainer.style.fontFamily = 'Arial, sans-serif';
-        pdfContainer.style.boxSizing = 'border-box';
-        pdfContainer.style.width = '100%';
-        
-        // Update colors for PDF
+        // Add PDF-specific styles to sections
         const sections = pdfContainer.querySelectorAll('.report-section');
         sections.forEach(section => {
             section.style.background = '#f8f9fa';
@@ -1950,13 +1958,11 @@ async function downloadPDF() {
             section.style.color = '#222';
             section.style.pageBreakInside = 'avoid';
         });
-        
         // Update headers for PDF
         const headers = pdfContainer.querySelectorAll('h3, h4');
         headers.forEach(header => {
             header.style.color = '#2c5aa0';
         });
-        
         // Update SOP details for PDF
         const sopDetails = pdfContainer.querySelector('.sop-details');
         if (sopDetails) {
@@ -1965,7 +1971,6 @@ async function downloadPDF() {
             sopDetails.style.color = '#222';
             sopDetails.style.pageBreakInside = 'avoid';
         }
-        
         // Update kit details for PDF
         const kitDetails = pdfContainer.querySelector('.kit-details');
         if (kitDetails) {
@@ -1974,7 +1979,6 @@ async function downloadPDF() {
             kitDetails.style.color = '#222';
             kitDetails.style.pageBreakInside = 'avoid';
         }
-        
         // Update input values for PDF
         const inputValues = pdfContainer.querySelectorAll('.input-value');
         inputValues.forEach(input => {
@@ -1982,7 +1986,6 @@ async function downloadPDF() {
             input.style.border = '1px solid #dee2e6';
             input.style.color = '#222';
         });
-        
         // Update report meta for PDF
         const reportMeta = pdfContainer.querySelector('.report-meta');
         if (reportMeta) {
@@ -1993,32 +1996,31 @@ async function downloadPDF() {
             reportMeta.style.borderRadius = '4px';
             reportMeta.style.pageBreakInside = 'avoid';
         }
-        
         // Update timestamp and duration for PDF
         const timestampSpans = pdfContainer.querySelectorAll('.report-timestamp span, .report-duration span');
         timestampSpans.forEach(span => {
             span.style.color = '#222';
         });
-        
         // Highlight duration in PDF
         const durationSpan = pdfContainer.querySelector('.report-duration span');
         if (durationSpan) {
             durationSpan.style.color = '#28a745';
             durationSpan.style.fontWeight = 'bold';
         }
-        
+        // Append the report to the wrapper
+        wrapper.appendChild(pdfContainer);
         // Configure PDF options
         const opt = {
-            margin: [5, 5, 5, 5],
+            margin: [10, 10, 10, 10],
             filename: `Agente_Geografico_Report_${currentAigentID || 'N/A'}_${new Date().toISOString().split('T')[0]}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { 
                 scale: 2,
                 useCORS: true,
-                backgroundColor: '#ffffff',
+                backgroundColor: '#f8f9fa',
                 scrollY: 0,
-                windowWidth: 800,
-                windowHeight: 1120
+                windowWidth: 900,
+                windowHeight: 1300
             },
             jsPDF: { 
                 unit: 'mm', 
@@ -2027,27 +2029,19 @@ async function downloadPDF() {
             },
             pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
         };
-        
-        // Generate and download PDF
-        await html2pdf().set(opt).from(pdfContainer).toPdf().get('pdf').then(pdf => {
-            // Scale to fit one page
+        await html2pdf().set(opt).from(wrapper).toPdf().get('pdf').then(pdf => {
             const pageCount = pdf.internal.getNumberOfPages();
             if (pageCount > 1) {
-                // Optionally, warn or auto-scale
-                // For now, just fit to one page by scaling
                 pdf.setPage(1);
                 pdf.internal.scaleFactor = 1.1;
             }
         }).save();
-        
         console.log('PDF generated successfully');
         showStatusMessage('PDF generado y descargado exitosamente', 'success');
-        
     } catch (error) {
         console.error('Error generating PDF:', error);
         showStatusMessage('Error al generar el PDF: ' + error.message, 'error');
     } finally {
-        // Reset download button
         if (downloadButton) {
             downloadButton.disabled = false;
             downloadButton.innerHTML = '<span class="download-icon">📄</span> Descargar Reporte PDF';
