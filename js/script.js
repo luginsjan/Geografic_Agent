@@ -222,16 +222,45 @@ function displayKitRecommendations(recommendationData) {
         }, 500);
     }
     
-    // Populate the recommendation block
-    populateRecommendationBlock(recommendationData);
-    
-    // Show the recommendation block smoothly
+    // Show the recommendation block with loading state first
     if (recommendationBlock) {
         recommendationBlock.style.display = 'block';
         setTimeout(() => {
             recommendationBlock.classList.add('visible');
         }, 100);
     }
+    
+    // Show loading state initially
+    const recommendationLoading = document.getElementById('recommendation-loading');
+    const recommendationContent = document.getElementById('recommendation-content');
+    
+    if (recommendationLoading) {
+        recommendationLoading.style.display = 'flex';
+    }
+    if (recommendationContent) {
+        recommendationContent.style.display = 'none';
+    }
+    
+    // Simulate loading time and then populate content
+    setTimeout(() => {
+        // Hide loading, show content
+        if (recommendationLoading) {
+            recommendationLoading.style.display = 'none';
+        }
+        if (recommendationContent) {
+            recommendationContent.style.display = 'block';
+            setTimeout(() => {
+                recommendationContent.classList.add('visible');
+            }, 50);
+        }
+        
+        // Populate the recommendation block
+        populateRecommendationBlock(recommendationData);
+        
+        // Initialize kit selection functionality
+        initializeKitSelection();
+        
+    }, 1500); // 1.5 second loading animation
     
     // Scroll to the recommendation block
     setTimeout(() => {
@@ -242,6 +271,178 @@ function displayKitRecommendations(recommendationData) {
             });
         }
     }, 800);
+}
+
+// Function to initialize kit selection functionality
+function initializeKitSelection() {
+    const kitDropdown = document.getElementById('kit-dropdown');
+    const kitCards = document.querySelectorAll('.kit-card');
+    const confirmKitButton = document.getElementById('confirm-kit-selection-button');
+    
+    // Store selected kit data globally
+    window.selectedKitData = null;
+    
+    // Add click event listeners to kit cards
+    kitCards.forEach(card => {
+        card.addEventListener('click', function() {
+            const kitName = this.querySelector('h4').textContent;
+            selectKit(kitName, card);
+        });
+    });
+    
+    // Add change event listener to dropdown
+    if (kitDropdown) {
+        kitDropdown.addEventListener('change', function() {
+            const selectedKit = this.value;
+            if (selectedKit) {
+                selectKit(selectedKit);
+            } else {
+                deselectAllKits();
+            }
+        });
+    }
+    
+    // Add click event listener to confirmation button
+    if (confirmKitButton) {
+        confirmKitButton.addEventListener('click', handleKitConfirmation);
+    }
+}
+
+// Function to select a kit
+function selectKit(kitName, clickedCard = null) {
+    const kitDropdown = document.getElementById('kit-dropdown');
+    const kitCards = document.querySelectorAll('.kit-card');
+    const confirmKitButton = document.getElementById('confirm-kit-selection-button');
+    
+    // Update dropdown
+    if (kitDropdown) {
+        kitDropdown.value = kitName;
+    }
+    
+    // Update card selection
+    kitCards.forEach(card => {
+        card.classList.remove('selected');
+        card.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+        card.style.transform = 'translateY(0)';
+        card.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
+    });
+    
+    // Find and select the clicked card or card matching the kit name
+    let targetCard = clickedCard;
+    if (!targetCard) {
+        targetCard = Array.from(kitCards).find(card => 
+            card.querySelector('h4').textContent === kitName
+        );
+    }
+    
+    if (targetCard) {
+        targetCard.classList.add('selected');
+        targetCard.style.borderColor = '#4CAF50';
+        targetCard.style.transform = 'translateY(-4px)';
+        targetCard.style.boxShadow = '0 12px 30px rgba(76, 175, 80, 0.3)';
+    }
+    
+    // Store selected kit data
+    const kitData = Array.from(kitCards).find(card => 
+        card.querySelector('h4').textContent === kitName
+    );
+    
+    if (kitData) {
+        window.selectedKitData = {
+            name: kitName,
+            radio: kitData.querySelector('.kit-detail-item:nth-child(1) .kit-detail-value').textContent,
+            antenna: kitData.querySelector('.kit-detail-item:nth-child(2) .kit-detail-value').textContent,
+            frequency_band: kitData.querySelector('.kit-detail-item:nth-child(3) .kit-detail-value').textContent,
+            max_throughput: kitData.querySelector('.kit-detail-item:nth-child(4) .kit-detail-value').textContent,
+            transmit_power: kitData.querySelector('.kit-detail-item:nth-child(5) .kit-detail-value').textContent,
+            antenna_gain: kitData.querySelector('.kit-detail-item:nth-child(6) .kit-detail-value').textContent,
+            link_margin: kitData.querySelector('.kit-detail-item:nth-child(7) .kit-detail-value').textContent,
+            cost: kitData.querySelector('.kit-detail-item:nth-child(8) .kit-detail-value').textContent
+        };
+    }
+    
+    // Enable confirmation button
+    if (confirmKitButton) {
+        confirmKitButton.disabled = false;
+    }
+}
+
+// Function to deselect all kits
+function deselectAllKits() {
+    const kitCards = document.querySelectorAll('.kit-card');
+    const confirmKitButton = document.getElementById('confirm-kit-selection-button');
+    
+    kitCards.forEach(card => {
+        card.classList.remove('selected');
+        card.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+        card.style.transform = 'translateY(0)';
+        card.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
+    });
+    
+    // Disable confirmation button
+    if (confirmKitButton) {
+        confirmKitButton.disabled = true;
+    }
+    
+    // Clear selected kit data
+    window.selectedKitData = null;
+}
+
+// Function to handle kit confirmation
+async function handleKitConfirmation() {
+    if (!window.selectedKitData) {
+        showStatusMessage('No kit selected', 'error');
+        return;
+    }
+    
+    const confirmKitButton = document.getElementById('confirm-kit-selection-button');
+    if (confirmKitButton) {
+        confirmKitButton.disabled = true;
+        confirmKitButton.textContent = 'Enviando...';
+    }
+    
+    try {
+        showStatusMessage('Sending kit selection to server...', 'info');
+        
+        // Prepare the request data
+        const requestData = {
+            selectedKit: window.selectedKitData,
+            AigentID: currentAigentID
+        };
+        
+        // Send POST request to kit selection webhook
+        const response = await fetch('https://aigentinc.app.n8n.cloud/webhook/get-KIT-selection', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Server responded with error: ${response.status} ${response.statusText}`);
+        }
+        
+        const responseData = await response.json();
+        
+        console.log('Kit selection sent successfully:', responseData);
+        showStatusMessage(`Kit selection confirmed: ${window.selectedKitData.name}`, 'success');
+        
+        // Reset button
+        if (confirmKitButton) {
+            confirmKitButton.textContent = 'Confirmar Selección de Kit';
+        }
+        
+    } catch (error) {
+        console.error('Error sending kit selection:', error);
+        showStatusMessage(`Error sending kit selection: ${error.message}`, 'error');
+        
+        // Reset button on error
+        if (confirmKitButton) {
+            confirmKitButton.disabled = false;
+            confirmKitButton.textContent = 'Confirmar Selección de Kit';
+        }
+    }
 }
 
 // Function to populate the recommendation block with data
@@ -384,34 +585,6 @@ const confirmSelectionButton = document.getElementById('confirm-selection-button
 if (confirmSelectionButton) {
     confirmSelectionButton.addEventListener('click', handleConfirmSelection);
 }
-
-// Add event listener for kit dropdown
-document.addEventListener('DOMContentLoaded', function() {
-    const kitDropdown = document.getElementById('kit-dropdown');
-    if (kitDropdown) {
-        kitDropdown.addEventListener('change', function() {
-            const selectedKit = this.value;
-            if (selectedKit) {
-                // Highlight the selected kit card
-                const kitCards = document.querySelectorAll('.kit-card');
-                kitCards.forEach(card => {
-                    card.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                    card.style.transform = 'translateY(0)';
-                });
-                
-                const selectedCard = Array.from(kitCards).find(card => 
-                    card.querySelector('h4').textContent === selectedKit
-                );
-                
-                if (selectedCard) {
-                    selectedCard.style.borderColor = '#4CAF50';
-                    selectedCard.style.transform = 'translateY(-4px)';
-                    selectedCard.style.boxShadow = '0 12px 30px rgba(76, 175, 80, 0.3)';
-                }
-            }
-        });
-    }
-});
 
 // Vercel API Proxy URLs
 const n8nWebhookUrl = '/api/get-coordinates';
@@ -1261,4 +1434,69 @@ window.addEventListener('scroll', throttle(() => {
         const rate = scrolled * -0.5;
         hero.style.transform = `translateY(${rate}px)`;
     }
-}, 16)); // ~60fps 
+}, 16)); // ~60fps
+
+// Test function for kit recommendations (Option 2)
+function testKitRecommendations() {
+    console.log('Testing kit recommendations with loading animation...');
+    
+    const testData = {
+        output: {
+            viable_kits: [
+                {
+                    name: "KIT 1",
+                    radio: "Mimosa C5x",
+                    antenna: "Antena Mimosa N5X25",
+                    frequency_band: "4.9 - 6.4 GHz",
+                    max_throughput: "700 Mbps",
+                    transmit_power: "27 dBm",
+                    antenna_gain: "25 dBi",
+                    link_margin: "21.36 dB",
+                    cost: "691 USD"
+                },
+                {
+                    name: "KIT 2",
+                    radio: "Mimosa C5c",
+                    antenna: "Antena 30 dB ubiquiti AF-5G30-S45",
+                    frequency_band: "4.9 - 5.9 GHz",
+                    max_throughput: "700 Mbps",
+                    transmit_power: "27 dBm",
+                    antenna_gain: "30 dBi",
+                    link_margin: "27.06 dB",
+                    cost: "1241 USD"
+                },
+                {
+                    name: "KIT 3 - opción 1",
+                    radio: "Cambium 4600C C060940C121C",
+                    antenna: "Antena Txpro 30 dbi TXP7GD30",
+                    frequency_band: "5.7 - 7.1 GHz",
+                    max_throughput: "2000 Mbps",
+                    transmit_power: "30 dBm",
+                    antenna_gain: "31 dBi",
+                    link_margin: "28.46 dB",
+                    cost: "1940 USD"
+                },
+                {
+                    name: "KIT 3 - opción 2",
+                    radio: "Cambium 4600C C060940C121C",
+                    antenna: "Antena 32dbi NP6 (incluye pigtails)",
+                    frequency_band: "5.9 - 7.2 GHz",
+                    max_throughput: "2000 Mbps",
+                    transmit_power: "30 dBm",
+                    antenna_gain: "32 dBi",
+                    link_margin: "29.33 dB",
+                    cost: "2230 USD"
+                }
+            ],
+            high_reliability_recommendation: "KIT 3 - opción 2",
+            best_value_recommendation: "KIT 1",
+            aigent_id: "AIG-20250712-200313-9RQS6"
+        }
+    };
+    
+    // Call the display function directly
+    displayKitRecommendations(testData.output);
+}
+
+// Make test function available globally
+window.testKitRecommendations = testKitRecommendations; 
