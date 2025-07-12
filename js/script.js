@@ -8,7 +8,6 @@ const ctaButton = document.querySelector('.cta-button');
 const contactForm = document.querySelector('.contact-form');
 const clientCoordinatesFormBlock = document.querySelector('#client-coordinates-form-block');
 const confirmAddressButton = document.querySelector('#confirm-address-button');
-const appContainer = document.querySelector('#app-container');
 const bandwidthInput = document.querySelector('#bandwidth-input');
 const loadingBlock = document.querySelector('#loading-block');
 const firstResultsBlock = document.querySelector('#first-results-block');
@@ -1265,8 +1264,8 @@ if (confirmAddressButton) {
                         }
                     }, 300);
                 });
-                // Append to app container
-                appContainer.appendChild(editButton);
+                // Append to analysis section
+                document.getElementById('analysis').appendChild(editButton);
                 // Show the edit button with animation
                 setTimeout(() => {
                     editButton.classList.add('visible');
@@ -2049,6 +2048,18 @@ async function downloadPDF() {
     }
 }
 
+// Function to scroll to a specific section
+function scrollToSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (section) {
+        section.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+        });
+    }
+}
+
 // Make test functions available globally
 window.testKitRecommendations = testKitRecommendations;
-window.testFinalReport = testFinalReport; 
+window.testFinalReport = testFinalReport;
+window.scrollToSection = scrollToSection; 

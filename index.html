@@ -11,158 +11,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 </head>
 <body>
-    <div id="app-container">
-        <div id="welcome-section">
-            <h1>Bienvenido al Agente Geográfico</h1>
-            <p>Para empezar, indique las coordenadas o la dirección de su cliente. Este formulario se adapta a sus datos.</p>
-        </div>
-        
-        <div id="status-message" style="display:none;"></div>
-        
-        <div id="client-coordinates-form-block">
-            <div class="form-box">
-                <div id="aigent-id-display" style="display: none; margin-bottom: 1rem; padding: 0.5rem; background: rgba(255, 255, 255, 0.1); border-radius: 4px; font-size: 0.9rem; color: #a0a0a0;">
-                    <strong>Workflow ID:</strong> <span id="aigent-id-value">-</span>
-                </div>
-                
-                <label for="client-address-input">Coordenadas/Dirección del cliente</label>
-                <textarea id="client-address-input" placeholder="Introduzca la dirección o las coordenadas..."></textarea>
-                
-                <label for="bandwidth-input">Ancho de banda requerido</label>
-                <input type="text" id="bandwidth-input" placeholder="Introduzca el ancho de banda (Mbps)...">
-                
-                <button id="confirm-address-button">Confirmar</button>
-            </div>
-        </div>
-        
-        <button id="load-example-button" style="display:block;margin:20px auto 0 auto;">Cargar Ejemplo</button>
-        
-        <div id="loading-block" style="display: none;">
-            <div class="loading-spinner">
-                <div class="spinner"></div>
-                <p>Procesando datos geográficos...</p>
-            </div>
-        </div>
-        
-        <div id="first-results-block" style="display: none;">
-            <h2>Resultados del Análisis</h2>
-            <div class="results-container">
-                <!-- Dynamic content will be populated here -->
-            </div>
-        </div>
-        
-        <button id="confirm-selection-button">Confirm Selection</button>
-        
-        <div id="recommendation-block" style="display: none;">
-            <h2>Recomendación Kit</h2>
-            <div class="recommendation-container">
-                <!-- Loading state -->
-                <div id="recommendation-loading" class="recommendation-loading">
-                    <div class="loading-spinner">
-                        <div class="spinner"></div>
-                        <p>Generando recomendaciones de kits...</p>
-                    </div>
-                </div>
-                
-                <!-- Content state (initially hidden) -->
-                <div id="recommendation-content" class="recommendation-content" style="display: none;">
-                    <div class="kit-dropdown-section">
-                        <label for="kit-dropdown">Seleccionar Kit:</label>
-                        <select id="kit-dropdown" class="kit-dropdown">
-                            <option value="">Seleccione un kit...</option>
-                        </select>
-                    </div>
-                    
-                    <div class="viable-kits-section">
-                        <h3>Kits Viables</h3>
-                        <div class="kits-grid">
-                            <!-- Dynamic kit cards will be populated here -->
-                        </div>
-                    </div>
-                    
-                    <div class="recommendations-section">
-                        <div class="recommendation-card high-reliability">
-                            <h3>Alta Confiabilidad</h3>
-                            <div class="recommendation-content">
-                                <!-- High reliability recommendation will be populated here -->
-                            </div>
-                        </div>
-                        
-                        <div class="recommendation-card best-value">
-                            <h3>Mejor Valor</h3>
-                            <div class="recommendation-content">
-                                <!-- Best value recommendation will be populated here -->
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Kit selection confirmation button -->
-                    <div class="kit-confirmation-section">
-                        <button id="confirm-kit-selection-button" class="confirm-kit-button" disabled>
-                            Confirmar Selección de Kit
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Final Report Container -->
-        <div id="final-report-block" style="display: none;">
-            <h2>Reporte Final</h2>
-            <div class="final-report-container">
-                <!-- Report Header -->
-                <div class="report-header">
-                    <h3>Agente Geográfico - Análisis Completado</h3>
-                    <div class="report-meta">
-                        <p class="report-date">Fecha: <span id="report-date"></span></p>
-                        <p class="report-id">Workflow ID: <span id="report-aigent-id"></span></p>
-                        <p class="report-timestamp">Timestamp: <span id="report-timestamp"></span></p>
-                        <p class="report-duration">Tiempo Requerido: <span id="report-duration"></span></p>
-                    </div>
-                </div>
-                
-                <!-- Input Section -->
-                <div class="report-section">
-                    <h4>Datos de Entrada</h4>
-                    <div class="input-details">
-                        <div class="input-item">
-                            <span class="input-label">Coordenadas/Dirección:</span>
-                            <span class="input-value" id="report-coordinates"></span>
-                        </div>
-                        <div class="input-item">
-                            <span class="input-label">Ancho de Banda:</span>
-                            <span class="input-value" id="report-bandwidth"></span>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Confirmed SOP Section -->
-                <div class="report-section">
-                    <h4>SOP Confirmado</h4>
-                    <div id="report-sop-details" class="sop-details">
-                        <!-- SOP details will be populated here -->
-                    </div>
-                </div>
-                
-                <!-- Confirmed Kit Section -->
-                <div class="report-section">
-                    <h4>Kit Confirmado</h4>
-                    <div id="report-kit-details" class="kit-details">
-                        <!-- Kit details will be populated here -->
-                    </div>
-                </div>
-                
-                <!-- Download Button -->
-                <div class="report-actions">
-                    <button id="download-pdf-button" class="download-pdf-button">
-                        <span class="download-icon">📄</span>
-                        Descargar Reporte PDF
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-logo">
@@ -173,13 +21,13 @@
                     <a href="#home" class="nav-link">Home</a>
                 </li>
                 <li class="nav-item">
-                    <a href="#about" class="nav-link">About</a>
+                    <a href="#analysis" class="nav-link">Analysis</a>
                 </li>
                 <li class="nav-item">
-                    <a href="#work" class="nav-link">Work</a>
+                    <a href="#recommendations" class="nav-link">Recommendations</a>
                 </li>
                 <li class="nav-item">
-                    <a href="#contact" class="nav-link">Contact</a>
+                    <a href="#report" class="nav-link">Report</a>
                 </li>
             </ul>
             <div class="hamburger">
@@ -193,85 +41,175 @@
     <main>
         <section id="home" class="hero">
             <div class="hero-content">
-                <h1 class="hero-title">Minimalistic Design</h1>
-                <p class="hero-subtitle">Where simplicity meets elegance</p>
-                <button class="cta-button">Explore</button>
+                <h1 class="hero-title">Agente Geográfico</h1>
+                <p class="hero-subtitle">Análisis inteligente de coordenadas y recomendaciones de kits</p>
+                <button class="cta-button" onclick="scrollToSection('analysis')">Comenzar Análisis</button>
             </div>
         </section>
 
-        <section id="about" class="about">
+        <section id="analysis" class="about">
             <div class="container">
-                <h2 class="section-title">About</h2>
+                <h2 class="section-title">Análisis de Coordenadas</h2>
                 <div class="about-content">
                     <div class="about-text">
-                        <p>We believe in the power of minimalism. Clean lines, thoughtful typography, and purposeful design create experiences that matter.</p>
-                        <p>Every element serves a purpose. Every interaction has meaning.</p>
+                        <p>Para empezar, indique las coordenadas o la dirección de su cliente. Este formulario se adapta a sus datos.</p>
                     </div>
-                    <div class="about-stats">
-                        <div class="stat">
-                            <h3>10+</h3>
-                            <p>Years Experience</p>
-                        </div>
-                        <div class="stat">
-                            <h3>50+</h3>
-                            <p>Projects Completed</p>
-                        </div>
-                        <div class="stat">
-                            <h3>100%</h3>
-                            <p>Client Satisfaction</p>
+                    
+                    <div id="status-message" style="display:none;"></div>
+                    
+                    <div id="client-coordinates-form-block">
+                        <div class="form-box">
+                            <div id="aigent-id-display" style="display: none; margin-bottom: 1rem; padding: 0.5rem; background: rgba(255, 255, 255, 0.1); border-radius: 4px; font-size: 0.9rem; color: #a0a0a0;">
+                                <strong>Workflow ID:</strong> <span id="aigent-id-value">-</span>
+                            </div>
+                            
+                            <label for="client-address-input">Coordenadas/Dirección del cliente</label>
+                            <textarea id="client-address-input" placeholder="Introduzca la dirección o las coordenadas..."></textarea>
+                            
+                            <label for="bandwidth-input">Ancho de banda requerido</label>
+                            <input type="text" id="bandwidth-input" placeholder="Introduzca el ancho de banda (Mbps)...">
+                            
+                            <button id="confirm-address-button">Confirmar</button>
                         </div>
                     </div>
+                    
+                    <button id="load-example-button" style="display:block;margin:20px auto 0 auto;">Cargar Ejemplo</button>
+                    
+                    <div id="loading-block" style="display: none;">
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                            <p>Procesando datos geográficos...</p>
+                        </div>
+                    </div>
+                    
+                    <div id="first-results-block" style="display: none;">
+                        <h2>Resultados del Análisis</h2>
+                        <div class="results-container">
+                            <!-- Dynamic content will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <button id="confirm-selection-button">Confirm Selection</button>
                 </div>
             </div>
         </section>
 
-        <section id="work" class="work">
+        <section id="recommendations" class="work">
             <div class="container">
-                <h2 class="section-title">Work</h2>
+                <h2 class="section-title">Recomendaciones de Kits</h2>
                 <div class="work-grid">
-                    <div class="work-item">
-                        <div class="work-image"></div>
-                        <h3>Project One</h3>
-                        <p>Brand Identity & Web Design</p>
-                    </div>
-                    <div class="work-item">
-                        <div class="work-image"></div>
-                        <h3>Project Two</h3>
-                        <p>UI/UX Design</p>
-                    </div>
-                    <div class="work-item">
-                        <div class="work-image"></div>
-                        <h3>Project Three</h3>
-                        <p>Digital Experience</p>
+                    <div id="recommendation-block" style="display: none;">
+                        <div class="recommendation-container">
+                            <!-- Loading state -->
+                            <div id="recommendation-loading" class="recommendation-loading">
+                                <div class="loading-spinner">
+                                    <div class="spinner"></div>
+                                    <p>Generando recomendaciones de kits...</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Content state (initially hidden) -->
+                            <div id="recommendation-content" class="recommendation-content" style="display: none;">
+                                <div class="kit-dropdown-section">
+                                    <label for="kit-dropdown">Seleccionar Kit:</label>
+                                    <select id="kit-dropdown" class="kit-dropdown">
+                                        <option value="">Seleccione un kit...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="viable-kits-section">
+                                    <h3>Kits Viables</h3>
+                                    <div class="kits-grid">
+                                        <!-- Dynamic kit cards will be populated here -->
+                                    </div>
+                                </div>
+                                
+                                <div class="recommendations-section">
+                                    <div class="recommendation-card high-reliability">
+                                        <h3>Alta Confiabilidad</h3>
+                                        <div class="recommendation-content">
+                                            <!-- High reliability recommendation will be populated here -->
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="recommendation-card best-value">
+                                        <h3>Mejor Valor</h3>
+                                        <div class="recommendation-content">
+                                            <!-- Best value recommendation will be populated here -->
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Kit selection confirmation button -->
+                                <div class="kit-confirmation-section">
+                                    <button id="confirm-kit-selection-button" class="confirm-kit-button" disabled>
+                                        Confirmar Selección de Kit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section id="contact" class="contact">
+        <section id="report" class="contact">
             <div class="container">
-                <h2 class="section-title">Contact</h2>
+                <h2 class="section-title">Reporte Final</h2>
                 <div class="contact-content">
-                    <div class="contact-info">
-                        <h3>Let's work together</h3>
-                        <p>Ready to create something amazing? Get in touch.</p>
-                        <div class="contact-details">
-                            <p>hello@minimal.com</p>
-                            <p>+1 (555) 123-4567</p>
+                    <div id="final-report-block" style="display: none;">
+                        <div class="final-report-container">
+                            <!-- Report Header -->
+                            <div class="report-header">
+                                <h3>Agente Geográfico - Análisis Completado</h3>
+                                <div class="report-meta">
+                                    <p class="report-date">Fecha: <span id="report-date"></span></p>
+                                    <p class="report-id">Workflow ID: <span id="report-aigent-id"></span></p>
+                                    <p class="report-timestamp">Timestamp: <span id="report-timestamp"></span></p>
+                                    <p class="report-duration">Tiempo Requerido: <span id="report-duration"></span></p>
+                                </div>
+                            </div>
+                            
+                            <!-- Input Section -->
+                            <div class="report-section">
+                                <h4>Datos de Entrada</h4>
+                                <div class="input-details">
+                                    <div class="input-item">
+                                        <span class="input-label">Coordenadas/Dirección:</span>
+                                        <span class="input-value" id="report-coordinates"></span>
+                                    </div>
+                                    <div class="input-item">
+                                        <span class="input-label">Ancho de Banda:</span>
+                                        <span class="input-value" id="report-bandwidth"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Confirmed SOP Section -->
+                            <div class="report-section">
+                                <h4>SOP Confirmado</h4>
+                                <div id="report-sop-details" class="sop-details">
+                                    <!-- SOP details will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Confirmed Kit Section -->
+                            <div class="report-section">
+                                <h4>Kit Confirmado</h4>
+                                <div id="report-kit-details" class="kit-details">
+                                    <!-- Kit details will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Download Button -->
+                            <div class="report-actions">
+                                <button id="download-pdf-button" class="download-pdf-button">
+                                    <span class="download-icon">📄</span>
+                                    Descargar Reporte PDF
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <form class="contact-form">
-                        <div class="form-group">
-                            <input type="text" id="name" name="name" placeholder="Name" required>
-                        </div>
-                        <div class="form-group">
-                            <input type="email" id="email" name="email" placeholder="Email" required>
-                        </div>
-                        <div class="form-group">
-                            <textarea id="message" name="message" placeholder="Message" rows="5" required></textarea>
-                        </div>
-                        <button type="submit" class="submit-button">Send Message</button>
-                    </form>
                 </div>
             </div>
         </section>
@@ -279,7 +217,7 @@
 
     <footer class="footer">
         <div class="container">
-            <p>&copy; 2024 Minimal. All rights reserved.</p>
+            <p>&copy; 2024 Agente Geográfico. All rights reserved.</p>
         </div>
     </footer>
 

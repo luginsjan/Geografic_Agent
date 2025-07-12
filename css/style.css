@@ -19,42 +19,23 @@ body {
     height: auto;
 }
 
-/* App Container */
-#app-container {
-    width: 100%;
-    min-height: 100vh;
+/* Main sections background */
+main {
     background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
-    z-index: 2000;
+    min-height: 100vh;
+}
+
+/* Ensure sections have proper spacing and layout */
+section {
+    padding: 4rem 0;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
+    justify-content: center;
     align-items: center;
-    padding: 2rem 0 4rem 0;
-    position: relative;
-    height: auto;
-    box-sizing: border-box;
 }
 
-/* Welcome Section */
-#welcome-section {
-    text-align: center;
-    margin-bottom: 3rem;
-    max-width: 600px;
-}
 
-#welcome-section h1 {
-    font-size: clamp(2rem, 4vw, 3rem);
-    font-weight: 300;
-    color: #ffffff;
-    margin-bottom: 1.5rem;
-    letter-spacing: 1px;
-}
-
-#welcome-section p {
-    font-size: clamp(1rem, 2vw, 1.25rem);
-    color: #a0a0a0;
-    line-height: 1.8;
-}
 
 /* Client Coordinates Form Block */
 #client-coordinates-form-block {
@@ -924,13 +905,11 @@ section {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    #app-container {
-        padding: 1rem;
+    section {
+        padding: 2rem 0;
     }
     
-    #welcome-section {
-        margin-bottom: 2rem;
-    }
+
     
     #client-coordinates-form-block {
         max-width: 100%;
@@ -1006,13 +985,7 @@ section {
 }
 
 @media (max-width: 480px) {
-    #welcome-section h1 {
-        font-size: clamp(1.5rem, 5vw, 2rem);
-    }
-    
-    #welcome-section p {
-        font-size: clamp(0.9rem, 3vw, 1rem);
-    }
+
     
     #client-address-input {
         min-height: 100px;
