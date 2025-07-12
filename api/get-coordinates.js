@@ -2,6 +2,8 @@
 // Vercel API Proxy for n8n get-coordinates webhook
 // Handles CORS and forwards requests to n8n webhook
 
+import { generateAigentID } from './utils.js';
+
 const N8N_WEBHOOK_URL = 'https://aigentinc.app.n8n.cloud/webhook/get-coordinates';
 
 // CORS headers configuration
@@ -33,13 +35,24 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Get the request body (Next.js automatically parses JSON)
-    const body = JSON.stringify(req.body);
+    // Generate unique AigentID for this workflow execution
+    const aigentID = generateAigentID();
+    console.log('Generated AigentID:', aigentID);
+    
+    // Add AigentID to the request body
+    const requestBodyWithID = {
+      ...req.body,
+      AigentID: aigentID
+    };
+    
+    // Get the request body with AigentID
+    const body = JSON.stringify(requestBodyWithID);
     
     // Prepare headers for the n8n request
     const n8nHeaders = {
       'Content-Type': 'application/json',
-      'User-Agent': 'Geografic-Agent-Proxy/1.0'
+      'User-Agent': 'Geografic-Agent-Proxy/1.0',
+      'X-Aigent-ID': aigentID
     };
     
     // Add timeout to prevent hanging
@@ -64,13 +77,23 @@ export default async function handler(req, res) {
     try {
       parsedData = JSON.parse(responseData);
     } catch (e) {
-      // If it's not JSON, return as text
+      // If it's not JSON, return as text with AigentID
       res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('X-Aigent-ID', aigentID);
       return res.status(n8nResponse.status).send(responseData);
     }
     
-    // Return the response
-    return res.status(n8nResponse.status).json(parsedData);
+    // Add AigentID to the response
+    const responseWithID = {
+      ...parsedData,
+      AigentID: aigentID
+    };
+    
+    // Set AigentID in response headers as well
+    res.setHeader('X-Aigent-ID', aigentID);
+    
+    // Return the response with AigentID
+    return res.status(n8nResponse.status).json(responseWithID);
     
   } catch (error) {
     console.error('Proxy error:', error);
@@ -80,14 +103,16 @@ export default async function handler(req, res) {
       return res.status(504).json({
         error: 'Gateway timeout',
         message: 'Request to n8n webhook timed out',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        AigentID: aigentID || 'UNKNOWN'
       });
     }
     
     return res.status(500).json({
       error: 'Proxy request failed',
       message: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      AigentID: aigentID || 'UNKNOWN'
     });
   }
 }

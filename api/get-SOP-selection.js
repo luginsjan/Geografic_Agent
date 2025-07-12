@@ -2,6 +2,8 @@
 // Vercel API Proxy for n8n get-SOP-selection webhook
 // Handles CORS and forwards requests to n8n webhook
 
+import { extractAigentID, isValidAigentID, generateAigentID } from './utils.js';
+
 const N8N_WEBHOOK_URL = 'https://aigentinc.app.n8n.cloud/webhook/get-SOP-selection';
 
 // CORS headers configuration
@@ -33,13 +35,31 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Get the request body (Next.js automatically parses JSON)
-    const body = JSON.stringify(req.body);
+    // Extract or generate AigentID
+    let aigentID = extractAigentID(req);
+    
+    // If no valid AigentID found, generate a new one (fallback)
+    if (!aigentID || !isValidAigentID(aigentID)) {
+      aigentID = generateAigentID();
+      console.log('Generated new AigentID for SOP selection:', aigentID);
+    } else {
+      console.log('Using existing AigentID for SOP selection:', aigentID);
+    }
+    
+    // Ensure AigentID is in the request body
+    const requestBodyWithID = {
+      ...req.body,
+      AigentID: aigentID
+    };
+    
+    // Get the request body with AigentID
+    const body = JSON.stringify(requestBodyWithID);
     
     // Prepare headers for the n8n request
     const n8nHeaders = {
       'Content-Type': 'application/json',
-      'User-Agent': 'Geografic-Agent-Proxy/1.0'
+      'User-Agent': 'Geografic-Agent-Proxy/1.0',
+      'X-Aigent-ID': aigentID
     };
     
     // Add timeout to prevent hanging
@@ -65,11 +85,21 @@ export default async function handler(req, res) {
       parsedData = JSON.parse(responseData);
     } catch (e) {
       res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('X-Aigent-ID', aigentID);
       return res.status(n8nResponse.status).send(responseData);
     }
     
-    // Return the response
-    return res.status(n8nResponse.status).json(parsedData);
+    // Add AigentID to the response
+    const responseWithID = {
+      ...parsedData,
+      AigentID: aigentID
+    };
+    
+    // Set AigentID in response headers as well
+    res.setHeader('X-Aigent-ID', aigentID);
+    
+    // Return the response with AigentID
+    return res.status(n8nResponse.status).json(responseWithID);
     
   } catch (error) {
     console.error('Proxy error:', error);
@@ -79,14 +109,16 @@ export default async function handler(req, res) {
       return res.status(504).json({
         error: 'Gateway timeout',
         message: 'Request to n8n webhook timed out',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        AigentID: aigentID || 'UNKNOWN'
       });
     }
     
     return res.status(500).json({
       error: 'Proxy request failed',
       message: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      AigentID: aigentID || 'UNKNOWN'
     });
   }
 } 

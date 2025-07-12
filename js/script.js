@@ -14,12 +14,30 @@ const loadingBlock = document.querySelector('#loading-block');
 const firstResultsBlock = document.querySelector('#first-results-block');
 const statusMessage = document.getElementById('status-message');
 const loadExampleButton = document.getElementById('load-example-button');
+const aigentIdDisplay = document.querySelector('#aigent-id-display');
+const aigentIdValue = document.querySelector('#aigent-id-value');
 
 // Store complete SOP data for each result
 let allSopData = {};
 
 // Store bandwidth value
 let storedBandwidth = '';
+
+// Store AigentID for workflow tracking
+let currentAigentID = null;
+
+// Function to update AigentID display
+function updateAigentIDDisplay(aigentID) {
+    if (aigentIdValue && aigentIdDisplay) {
+        if (aigentID) {
+            aigentIdValue.textContent = aigentID;
+            aigentIdDisplay.style.display = 'block';
+        } else {
+            aigentIdValue.textContent = '-';
+            aigentIdDisplay.style.display = 'none';
+        }
+    }
+}
 
 // Function to handle confirmation button click
 async function handleConfirmSelection() {
@@ -51,11 +69,12 @@ async function handleConfirmSelection() {
     console.log('Retrieved complete SOP data for', selectedResultId, ':', completeSopData);
     console.log('Bandwidth being sent:', storedBandwidth);
 
-    // Prepare the request data with complete SOP information and bandwidth
+    // Prepare the request data with complete SOP information, bandwidth, and AigentID
     const requestData = {
         selectedResultId: selectedResultId,
         completeSopData: completeSopData, // Include the complete data
-        bandwidth: storedBandwidth // Include the stored bandwidth value
+        bandwidth: storedBandwidth, // Include the stored bandwidth value
+        AigentID: currentAigentID // Include the current AigentID
     };
 
     try {
@@ -79,6 +98,7 @@ async function handleConfirmSelection() {
         // Log success with complete data
         console.log('Selection sent successfully:', responseData);
         console.log('Complete SOP data sent:', completeSopData);
+        console.log('AigentID used:', currentAigentID);
         showStatusMessage(`Selection confirmed: ${selectedResultId}`, 'success');
         
     } catch (error) {
@@ -294,8 +314,10 @@ if (loadExampleButton) {
 // Confirm Address Button Click Handler
 if (confirmAddressButton) {
     confirmAddressButton.addEventListener('click', async () => {
-        // Clear previous SOP data
+        // Clear previous SOP data and reset AigentID for new workflow
         allSopData = {};
+        currentAigentID = null;
+        updateAigentIDDisplay(null);
         
         // Remove example close button and hide results if present
         const closeBtn = document.getElementById('close-example-btn');
@@ -358,6 +380,15 @@ if (confirmAddressButton) {
                 throw new Error('La respuesta del servidor no tiene el formato esperado.');
             }
 
+                    // Store AigentID from response
+        if (responseData.AigentID) {
+            currentAigentID = responseData.AigentID;
+            console.log('Received AigentID:', currentAigentID);
+            updateAigentIDDisplay(currentAigentID);
+        } else {
+            console.warn('No AigentID received in response');
+        }
+
             // Hide loading block
             loadingBlock.classList.remove('visible');
             setTimeout(() => {
@@ -370,7 +401,7 @@ if (confirmAddressButton) {
                 setTimeout(() => {
                     firstResultsBlock.classList.add('visible');
                 }, 50);
-                showStatusMessage('¡Análisis completado!', 'success');
+                showStatusMessage(`¡Análisis completado! (ID: ${currentAigentID || 'N/A'})`, 'success');
                 scrollToResults();
             }, 700);
         } catch (error) {
