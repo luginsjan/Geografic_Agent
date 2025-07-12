@@ -1186,13 +1186,13 @@ section {
     min-height: 200px;
 }
 
-.recommendation-content {
+#recommendation-content {
     opacity: 0;
     transform: translateY(20px);
     transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
-.recommendation-content.visible {
+#recommendation-content.visible {
     opacity: 1;
     transform: translateY(0);
 }
