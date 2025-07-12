@@ -155,6 +155,53 @@ body {
     font-style: italic;
 }
 
+/* AigentID Header in Results */
+.aigent-id-header {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.aigent-id-badge {
+    color: #ffffff;
+    font-size: 1.1rem;
+    font-weight: 500;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.aigent-id-badge strong {
+    color: #4CAF50;
+    font-weight: 600;
+}
+
+/* Mobile responsiveness for AigentID header */
+@media (max-width: 768px) {
+    .aigent-id-header {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .aigent-id-badge {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .aigent-id-header {
+        padding: 12px;
+        margin-bottom: 15px;
+    }
+    
+    .aigent-id-badge {
+        font-size: 0.9rem;
+    }
+}
+
 #confirm-address-button {
     width: 100%;
     background: #ffffff;

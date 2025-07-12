@@ -39,6 +39,45 @@ function updateAigentIDDisplay(aigentID) {
     }
 }
 
+// Function to validate and extract response data
+function validateAndExtractResponseData(responseData) {
+    console.log('Validating response data:', responseData);
+    console.log('Response data type:', typeof responseData);
+    console.log('Response data keys:', Object.keys(responseData));
+    
+    // Check if response has the new format with "0" key
+    if (responseData["0"] && (responseData["0"].trueResults || responseData["0"].falseResults)) {
+        console.log('Using new response format with "0" key');
+        return {
+            results: responseData["0"],
+            aigentID: responseData.AigentID || null,
+            format: 'new'
+        };
+    }
+    // Fallback to old array format
+    else if (Array.isArray(responseData) && responseData.length > 0) {
+        console.log('Using legacy array response format');
+        return {
+            results: responseData[0],
+            aigentID: responseData.AigentID || null,
+            format: 'array'
+        };
+    }
+    // Fallback to direct object format
+    else if (responseData.trueResults || responseData.falseResults) {
+        console.log('Using direct object response format');
+        return {
+            results: responseData,
+            aigentID: responseData.AigentID || null,
+            format: 'direct'
+        };
+    }
+    
+    // If none of the formats match, return null
+    console.error('No valid response format found');
+    return null;
+}
+
 // Function to handle confirmation button click
 async function handleConfirmSelection() {
     const selectedCard = document.querySelector('.card.is-selected');
@@ -293,8 +332,10 @@ function addCloseExampleButton() {
 
 if (loadExampleButton) {
     loadExampleButton.addEventListener('click', () => {
-        // Clear previous SOP data
+        // Clear previous SOP data and set sample AigentID
         allSopData = {};
+        currentAigentID = 'AIG-SAMPLE-20241201-000000-XXXXX';
+        updateAigentIDDisplay(currentAigentID);
         
         hideStatusMessage();
         // Do NOT minimize the form block
@@ -374,20 +415,27 @@ if (confirmAddressButton) {
             showStatusMessage('Procesando respuesta del servidor...', 'info');
             const responseData = await response.json();
             
-            // **FIX**: The webhook returns an array, so we get the first element.
-            const results = Array.isArray(responseData) && responseData.length > 0 ? responseData[0] : null;
-            if (!results || (!results.trueResults && !results.falseResults)) {
+            // Validate and extract response data
+            const validatedData = validateAndExtractResponseData(responseData);
+            if (!validatedData) {
                 throw new Error('La respuesta del servidor no tiene el formato esperado.');
             }
-
-                    // Store AigentID from response
-        if (responseData.AigentID) {
-            currentAigentID = responseData.AigentID;
-            console.log('Received AigentID:', currentAigentID);
-            updateAigentIDDisplay(currentAigentID);
-        } else {
-            console.warn('No AigentID received in response');
-        }
+            
+            // Store AigentID from response
+            if (validatedData.aigentID) {
+                currentAigentID = validatedData.aigentID;
+                console.log('Received AigentID:', currentAigentID);
+                updateAigentIDDisplay(currentAigentID);
+            } else {
+                console.warn('No AigentID received in response');
+            }
+            
+            const results = validatedData.results;
+            
+            // Final validation of results structure
+            if (!results.trueResults && !results.falseResults) {
+                throw new Error('Los resultados no contienen datos válidos de análisis.');
+            }
 
             // Hide loading block
             loadingBlock.classList.remove('visible');
@@ -446,6 +494,18 @@ if (confirmAddressButton) {
 function populateResultsBlock(responseData) {
     const resultsContainer = firstResultsBlock.querySelector('.results-container');
     resultsContainer.innerHTML = '';
+
+    // Add AigentID display at the top of results
+    if (currentAigentID) {
+        const aigentIdHeader = document.createElement('div');
+        aigentIdHeader.className = 'aigent-id-header';
+        aigentIdHeader.innerHTML = `
+            <div class="aigent-id-badge">
+                <strong>Workflow ID:</strong> ${currentAigentID}
+            </div>
+        `;
+        resultsContainer.appendChild(aigentIdHeader);
+    }
 
     // Store complete data for each SOP
     if (responseData.trueResults) {
