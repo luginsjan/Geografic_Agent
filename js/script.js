@@ -14,6 +14,9 @@ const firstResultsBlock = document.querySelector('#first-results-block');
 const statusMessage = document.getElementById('status-message');
 const loadExampleButton = document.getElementById('load-example-button');
 
+// Store complete SOP data for each result
+let allSopData = {};
+
 // Function to handle confirmation button click
 async function handleConfirmSelection() {
     const selectedCard = document.querySelector('.card.is-selected');
@@ -32,9 +35,21 @@ async function handleConfirmSelection() {
         return;
     }
 
-    // Prepare the request data
+    // Get the complete SOP data
+    const completeSopData = allSopData[selectedResultId];
+    
+    if (!completeSopData) {
+        showStatusMessage('Error: Complete SOP data not found', 'error');
+        return;
+    }
+    
+    // Debug: Log the complete SOP data being sent (can be removed in production)
+    console.log('Retrieved complete SOP data for', selectedResultId, ':', completeSopData);
+
+    // Prepare the request data with complete SOP information
     const requestData = {
-        selectedResultId: selectedResultId
+        selectedResultId: selectedResultId,
+        completeSopData: completeSopData // Include the complete data
     };
 
     try {
@@ -55,8 +70,9 @@ async function handleConfirmSelection() {
 
         const responseData = await response.json();
         
-        // Log success
+        // Log success with complete data
         console.log('Selection sent successfully:', responseData);
+        console.log('Complete SOP data sent:', completeSopData);
         showStatusMessage(`Selection confirmed: ${selectedResultId}`, 'success');
         
     } catch (error) {
@@ -233,6 +249,9 @@ function addCloseExampleButton() {
         closeBtn.onmouseover = function() { closeBtn.style.transform = 'translateY(-2px)'; closeBtn.style.boxShadow = '0 8px 25px rgba(0,0,0,0.18)'; };
         closeBtn.onmouseout = function() { closeBtn.style.transform = ''; closeBtn.style.boxShadow = '0 5px 15px rgba(0,0,0,0.12)'; };
         closeBtn.onclick = function() {
+            // Clear SOP data when closing example
+            allSopData = {};
+            
             firstResultsBlock.classList.remove('visible');
             setTimeout(() => {
                 firstResultsBlock.style.display = 'none';
@@ -248,6 +267,9 @@ function addCloseExampleButton() {
 
 if (loadExampleButton) {
     loadExampleButton.addEventListener('click', () => {
+        // Clear previous SOP data
+        allSopData = {};
+        
         hideStatusMessage();
         // Do NOT minimize the form block
         // Show results below the form
@@ -266,6 +288,9 @@ if (loadExampleButton) {
 // Confirm Address Button Click Handler
 if (confirmAddressButton) {
     confirmAddressButton.addEventListener('click', async () => {
+        // Clear previous SOP data
+        allSopData = {};
+        
         // Remove example close button and hide results if present
         const closeBtn = document.getElementById('close-example-btn');
         if (closeBtn) closeBtn.remove();
@@ -374,6 +399,21 @@ if (confirmAddressButton) {
 function populateResultsBlock(responseData) {
     const resultsContainer = firstResultsBlock.querySelector('.results-container');
     resultsContainer.innerHTML = '';
+
+    // Store complete data for each SOP
+    if (responseData.trueResults) {
+        responseData.trueResults.forEach(result => {
+            allSopData[result.SOP] = result;
+        });
+    }
+    if (responseData.falseResults) {
+        responseData.falseResults.forEach(result => {
+            allSopData[result.SOP] = result;
+        });
+    }
+    
+    // Debug: Log stored SOP data (can be removed in production)
+    console.log('Stored SOP data:', allSopData);
 
     // Helper to create a card for each result
     function createCard(result, isSuccess) {
