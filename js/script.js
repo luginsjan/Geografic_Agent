@@ -163,9 +163,12 @@ async function handleConfirmSelection() {
     };
 
     try {
-        // Show loading animation immediately
-        showSOPLoading();
-        showStatusMessage('Sending selection to server...', 'info');
+        // Show loading animation and status message in recommendations section
+        scrollToSection('recommendations');
+        setTimeout(() => {
+            showSOPLoading();
+            showStatusMessage('Sending selection to server...', 'info');
+        }, 500);
         
         // Send POST request to n8n selection webhook
         const response = await fetch(n8nSelectionWebhookUrl, {
@@ -212,9 +215,38 @@ async function handleConfirmSelection() {
             }
             if (recommendationData) {
                 displayKitRecommendations(recommendationData);
-            } else {
-                console.log('No kit recommendations found in response:', responseData);
-            }
+                    } else {
+            console.log('No kit recommendations found in response:', responseData);
+            showStatusMessage('No se encontraron recomendaciones de kits. Reintentando...', 'info');
+            
+            // Retry after 2 seconds
+            setTimeout(async () => {
+                try {
+                    showStatusMessage('Reintentando obtener recomendaciones...', 'info');
+                    const retryResponse = await fetch(n8nSelectionWebhookUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+                    
+                    if (retryResponse.ok) {
+                        const retryData = await retryResponse.json();
+                        if (retryData && (retryData.output || retryData.viable_kits)) {
+                            showStatusMessage('Recomendaciones obtenidas en el segundo intento', 'success');
+                            displayKitRecommendations(retryData.output || retryData);
+                        } else {
+                            showStatusMessage('No se pudieron obtener recomendaciones después del reintento', 'error');
+                        }
+                    } else {
+                        showStatusMessage('Error en el reintento: ' + retryResponse.status, 'error');
+                    }
+                } catch (retryError) {
+                    showStatusMessage('Error en el reintento: ' + retryError.message, 'error');
+                }
+            }, 2000);
+        }
         }
         
     } catch (error) {
@@ -624,7 +656,15 @@ function populateSOPDetails() {
             </div>
             <div class="info-item">
                 <div class="info-label" style="color:#333;">Elevation</div>
-                <div class="info-value" style="color:#222;">${sopData.elevation || 'N/A'}</div>
+                <div class="info-value" style="color:#222;">${sopData.elevation || sopData['Altura (mts)'] || 'N/A'} m</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label" style="color:#333;">Start Elevation</div>
+                <div class="info-value" style="color:#222;">${sopData.lineOfSight?.firstPoint?.adjustedElevation || 'N/A'} m</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label" style="color:#333;">End Elevation</div>
+                <div class="info-value" style="color:#222;">${sopData.lineOfSight?.lastPoint?.adjustedElevation || 'N/A'} m</div>
             </div>
             <div class="info-item">
                 <div class="info-label" style="color:#333;">Status</div>
@@ -1812,6 +1852,7 @@ async function downloadPDF() {
         wrapper.style.minHeight = '1122px'; // A4 height at 96dpi
         wrapper.style.background = '#f8f9fa';
         wrapper.style.padding = '32px';
+        wrapper.style.textAlign = 'center';
         // Clone the report
         const pdfContainer = reportContainer.cloneNode(true);
         pdfContainer.style.background = 'white';
@@ -1819,6 +1860,7 @@ async function downloadPDF() {
         pdfContainer.style.padding = '32px';
         pdfContainer.style.maxWidth = '700px';
         pdfContainer.style.margin = '0 auto';
+        pdfContainer.style.textAlign = 'center';
         pdfContainer.style.fontFamily = 'Arial, sans-serif';
         pdfContainer.style.boxSizing = 'border-box';
         pdfContainer.style.width = '100%';
@@ -1901,13 +1943,13 @@ async function downloadPDF() {
         }
         // Append the report to the wrapper
         wrapper.appendChild(pdfContainer);
-        // Configure PDF options
+        // Configure PDF options with 70% zoom and centered content
         const opt = {
-            margin: [10, 10, 10, 10],
+            margin: [15, 15, 15, 15],
             filename: `Agente_Geografico_Report_${currentAigentID || 'N/A'}_${new Date().toISOString().split('T')[0]}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { 
-                scale: 2,
+                scale: 1.4, // 70% of original 2.0 scale
                 useCORS: true,
                 backgroundColor: '#f8f9fa',
                 scrollY: 0,
@@ -1925,7 +1967,7 @@ async function downloadPDF() {
             const pageCount = pdf.internal.getNumberOfPages();
             if (pageCount > 1) {
                 pdf.setPage(1);
-                pdf.internal.scaleFactor = 1.1;
+                pdf.internal.scaleFactor = 0.7; // 70% zoom
             }
         }).save();
         console.log('PDF generated successfully');
@@ -1951,6 +1993,13 @@ function scrollToSection(sectionId) {
         });
     }
 }
+
+// Auto-scroll to home section on page load
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        scrollToSection('home');
+    }, 100);
+});
 
 // Make test functions available globally
 window.testKitRecommendations = testKitRecommendations;
