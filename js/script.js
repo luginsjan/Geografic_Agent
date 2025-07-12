@@ -388,6 +388,48 @@ function deselectAllKits() {
     window.selectedKitData = null;
 }
 
+// Function to show kit confirmation loading state
+function showKitConfirmationLoading() {
+    const recommendationLoading = document.getElementById('recommendation-loading');
+    const recommendationContent = document.getElementById('recommendation-content');
+    
+    // Show loading state
+    if (recommendationLoading) {
+        recommendationLoading.style.display = 'flex';
+        // Update loading text for kit confirmation
+        const loadingText = recommendationLoading.querySelector('p');
+        if (loadingText) {
+            loadingText.textContent = 'Confirmando selección de kit...';
+        }
+    }
+    if (recommendationContent) {
+        recommendationContent.style.display = 'none';
+        recommendationContent.classList.remove('visible');
+    }
+}
+
+// Function to hide kit confirmation loading state
+function hideKitConfirmationLoading() {
+    const recommendationLoading = document.getElementById('recommendation-loading');
+    const recommendationContent = document.getElementById('recommendation-content');
+    
+    // Hide loading, show content
+    if (recommendationLoading) {
+        recommendationLoading.style.display = 'none';
+        // Reset loading text
+        const loadingText = recommendationLoading.querySelector('p');
+        if (loadingText) {
+            loadingText.textContent = 'Generando recomendaciones de kits...';
+        }
+    }
+    if (recommendationContent) {
+        recommendationContent.style.display = 'block';
+        setTimeout(() => {
+            recommendationContent.classList.add('visible');
+        }, 50);
+    }
+}
+
 // Function to handle kit confirmation
 async function handleKitConfirmation() {
     if (!window.selectedKitData) {
@@ -400,6 +442,9 @@ async function handleKitConfirmation() {
         confirmKitButton.disabled = true;
         confirmKitButton.textContent = 'Enviando...';
     }
+    
+    // Show loading animation immediately
+    showKitConfirmationLoading();
     
     try {
         showStatusMessage('Sending kit selection to server...', 'info');
@@ -428,14 +473,21 @@ async function handleKitConfirmation() {
         console.log('Kit selection sent successfully:', responseData);
         showStatusMessage(`Kit selection confirmed: ${window.selectedKitData.name}`, 'success');
         
+        // Hide loading and show success state
+        hideKitConfirmationLoading();
+        
         // Reset button
         if (confirmKitButton) {
+            confirmKitButton.disabled = false;
             confirmKitButton.textContent = 'Confirmar Selección de Kit';
         }
         
     } catch (error) {
         console.error('Error sending kit selection:', error);
         showStatusMessage(`Error sending kit selection: ${error.message}`, 'error');
+        
+        // Hide loading on error
+        hideKitConfirmationLoading();
         
         // Reset button on error
         if (confirmKitButton) {
