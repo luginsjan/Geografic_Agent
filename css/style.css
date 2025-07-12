@@ -130,6 +130,31 @@ body {
     font-style: italic;
 }
 
+#bandwidth-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 1rem;
+    color: #ffffff;
+    transition: all 0.3s ease;
+    margin-bottom: 1.5rem;
+    backdrop-filter: blur(10px);
+}
+
+#bandwidth-input:focus {
+    outline: none;
+    border-color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+#bandwidth-input::placeholder {
+    color: #a0a0a0;
+    font-style: italic;
+}
+
 #confirm-address-button {
     width: 100%;
     background: #ffffff;

@@ -9,6 +9,7 @@ const contactForm = document.querySelector('.contact-form');
 const clientCoordinatesFormBlock = document.querySelector('#client-coordinates-form-block');
 const confirmAddressButton = document.querySelector('#confirm-address-button');
 const appContainer = document.querySelector('#app-container');
+const bandwidthInput = document.querySelector('#bandwidth-input');
 const loadingBlock = document.querySelector('#loading-block');
 const firstResultsBlock = document.querySelector('#first-results-block');
 const statusMessage = document.getElementById('status-message');
@@ -16,6 +17,9 @@ const loadExampleButton = document.getElementById('load-example-button');
 
 // Store complete SOP data for each result
 let allSopData = {};
+
+// Store bandwidth value
+let storedBandwidth = '';
 
 // Function to handle confirmation button click
 async function handleConfirmSelection() {
@@ -45,11 +49,13 @@ async function handleConfirmSelection() {
     
     // Debug: Log the complete SOP data being sent (can be removed in production)
     console.log('Retrieved complete SOP data for', selectedResultId, ':', completeSopData);
+    console.log('Bandwidth being sent:', storedBandwidth);
 
-    // Prepare the request data with complete SOP information
+    // Prepare the request data with complete SOP information and bandwidth
     const requestData = {
         selectedResultId: selectedResultId,
-        completeSopData: completeSopData // Include the complete data
+        completeSopData: completeSopData, // Include the complete data
+        bandwidth: storedBandwidth // Include the stored bandwidth value
     };
 
     try {
@@ -299,15 +305,25 @@ if (confirmAddressButton) {
             firstResultsBlock.style.display = 'none';
             firstResultsBlock.querySelector('.results-container').innerHTML = '';
         }, 400);
-        // Get the value from the textarea
+        // Get the values from the inputs
         const clientAddressInput = document.querySelector('#client-address-input');
         const clientAddress = clientAddressInput.value.trim();
+        const bandwidth = bandwidthInput.value.trim();
         
-        // Validate input
+        // Validate inputs
         if (!clientAddress) {
             showStatusMessage('Por favor, introduzca una dirección o coordenadas.', 'error');
             return;
         }
+        
+        if (!bandwidth) {
+            showStatusMessage('Por favor, introduzca el ancho de banda requerido.', 'error');
+            return;
+        }
+        
+        // Store the bandwidth value
+        storedBandwidth = bandwidth;
+        console.log('Bandwidth stored:', storedBandwidth);
         hideStatusMessage();
         // Prepare the request data
         const requestData = {
