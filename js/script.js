@@ -659,14 +659,6 @@ function populateSOPDetails() {
                 <div class="info-value" style="color:#222;">${sopData.elevation || sopData['Altura (mts)'] || 'N/A'} m</div>
             </div>
             <div class="info-item">
-                <div class="info-label" style="color:#333;">Start Elevation</div>
-                <div class="info-value" style="color:#222;">${sopData.lineOfSight?.firstPoint?.adjustedElevation || 'N/A'} m</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label" style="color:#333;">End Elevation</div>
-                <div class="info-value" style="color:#222;">${sopData.lineOfSight?.lastPoint?.adjustedElevation || 'N/A'} m</div>
-            </div>
-            <div class="info-item">
                 <div class="info-label" style="color:#333;">Status</div>
                 <div class="info-value" style="color:#222;">${sopData.status || 'N/A'}</div>
             </div>
@@ -1096,63 +1088,44 @@ if (confirmAddressButton) {
         allSopData = {};
         currentAigentID = null;
         updateAigentIDDisplay(null);
-        
         // Start workflow timer
         workflowStartTime = new Date();
         workflowEndTime = null;
-        
-
         firstResultsBlock.classList.remove('visible');
         setTimeout(() => {
             firstResultsBlock.style.display = 'none';
             firstResultsBlock.querySelector('.results-container').innerHTML = '';
         }, 400);
-        
-        // Hide recommendation block if present
         if (recommendationBlock) {
             recommendationBlock.classList.remove('visible');
             setTimeout(() => {
                 recommendationBlock.style.display = 'none';
             }, 400);
         }
-        // Get the values from the inputs
         const clientAddressInput = document.querySelector('#client-address-input');
         const clientAddress = clientAddressInput.value.trim();
         const bandwidth = bandwidthInput.value.trim();
-        
-        // Validate inputs
         if (!clientAddress) {
             showStatusMessage('Por favor, introduzca una dirección o coordenadas.', 'error');
             return;
         }
-        
         if (!bandwidth) {
             showStatusMessage('Por favor, introduzca el ancho de banda requerido.', 'error');
             return;
         }
-        
-        // Store the bandwidth value
         storedBandwidth = bandwidth;
         inputBandwidth = bandwidth;
         inputCoordinates = clientAddress;
         console.log('Bandwidth stored:', storedBandwidth);
         hideStatusMessage();
-        // Prepare the request data
-        const requestData = {
-            clientAddress: clientAddress
-        };
-        
+        const requestData = { clientAddress: clientAddress };
         try {
-            // Show loading animation immediately
             showCoordinateLoading();
             showStatusMessage('Conectando con el servidor...', 'info');
             showStatusMessage('Enviando datos al servidor...', 'info');
-            // Send POST request to n8n webhook
             const response = await fetch(n8nWebhookUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestData)
             });
             if (!response.ok) {
@@ -1160,14 +1133,10 @@ if (confirmAddressButton) {
             }
             showStatusMessage('Procesando respuesta del servidor...', 'info');
             const responseData = await response.json();
-            
-            // Validate and extract response data
             const validatedData = validateAndExtractResponseData(responseData);
             if (!validatedData) {
                 throw new Error('La respuesta del servidor no tiene el formato esperado.');
             }
-            
-            // Store AigentID from response
             if (validatedData.aigentID) {
                 currentAigentID = validatedData.aigentID;
                 console.log('Received AigentID:', currentAigentID);
@@ -1175,35 +1144,30 @@ if (confirmAddressButton) {
             } else {
                 console.warn('No AigentID received in response');
             }
-            
             const results = validatedData.results;
-            
-            // Final validation of results structure
             if (!results.trueResults && !results.falseResults) {
                 throw new Error('Los resultados no contienen datos válidos de análisis.');
             }
-
-            // Hide loading animation
             hideCoordinateLoading();
-            // Show and populate first results block
             setTimeout(() => {
-                populateResultsBlock(results); // Use the corrected 'results' object
+                populateResultsBlock(results);
                 firstResultsBlock.style.display = 'block';
                 setTimeout(() => {
                     firstResultsBlock.classList.add('visible');
+                    // Show and enable confirm selection button only now
+                    const confirmSelectionBtn = document.getElementById('confirm-selection-button');
+                    if (confirmSelectionBtn) {
+                        confirmSelectionBtn.style.display = 'block';
+                        confirmSelectionBtn.classList.add('enabled');
+                    }
+                    // Scroll to analysis/results section now
+                    scrollToSection('analysis');
                 }, 50);
                 showStatusMessage(`¡Análisis completado! (ID: ${currentAigentID || 'N/A'})`, 'success');
-                scrollToResults();
             }, 700);
         } catch (error) {
-            // Hide loading animation on error
             hideCoordinateLoading();
             showStatusMessage('Error: ' + (error.message || error), 'error');
-        } finally {
-            // Keep the form open and smoothly scroll to analysis section
-            setTimeout(() => {
-                scrollToSection('analysis');
-            }, 1000);
         }
     });
 }
@@ -1212,8 +1176,6 @@ if (confirmAddressButton) {
 function populateResultsBlock(responseData) {
     const resultsContainer = firstResultsBlock.querySelector('.results-container');
     resultsContainer.innerHTML = '';
-
-    // Add AigentID display at the top of results
     if (currentAigentID) {
         const aigentIdHeader = document.createElement('div');
         aigentIdHeader.className = 'aigent-id-header';
@@ -1224,8 +1186,6 @@ function populateResultsBlock(responseData) {
         `;
         resultsContainer.appendChild(aigentIdHeader);
     }
-
-    // Store complete data for each SOP
     if (responseData.trueResults) {
         responseData.trueResults.forEach(result => {
             allSopData[result.SOP] = result;
@@ -1236,10 +1196,12 @@ function populateResultsBlock(responseData) {
             allSopData[result.SOP] = result;
         });
     }
-    
-    // Debug: Log stored SOP data (can be removed in production)
-    console.log('Stored SOP data:', allSopData);
-
+    // Hide confirm selection button by default
+    const confirmSelectionBtnBlock = document.getElementById('confirm-selection-button');
+    if (confirmSelectionBtnBlock) {
+        confirmSelectionBtnBlock.style.display = 'none';
+        confirmSelectionBtnBlock.classList.remove('enabled');
+    }
     // Helper to create a card for each result
     function createCard(result, isSuccess) {
         const card = document.createElement('div');
@@ -1397,9 +1359,9 @@ function populateResultsBlock(responseData) {
         selectedCard.classList.add('is-selected');
         
         // Enable the confirm selection button
-        const confirmButton = document.getElementById('confirm-selection-button');
-        if (confirmButton) {
-            confirmButton.classList.add('enabled');
+        const confirmSelectionBtn = document.getElementById('confirm-selection-button');
+        if (confirmSelectionBtn) {
+            confirmSelectionBtn.classList.add('enabled');
         }
     }
 
@@ -1407,9 +1369,9 @@ function populateResultsBlock(responseData) {
     resultsContainer.innerHTML = '';
 
     // Reset confirm selection button state
-    const confirmButton = document.getElementById('confirm-selection-button');
-    if (confirmButton) {
-        confirmButton.classList.remove('enabled');
+    const confirmSelectionBtnReset = document.getElementById('confirm-selection-button');
+    if (confirmSelectionBtnReset) {
+        confirmSelectionBtnReset.classList.remove('enabled');
     }
 
     // Success section
