@@ -105,6 +105,62 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Final Report Container -->
+        <div id="final-report-block" style="display: none;">
+            <h2>Reporte Final</h2>
+            <div class="final-report-container">
+                <!-- Report Header -->
+                <div class="report-header">
+                    <h3>Agente Geográfico - Análisis Completado</h3>
+                    <div class="report-meta">
+                        <p class="report-date">Fecha: <span id="report-date"></span></p>
+                        <p class="report-id">Workflow ID: <span id="report-aigent-id"></span></p>
+                        <p class="report-timestamp">Timestamp: <span id="report-timestamp"></span></p>
+                        <p class="report-duration">Tiempo Requerido: <span id="report-duration"></span></p>
+                    </div>
+                </div>
+                
+                <!-- Input Section -->
+                <div class="report-section">
+                    <h4>Datos de Entrada</h4>
+                    <div class="input-details">
+                        <div class="input-item">
+                            <span class="input-label">Coordenadas/Dirección:</span>
+                            <span class="input-value" id="report-coordinates"></span>
+                        </div>
+                        <div class="input-item">
+                            <span class="input-label">Ancho de Banda:</span>
+                            <span class="input-value" id="report-bandwidth"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Confirmed SOP Section -->
+                <div class="report-section">
+                    <h4>SOP Confirmado</h4>
+                    <div id="report-sop-details" class="sop-details">
+                        <!-- SOP details will be populated here -->
+                    </div>
+                </div>
+                
+                <!-- Confirmed Kit Section -->
+                <div class="report-section">
+                    <h4>Kit Confirmado</h4>
+                    <div id="report-kit-details" class="kit-details">
+                        <!-- Kit details will be populated here -->
+                    </div>
+                </div>
+                
+                <!-- Download Button -->
+                <div class="report-actions">
+                    <button id="download-pdf-button" class="download-pdf-button">
+                        <span class="download-icon">📄</span>
+                        Descargar Reporte PDF
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <nav class="navbar">
@@ -227,6 +283,7 @@
         </div>
     </footer>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="js/script.js"></script>
 </body>
 </html> 

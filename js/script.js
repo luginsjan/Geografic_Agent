@@ -17,6 +17,7 @@ const loadExampleButton = document.getElementById('load-example-button');
 const aigentIdDisplay = document.querySelector('#aigent-id-display');
 const aigentIdValue = document.querySelector('#aigent-id-value');
 const recommendationBlock = document.querySelector('#recommendation-block');
+const finalReportBlock = document.querySelector('#final-report-block');
 
 // Store complete SOP data for each result
 let allSopData = {};
@@ -26,6 +27,16 @@ let storedBandwidth = '';
 
 // Store AigentID for workflow tracking
 let currentAigentID = null;
+
+// Store input data and confirmed selections for final report
+let inputCoordinates = '';
+let inputBandwidth = '';
+let confirmedSOP = null;
+let confirmedKit = null;
+
+// Time tracking variables
+let workflowStartTime = null;
+let workflowEndTime = null;
 
 // Function to update AigentID display
 function updateAigentIDDisplay(aigentID) {
@@ -38,6 +49,35 @@ function updateAigentIDDisplay(aigentID) {
             aigentIdDisplay.style.display = 'none';
         }
     }
+}
+
+// Function to calculate time duration
+function calculateTimeDuration(startTime, endTime) {
+    if (!startTime || !endTime) return 'N/A';
+    
+    const duration = endTime - startTime;
+    const seconds = Math.floor(duration / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    
+    if (minutes > 0) {
+        return `${minutes}m ${remainingSeconds}s`;
+    } else {
+        return `${remainingSeconds}s`;
+    }
+}
+
+// Function to format timestamp
+function formatTimestamp(date) {
+    if (!date) return 'N/A';
+    return date.toLocaleString('es-ES', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
 }
 
 // Function to validate and extract response data
@@ -104,6 +144,12 @@ async function handleConfirmSelection() {
         showStatusMessage('Error: Complete SOP data not found', 'error');
         return;
     }
+    
+    // Store confirmed SOP for final report
+    confirmedSOP = {
+        id: selectedResultId,
+        data: completeSopData
+    };
     
     // Debug: Log the complete SOP data being sent (can be removed in production)
     console.log('Retrieved complete SOP data for', selectedResultId, ':', completeSopData);
@@ -494,6 +540,182 @@ function hideKitConfirmationLoading() {
     }
 }
 
+// Function to show final report
+function showFinalReport() {
+    console.log('Showing final report...');
+    
+    // Hide recommendation block
+    if (recommendationBlock) {
+        recommendationBlock.classList.remove('visible');
+        setTimeout(() => {
+            recommendationBlock.style.display = 'none';
+        }, 500);
+    }
+    
+    // Show final report block
+    if (finalReportBlock) {
+        finalReportBlock.style.display = 'block';
+        setTimeout(() => {
+            finalReportBlock.classList.add('visible');
+        }, 100);
+    }
+    
+    // Populate report data
+    populateFinalReport();
+    
+    // Scroll to final report
+    setTimeout(() => {
+        if (finalReportBlock) {
+            window.scrollTo({
+                top: finalReportBlock.getBoundingClientRect().top + window.scrollY - 30,
+                behavior: 'smooth'
+            });
+        }
+    }, 800);
+}
+
+// Function to populate final report
+function populateFinalReport() {
+    // Set end time for workflow
+    workflowEndTime = new Date();
+    
+    // Set report date
+    const reportDate = document.getElementById('report-date');
+    if (reportDate) {
+        reportDate.textContent = new Date().toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+    
+    // Set AigentID
+    const reportAigentId = document.getElementById('report-aigent-id');
+    if (reportAigentId) {
+        reportAigentId.textContent = currentAigentID || 'N/A';
+    }
+    
+    // Set timestamp
+    const reportTimestamp = document.getElementById('report-timestamp');
+    if (reportTimestamp) {
+        reportTimestamp.textContent = formatTimestamp(workflowEndTime);
+    }
+    
+    // Set duration
+    const reportDuration = document.getElementById('report-duration');
+    if (reportDuration) {
+        reportDuration.textContent = calculateTimeDuration(workflowStartTime, workflowEndTime);
+    }
+    
+    // Set input data
+    const reportCoordinates = document.getElementById('report-coordinates');
+    if (reportCoordinates) {
+        reportCoordinates.textContent = inputCoordinates;
+    }
+    
+    const reportBandwidth = document.getElementById('report-bandwidth');
+    if (reportBandwidth) {
+        reportBandwidth.textContent = inputBandwidth;
+    }
+    
+    // Populate SOP details
+    populateSOPDetails();
+    
+    // Populate Kit details
+    populateKitDetails();
+}
+
+// Function to populate SOP details in report
+function populateSOPDetails() {
+    const sopDetailsContainer = document.getElementById('report-sop-details');
+    if (!sopDetailsContainer || !confirmedSOP) return;
+    
+    const sopData = confirmedSOP.data;
+    const isSuccess = sopData.status === 'Clear' || sopData.status === 'clear';
+    const chartId = `report-chart-${sopData.SOP.replace('-', '')}`;
+    
+    sopDetailsContainer.innerHTML = `
+        <div class="card-header">
+            <div class="card-title">${sopData.SOP} - ${sopData.Plaza}</div>
+            <div class="status-badge ${isSuccess ? 'status-success' : 'status-blocked'}">
+                ${isSuccess ? '✓ Clear' : '✗ Blocked'}
+            </div>
+        </div>
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Distance</div>
+                <div class="info-value">${sopData.distance_km} km</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Coordinates</div>
+                <div class="info-value">${sopData.coordinates || 'N/A'}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Elevation</div>
+                <div class="info-value">${sopData.elevation || 'N/A'}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Status</div>
+                <div class="info-value">${sopData.status || 'N/A'}</div>
+            </div>
+        </div>
+        <div class="chart-container" style="height:220px; margin-top:1.5rem;">
+            <div class="chart-title">Elevation Profile</div>
+            <canvas id="${chartId}" style="max-width:100%;height:200px;"></canvas>
+        </div>
+    `;
+    // Render the chart after DOM update
+    setTimeout(() => {
+        createElevationChart(sopData, chartId);
+    }, 100);
+}
+
+// Function to populate Kit details in report
+function populateKitDetails() {
+    const kitDetailsContainer = document.getElementById('report-kit-details');
+    if (!kitDetailsContainer || !confirmedKit) return;
+    
+    kitDetailsContainer.innerHTML = `
+        <h4>${confirmedKit.name}</h4>
+        <div class="kit-details-grid">
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Radio</span>
+                <span class="kit-detail-value">${confirmedKit.radio}</span>
+            </div>
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Antena</span>
+                <span class="kit-detail-value">${confirmedKit.antenna}</span>
+            </div>
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Banda de Frecuencia</span>
+                <span class="kit-detail-value">${confirmedKit.frequency_band}</span>
+            </div>
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Throughput Máximo</span>
+                <span class="kit-detail-value">${confirmedKit.max_throughput}</span>
+            </div>
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Potencia de Transmisión</span>
+                <span class="kit-detail-value">${confirmedKit.transmit_power}</span>
+            </div>
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Ganancia de Antena</span>
+                <span class="kit-detail-value">${confirmedKit.antenna_gain}</span>
+            </div>
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Margen de Enlace</span>
+                <span class="kit-detail-value highlight">${confirmedKit.link_margin}</span>
+            </div>
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Costo</span>
+                <span class="kit-detail-value highlight">${confirmedKit.cost}</span>
+            </div>
+        </div>
+    `;
+}
+
 // Function to handle kit confirmation
 async function handleKitConfirmation() {
     if (!window.selectedKitData) {
@@ -537,6 +759,9 @@ async function handleKitConfirmation() {
         console.log('Kit selection sent successfully:', responseData);
         showStatusMessage(`Kit selection confirmed: ${window.selectedKitData.name}`, 'success');
         
+        // Store confirmed kit for final report
+        confirmedKit = window.selectedKitData;
+        
         // Hide loading and show success state
         hideKitConfirmationLoading();
         
@@ -545,6 +770,9 @@ async function handleKitConfirmation() {
             confirmKitButton.disabled = false;
             confirmKitButton.textContent = 'Confirmar Selección de Kit';
         }
+        
+        // Show final report
+        showFinalReport();
         
     } catch (error) {
         console.error('Error sending kit selection:', error);
@@ -700,6 +928,12 @@ function createKitCard(kit) {
 const confirmSelectionButton = document.getElementById('confirm-selection-button');
 if (confirmSelectionButton) {
     confirmSelectionButton.addEventListener('click', handleConfirmSelection);
+}
+
+// Add event listener for PDF download button
+const downloadPdfButton = document.getElementById('download-pdf-button');
+if (downloadPdfButton) {
+    downloadPdfButton.addEventListener('click', downloadPDF);
 }
 
 // Vercel API Proxy URLs
@@ -894,6 +1128,10 @@ if (confirmAddressButton) {
         currentAigentID = null;
         updateAigentIDDisplay(null);
         
+        // Start workflow timer
+        workflowStartTime = new Date();
+        workflowEndTime = null;
+        
         // Remove example close button and hide results if present
         const closeBtn = document.getElementById('close-example-btn');
         if (closeBtn) closeBtn.remove();
@@ -928,6 +1166,8 @@ if (confirmAddressButton) {
         
         // Store the bandwidth value
         storedBandwidth = bandwidth;
+        inputBandwidth = bandwidth;
+        inputCoordinates = clientAddress;
         console.log('Bandwidth stored:', storedBandwidth);
         hideStatusMessage();
         // Prepare the request data
@@ -1609,5 +1849,197 @@ function testKitRecommendations() {
     displayKitRecommendations(testData.output);
 }
 
-// Make test function available globally
-window.testKitRecommendations = testKitRecommendations; 
+// Test function for final report
+function testFinalReport() {
+    console.log('Testing final report...');
+    
+    // Set test data
+    currentAigentID = "AIG-20250712-200313-9RQS6";
+    inputCoordinates = "Calle Principal 123, Ciudad de México";
+    inputBandwidth = "100 Mbps";
+    
+    // Set test time tracking
+    workflowStartTime = new Date(Date.now() - 300000); // 5 minutes ago
+    workflowEndTime = new Date();
+    
+    confirmedSOP = {
+        id: "SOP-00008",
+        data: {
+            SOP: "SOP-00008",
+            Plaza: "Plaza Central",
+            distance_km: "2.5",
+            coordinates: "19.4326° N, 99.1332° W",
+            elevation: "2,240 m",
+            status: "Clear"
+        }
+    };
+    
+    confirmedKit = {
+        name: "KIT 1",
+        radio: "Mimosa C5x",
+        antenna: "Antena Mimosa N5X25",
+        frequency_band: "4.9 - 6.4 GHz",
+        max_throughput: "700 Mbps",
+        transmit_power: "27 dBm",
+        antenna_gain: "25 dBi",
+        link_margin: "21.36 dB",
+        cost: "691 USD"
+    };
+    
+    // Show final report
+    showFinalReport();
+}
+
+// Function to download PDF report
+async function downloadPDF() {
+    console.log('Generating PDF report...');
+    
+    const downloadButton = document.getElementById('download-pdf-button');
+    if (downloadButton) {
+        downloadButton.disabled = true;
+        downloadButton.innerHTML = '<span class="download-icon">⏳</span> Generando PDF...';
+    }
+    
+    try {
+        // Create a clone of the report container for PDF generation
+        const reportContainer = document.querySelector('.final-report-container');
+        const pdfContainer = reportContainer.cloneNode(true);
+        
+        // Remove all canvas and re-render static images for charts
+        const canvases = reportContainer.querySelectorAll('canvas');
+        const pdfCanvases = pdfContainer.querySelectorAll('canvas');
+        canvases.forEach((canvas, idx) => {
+            const img = document.createElement('img');
+            img.src = canvas.toDataURL('image/png');
+            img.style.display = 'block';
+            img.style.maxWidth = '100%';
+            img.style.height = '200px';
+            pdfCanvases[idx].replaceWith(img);
+        });
+        
+        // Add PDF-specific styles
+        pdfContainer.style.background = 'white';
+        pdfContainer.style.color = '#333';
+        pdfContainer.style.padding = '24px';
+        pdfContainer.style.maxWidth = '800px';
+        pdfContainer.style.margin = '0 auto';
+        pdfContainer.style.fontFamily = 'Arial, sans-serif';
+        pdfContainer.style.boxSizing = 'border-box';
+        pdfContainer.style.width = '100%';
+        
+        // Update colors for PDF
+        const sections = pdfContainer.querySelectorAll('.report-section');
+        sections.forEach(section => {
+            section.style.background = '#f8f9fa';
+            section.style.border = '1px solid #dee2e6';
+            section.style.color = '#333';
+            section.style.pageBreakInside = 'avoid';
+        });
+        
+        // Update headers for PDF
+        const headers = pdfContainer.querySelectorAll('h3, h4');
+        headers.forEach(header => {
+            header.style.color = '#2c5aa0';
+        });
+        
+        // Update SOP details for PDF
+        const sopDetails = pdfContainer.querySelector('.sop-details');
+        if (sopDetails) {
+            sopDetails.style.background = 'white';
+            sopDetails.style.border = '1px solid #dee2e6';
+            sopDetails.style.color = '#333';
+            sopDetails.style.pageBreakInside = 'avoid';
+        }
+        
+        // Update kit details for PDF
+        const kitDetails = pdfContainer.querySelector('.kit-details');
+        if (kitDetails) {
+            kitDetails.style.background = '#f8f9fa';
+            kitDetails.style.border = '1px solid #dee2e6';
+            kitDetails.style.color = '#333';
+            kitDetails.style.pageBreakInside = 'avoid';
+        }
+        
+        // Update input values for PDF
+        const inputValues = pdfContainer.querySelectorAll('.input-value');
+        inputValues.forEach(input => {
+            input.style.background = 'white';
+            input.style.border = '1px solid #dee2e6';
+            input.style.color = '#333';
+        });
+        
+        // Update report meta for PDF
+        const reportMeta = pdfContainer.querySelector('.report-meta');
+        if (reportMeta) {
+            reportMeta.style.background = '#f8f9fa';
+            reportMeta.style.border = '1px solid #dee2e6';
+            reportMeta.style.color = '#333';
+            reportMeta.style.padding = '1rem';
+            reportMeta.style.borderRadius = '4px';
+            reportMeta.style.pageBreakInside = 'avoid';
+        }
+        
+        // Update timestamp and duration for PDF
+        const timestampSpans = pdfContainer.querySelectorAll('.report-timestamp span, .report-duration span');
+        timestampSpans.forEach(span => {
+            span.style.color = '#333';
+        });
+        
+        // Highlight duration in PDF
+        const durationSpan = pdfContainer.querySelector('.report-duration span');
+        if (durationSpan) {
+            durationSpan.style.color = '#28a745';
+            durationSpan.style.fontWeight = 'bold';
+        }
+        
+        // Configure PDF options
+        const opt = {
+            margin: [5, 5, 5, 5],
+            filename: `Agente_Geografico_Report_${currentAigentID || 'N/A'}_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { 
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                scrollY: 0,
+                windowWidth: 800,
+                windowHeight: 1120
+            },
+            jsPDF: { 
+                unit: 'mm', 
+                format: 'a4', 
+                orientation: 'portrait' 
+            },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        };
+        
+        // Generate and download PDF
+        await html2pdf().set(opt).from(pdfContainer).toPdf().get('pdf').then(pdf => {
+            // Scale to fit one page
+            const pageCount = pdf.internal.getNumberOfPages();
+            if (pageCount > 1) {
+                // Optionally, warn or auto-scale
+                // For now, just fit to one page by scaling
+                pdf.setPage(1);
+                pdf.internal.scaleFactor = 1.1;
+            }
+        }).save();
+        
+        console.log('PDF generated successfully');
+        showStatusMessage('PDF generado y descargado exitosamente', 'success');
+        
+    } catch (error) {
+        console.error('Error generating PDF:', error);
+        showStatusMessage('Error al generar el PDF: ' + error.message, 'error');
+    } finally {
+        // Reset download button
+        if (downloadButton) {
+            downloadButton.disabled = false;
+            downloadButton.innerHTML = '<span class="download-icon">📄</span> Descargar Reporte PDF';
+        }
+    }
+}
+
+// Make test functions available globally
+window.testKitRecommendations = testKitRecommendations;
+window.testFinalReport = testFinalReport; 
