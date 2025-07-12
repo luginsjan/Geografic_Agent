@@ -1,3 +1,4 @@
+// Next.js API route: /api/get-coordinates.js
 // Vercel API Proxy for n8n get-coordinates webhook
 // Handles CORS and forwards requests to n8n webhook
 
@@ -12,19 +13,28 @@ const corsHeaders = {
   'Content-Type': 'application/json'
 };
 
-// Handle OPTIONS preflight requests
-function handleOptions(request) {
-  return new Response(null, {
-    status: 200,
-    headers: corsHeaders
+export default async function handler(req, res) {
+  // Set CORS headers
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    res.setHeader(key, value);
   });
-}
 
-// Forward request to n8n webhook
-async function forwardToN8n(request) {
+  // Handle OPTIONS preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return res.status(405).json({
+      error: 'Method not allowed',
+      message: 'Only POST requests are supported'
+    });
+  }
+
   try {
-    // Get the request body
-    const body = await request.text();
+    // Get the request body (Next.js automatically parses JSON)
+    const body = JSON.stringify(req.body);
     
     // Prepare headers for the n8n request
     const n8nHeaders = {
@@ -32,12 +42,19 @@ async function forwardToN8n(request) {
       'User-Agent': 'Geografic-Agent-Proxy/1.0'
     };
     
+    // Add timeout to prevent hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+    
     // Forward the request to n8n
     const n8nResponse = await fetch(N8N_WEBHOOK_URL, {
       method: 'POST',
       headers: n8nHeaders,
-      body: body
+      body: body,
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     // Get the response data
     const responseData = await n8nResponse.text();
@@ -48,53 +65,29 @@ async function forwardToN8n(request) {
       parsedData = JSON.parse(responseData);
     } catch (e) {
       // If it's not JSON, return as text
-      return new Response(responseData, {
-        status: n8nResponse.status,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'text/plain'
-        }
-      });
+      res.setHeader('Content-Type', 'text/plain');
+      return res.status(n8nResponse.status).send(responseData);
     }
     
-    // Return the response with CORS headers
-    return new Response(JSON.stringify(parsedData), {
-      status: n8nResponse.status,
-      headers: corsHeaders
-    });
+    // Return the response
+    return res.status(n8nResponse.status).json(parsedData);
     
   } catch (error) {
     console.error('Proxy error:', error);
     
-    return new Response(JSON.stringify({
+    // Handle timeout specifically
+    if (error.name === 'AbortError') {
+      return res.status(504).json({
+        error: 'Gateway timeout',
+        message: 'Request to n8n webhook timed out',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    return res.status(500).json({
       error: 'Proxy request failed',
       message: error.message,
       timestamp: new Date().toISOString()
-    }), {
-      status: 500,
-      headers: corsHeaders
     });
   }
 }
-
-// Main request handler
-export default async function handler(request, context) {
-  // Handle OPTIONS preflight requests
-  if (request.method === 'OPTIONS') {
-    return handleOptions(request);
-  }
-  
-  // Only allow POST requests
-  if (request.method !== 'POST') {
-    return new Response(JSON.stringify({
-      error: 'Method not allowed',
-      message: 'Only POST requests are supported'
-    }), {
-      status: 405,
-      headers: corsHeaders
-    });
-  }
-  
-  // Forward the request to n8n
-  return await forwardToN8n(request);
-} 
