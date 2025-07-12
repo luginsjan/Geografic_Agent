@@ -98,11 +98,11 @@ if (confirmSelectionButton) {
     confirmSelectionButton.addEventListener('click', handleConfirmSelection);
 }
 
-// N8N Webhook URL constant
-const n8nWebhookUrl = 'https://aigentinc.app.n8n.cloud/webhook/get-coordinates';
+// Vercel API Proxy URLs
+const n8nWebhookUrl = '/api/get-coordinates';
 
-// N8N Selection Webhook URL constant
-const n8nSelectionWebhookUrl = 'https://aigentinc.app.n8n.cloud/webhook/get-SOP-selection';
+// Vercel API Proxy Selection URL
+const n8nSelectionWebhookUrl = '/api/get-SOP-selection';
 
 // Sample data for UX validation
 const sampleData = {
