@@ -225,7 +225,7 @@ async function handleConfirmSelection() {
         console.error('Error sending selection:', error);
         showStatusMessage(`Error sending selection: ${error.message}`, 'error');
     } finally {
-        // Keep containers open and smoothly move to next section
+        // Keep containers open and smoothly move to recommendations section
         setTimeout(() => {
             scrollToSection('recommendations');
         }, 1000);
@@ -1160,9 +1160,9 @@ if (confirmAddressButton) {
             hideCoordinateLoading();
             showStatusMessage('Error: ' + (error.message || error), 'error');
         } finally {
-            // Keep the form open and smoothly scroll to next section
+            // Keep the form open and smoothly scroll to analysis section
             setTimeout(() => {
-                scrollToSection('recommendations');
+                scrollToSection('analysis');
             }, 1000);
         }
     });

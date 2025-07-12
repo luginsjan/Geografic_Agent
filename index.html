@@ -40,22 +40,12 @@
 
     <main>
         <section id="home" class="hero">
-            <div class="hero-content">
-                <h1 class="hero-title">Agente Geográfico</h1>
-                <p class="hero-subtitle">Análisis inteligente de coordenadas y recomendaciones de kits</p>
-                <button class="cta-button" onclick="scrollToSection('analysis')">Comenzar Análisis</button>
-            </div>
-        </section>
-
-        <section id="analysis" class="about">
             <div class="container">
                 <h2 class="section-title">Análisis de Coordenadas</h2>
                 <div class="about-content">
                     <div class="about-text">
                         <p>Para empezar, indique las coordenadas o la dirección de su cliente. Este formulario se adapta a sus datos.</p>
                     </div>
-                    
-                    <div id="status-message" style="display:none;"></div>
                     
                     <div id="client-coordinates-form-block">
                         <div class="form-box">
@@ -72,8 +62,15 @@
                             <button id="confirm-address-button">Confirmar</button>
                         </div>
                     </div>
-                    
+                </div>
+            </div>
+        </section>
 
+        <section id="analysis" class="about">
+            <div class="container">
+                <h2 class="section-title">Resultados del Análisis</h2>
+                <div class="about-content">
+                    <div id="status-message" style="display:none;"></div>
                     
                     <div id="loading-block" style="display: none;">
                         <div class="loading-spinner">
@@ -83,7 +80,6 @@
                     </div>
                     
                     <div id="first-results-block" style="display: none;">
-                        <h2>Resultados del Análisis</h2>
                         <div class="results-container">
                             <!-- Dynamic content will be populated here -->
                         </div>

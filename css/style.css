@@ -639,13 +639,12 @@ p {
     transition: 0.3s;
 }
 
-/* Hero Section */
+/* Hero Section (now contains form) */
 .hero {
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    text-align: center;
     background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
     position: relative;
 }
@@ -661,41 +660,38 @@ p {
     pointer-events: none;
 }
 
-.hero-content {
+.hero .container {
     position: relative;
     z-index: 1;
+    width: 100%;
     max-width: 800px;
     padding: 0 2rem;
 }
 
-.hero-title {
-    margin-bottom: 1rem;
-    color: #ffffff;
-}
-
-.hero-subtitle {
-    font-size: clamp(1.125rem, 2.5vw, 1.5rem);
+.hero .section-title {
+    text-align: center;
     margin-bottom: 2rem;
-    color: #a0a0a0;
-}
-
-.cta-button {
-    background: transparent;
-    border: 2px solid #ffffff;
     color: #ffffff;
-    padding: 1rem 2rem;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-transform: uppercase;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 300;
     letter-spacing: 1px;
 }
 
-.cta-button:hover {
-    background: #ffffff;
-    color: #000000;
-    transform: translateY(-2px);
+.hero .about-content {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.hero .about-text {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.hero .about-text p {
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    color: #a0a0a0;
+    line-height: 1.8;
 }
 
 /* Section Styles */
@@ -1018,13 +1014,12 @@ section {
         padding: 1rem;
     }
     
-    .hero-content {
+    .hero .container {
         padding: 0 1rem;
     }
 
-    .cta-button {
-        padding: 0.875rem 1.5rem;
-        font-size: 0.9rem;
+    .hero .about-content {
+        max-width: 100%;
     }
 
     .work-item {
@@ -1077,7 +1072,7 @@ section {
     }
 }
 
-.hero-content,
+.hero .about-content,
 .about-content,
 .work-grid,
 .contact-content {
