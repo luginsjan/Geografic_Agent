@@ -28,6 +28,9 @@
             <button onclick="testPDFGeneration()" style="margin: 0.5rem; padding: 1rem 2rem; background: #2196F3; color: white; border: none; border-radius: 8px; cursor: pointer;">
                 Test PDF Generation
             </button>
+            <button onclick="testSOPErrorCase()" style="margin: 0.5rem; padding: 1rem 2rem; background: #c00; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                Test SOP Error Case
+            </button>
         </div>
         
         <!-- Final Report Container -->
@@ -156,6 +159,12 @@
             setTimeout(() => {
                 downloadPDF();
             }, 1200);
+        }
+
+        // Test function for error case (no SOP)
+        function testSOPErrorCase() {
+            confirmedSOP = null;
+            showFinalReport();
         }
         
         // Make functions available globally

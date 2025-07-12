@@ -630,45 +630,53 @@ function populateFinalReport() {
 // Function to populate SOP details in report
 function populateSOPDetails() {
     const sopDetailsContainer = document.getElementById('report-sop-details');
-    if (!sopDetailsContainer || !confirmedSOP) return;
-    
+    if (!sopDetailsContainer) return;
+    if (!confirmedSOP || !confirmedSOP.data) {
+        sopDetailsContainer.innerHTML = '<div class="no-data" style="color:#c00;text-align:center;">No SOP seleccionado o datos incompletos.</div>';
+        console.error('No confirmed SOP or missing data for report.');
+        return;
+    }
     const sopData = confirmedSOP.data;
     const isSuccess = sopData.status === 'Clear' || sopData.status === 'clear';
     const chartId = `report-chart-${sopData.SOP.replace('-', '')}`;
-    
     sopDetailsContainer.innerHTML = `
         <div class="card-header">
-            <div class="card-title">${sopData.SOP} - ${sopData.Plaza}</div>
-            <div class="status-badge ${isSuccess ? 'status-success' : 'status-blocked'}">
+            <div class="card-title" style="color:#222;">${sopData.SOP} - ${sopData.Plaza}</div>
+            <div class="status-badge ${isSuccess ? 'status-success' : 'status-blocked'}" style="color:#fff;">
                 ${isSuccess ? '✓ Clear' : '✗ Blocked'}
             </div>
         </div>
         <div class="info-grid">
             <div class="info-item">
-                <div class="info-label">Distance</div>
-                <div class="info-value">${sopData.distance_km} km</div>
+                <div class="info-label" style="color:#333;">Distance</div>
+                <div class="info-value" style="color:#222;">${sopData.distance_km} km</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Coordinates</div>
-                <div class="info-value">${sopData.coordinates || 'N/A'}</div>
+                <div class="info-label" style="color:#333;">Coordinates</div>
+                <div class="info-value" style="color:#222;">${sopData.coordinates || 'N/A'}</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Elevation</div>
-                <div class="info-value">${sopData.elevation || 'N/A'}</div>
+                <div class="info-label" style="color:#333;">Elevation</div>
+                <div class="info-value" style="color:#222;">${sopData.elevation || 'N/A'}</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Status</div>
-                <div class="info-value">${sopData.status || 'N/A'}</div>
+                <div class="info-label" style="color:#333;">Status</div>
+                <div class="info-value" style="color:#222;">${sopData.status || 'N/A'}</div>
             </div>
         </div>
         <div class="chart-container" style="height:220px; margin-top:1.5rem;">
-            <div class="chart-title">Elevation Profile</div>
+            <div class="chart-title" style="color:#222;">Elevation Profile</div>
             <canvas id="${chartId}" style="max-width:100%;height:200px;"></canvas>
         </div>
     `;
-    // Render the chart after DOM update
     setTimeout(() => {
-        createElevationChart(sopData, chartId);
+        if (sopData.results && sopData.results.length > 0 && sopData.lineOfSight) {
+            createElevationChart(sopData, chartId);
+        } else {
+            const canvas = document.getElementById(chartId);
+            if (canvas) canvas.parentElement.innerHTML += '<p class="no-data" style="color:#c00;text-align:center;">No elevation data available.</p>';
+            console.warn('No elevation data for SOP chart.');
+        }
     }, 100);
 }
 
@@ -1917,9 +1925,16 @@ async function downloadPDF() {
             pdfCanvases[idx].replaceWith(img);
         });
         
+        // Universal override for all text in PDF
+        pdfContainer.querySelectorAll('*').forEach(el => {
+            if (el.nodeType === 1) {
+                el.style.color = '#222';
+            }
+        });
+
         // Add PDF-specific styles
         pdfContainer.style.background = 'white';
-        pdfContainer.style.color = '#333';
+        pdfContainer.style.color = '#222';
         pdfContainer.style.padding = '24px';
         pdfContainer.style.maxWidth = '800px';
         pdfContainer.style.margin = '0 auto';
@@ -1932,7 +1947,7 @@ async function downloadPDF() {
         sections.forEach(section => {
             section.style.background = '#f8f9fa';
             section.style.border = '1px solid #dee2e6';
-            section.style.color = '#333';
+            section.style.color = '#222';
             section.style.pageBreakInside = 'avoid';
         });
         
@@ -1947,7 +1962,7 @@ async function downloadPDF() {
         if (sopDetails) {
             sopDetails.style.background = 'white';
             sopDetails.style.border = '1px solid #dee2e6';
-            sopDetails.style.color = '#333';
+            sopDetails.style.color = '#222';
             sopDetails.style.pageBreakInside = 'avoid';
         }
         
@@ -1956,7 +1971,7 @@ async function downloadPDF() {
         if (kitDetails) {
             kitDetails.style.background = '#f8f9fa';
             kitDetails.style.border = '1px solid #dee2e6';
-            kitDetails.style.color = '#333';
+            kitDetails.style.color = '#222';
             kitDetails.style.pageBreakInside = 'avoid';
         }
         
@@ -1965,7 +1980,7 @@ async function downloadPDF() {
         inputValues.forEach(input => {
             input.style.background = 'white';
             input.style.border = '1px solid #dee2e6';
-            input.style.color = '#333';
+            input.style.color = '#222';
         });
         
         // Update report meta for PDF
@@ -1973,7 +1988,7 @@ async function downloadPDF() {
         if (reportMeta) {
             reportMeta.style.background = '#f8f9fa';
             reportMeta.style.border = '1px solid #dee2e6';
-            reportMeta.style.color = '#333';
+            reportMeta.style.color = '#222';
             reportMeta.style.padding = '1rem';
             reportMeta.style.borderRadius = '4px';
             reportMeta.style.pageBreakInside = 'avoid';
@@ -1982,7 +1997,7 @@ async function downloadPDF() {
         // Update timestamp and duration for PDF
         const timestampSpans = pdfContainer.querySelectorAll('.report-timestamp span, .report-duration span');
         timestampSpans.forEach(span => {
-            span.style.color = '#333';
+            span.style.color = '#222';
         });
         
         // Highlight duration in PDF
