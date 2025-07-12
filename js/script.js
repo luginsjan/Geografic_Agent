@@ -144,9 +144,12 @@ async function handleConfirmSelection() {
         // Handle kit recommendations if present in response
         if (responseData) {
             let recommendationData = null;
-            
+            // Check if response has "0" key with output property (new format)
+            if (responseData["0"] && responseData["0"].output) {
+                recommendationData = responseData["0"].output;
+            }
             // Check if response has output property (direct format)
-            if (responseData.output) {
+            else if (responseData.output) {
                 recommendationData = responseData.output;
             }
             // Check if response is an array with output property (array format)
@@ -157,7 +160,6 @@ async function handleConfirmSelection() {
             else if (responseData.viable_kits || responseData.high_reliability_recommendation || responseData.best_value_recommendation) {
                 recommendationData = responseData;
             }
-            
             if (recommendationData) {
                 displayKitRecommendations(recommendationData);
             } else {
@@ -297,16 +299,32 @@ function populateRecommendationBlock(data) {
     }
     
     // Populate recommendation cards
+    // Robust: show details if kit found, else fallback to name or message
     if (data.high_reliability_recommendation && highReliabilityContent) {
-        highReliabilityContent.textContent = data.high_reliability_recommendation;
-    } else {
-        console.warn('No high_reliability_recommendation found');
+        let text = '';
+        if (data.viable_kits && Array.isArray(data.viable_kits)) {
+            const kit = data.viable_kits.find(k => k.name === data.high_reliability_recommendation);
+            if (kit) {
+                text = `<strong>${kit.name}</strong> is recommended for high reliability with a link margin of <strong>${kit.link_margin}</strong> and antenna gain of <strong>${kit.antenna_gain}</strong>.`;
+            }
+        }
+        if (!text) text = typeof data.high_reliability_recommendation === 'string' ? data.high_reliability_recommendation : 'No recommendation.';
+        highReliabilityContent.innerHTML = text;
+    } else if (highReliabilityContent) {
+        highReliabilityContent.textContent = 'No high reliability recommendation.';
     }
-    
     if (data.best_value_recommendation && bestValueContent) {
-        bestValueContent.textContent = data.best_value_recommendation;
-    } else {
-        console.warn('No best_value_recommendation found');
+        let text = '';
+        if (data.viable_kits && Array.isArray(data.viable_kits)) {
+            const kit = data.viable_kits.find(k => k.name === data.best_value_recommendation);
+            if (kit) {
+                text = `<strong>${kit.name}</strong> is recommended as the best value option with a link margin of <strong>${kit.link_margin}</strong> and cost of <strong>${kit.cost}</strong>.`;
+            }
+        }
+        if (!text) text = typeof data.best_value_recommendation === 'string' ? data.best_value_recommendation : 'No recommendation.';
+        bestValueContent.innerHTML = text;
+    } else if (bestValueContent) {
+        bestValueContent.textContent = 'No best value recommendation.';
     }
 }
 
