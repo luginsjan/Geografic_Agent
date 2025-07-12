@@ -12,7 +12,7 @@ const bandwidthInput = document.querySelector('#bandwidth-input');
 const loadingBlock = document.querySelector('#loading-block');
 const firstResultsBlock = document.querySelector('#first-results-block');
 const statusMessage = document.getElementById('status-message');
-const loadExampleButton = document.getElementById('load-example-button');
+
 const aigentIdDisplay = document.querySelector('#aigent-id-display');
 const aigentIdValue = document.querySelector('#aigent-id-value');
 const recommendationBlock = document.querySelector('#recommendation-block');
@@ -225,31 +225,10 @@ async function handleConfirmSelection() {
         console.error('Error sending selection:', error);
         showStatusMessage(`Error sending selection: ${error.message}`, 'error');
     } finally {
-        // Always trigger the smooth closing of the first-results-block
-        if (firstResultsBlock) {
-            firstResultsBlock.classList.remove('visible');
-            setTimeout(() => {
-                firstResultsBlock.style.display = 'none';
-                // Clear the results container
-                const resultsContainer = firstResultsBlock.querySelector('.results-container');
-                if (resultsContainer) {
-                    resultsContainer.innerHTML = '';
-                }
-                // Reset the confirm button state
-                const confirmButton = document.getElementById('confirm-selection-button');
-                if (confirmButton) {
-                    confirmButton.classList.remove('enabled');
-                }
-                // Show the form block again
-                if (clientCoordinatesFormBlock) {
-                    clientCoordinatesFormBlock.classList.remove('minimized');
-                }
-                // Hide any status messages after a delay
-                setTimeout(() => {
-                    hideStatusMessage();
-                }, 3000);
-            }, 500);
-        }
+        // Keep containers open and smoothly move to next section
+        setTimeout(() => {
+            scrollToSection('recommendations');
+        }, 1000);
     }
 }
 
@@ -257,22 +236,10 @@ async function handleConfirmSelection() {
 function displayKitRecommendations(recommendationData) {
     console.log('Displaying kit recommendations:', recommendationData);
     
-    // Hide the first results block smoothly
+    // Keep the first results block visible but show recommendation block
     if (firstResultsBlock) {
-        firstResultsBlock.classList.remove('visible');
-        setTimeout(() => {
-            firstResultsBlock.style.display = 'none';
-            // Clear the results container
-            const resultsContainer = firstResultsBlock.querySelector('.results-container');
-            if (resultsContainer) {
-                resultsContainer.innerHTML = '';
-            }
-            // Reset the confirm button state
-            const confirmButton = document.getElementById('confirm-selection-button');
-            if (confirmButton) {
-                confirmButton.classList.remove('enabled');
-            }
-        }, 500);
+        firstResultsBlock.style.display = 'block';
+        firstResultsBlock.classList.add('visible');
     }
     
     // Show the recommendation block with loading state first
@@ -782,8 +749,11 @@ async function handleKitConfirmation() {
             confirmKitButton.textContent = 'Confirmar Selección de Kit';
         }
         
-        // Show final report
+        // Show final report and scroll to it
         showFinalReport();
+        setTimeout(() => {
+            scrollToSection('report');
+        }, 1000);
         
     } catch (error) {
         console.error('Error sending kit selection:', error);
@@ -1075,61 +1045,9 @@ function scrollToResults() {
     }, 200);
 }
 
-function addCloseExampleButton() {
-    let closeBtn = document.getElementById('close-example-btn');
-    if (!closeBtn) {
-        closeBtn = document.createElement('button');
-        closeBtn.id = 'close-example-btn';
-        closeBtn.textContent = 'Cerrar Ejemplo';
-        closeBtn.style.cssText = 'display:block;margin:20px auto 0 auto;background:linear-gradient(135deg,#f44336,#d32f2f);color:white;border:none;border-radius:25px;font-size:1.1rem;font-weight:bold;padding:12px 28px;cursor:pointer;box-shadow:0 5px 15px rgba(0,0,0,0.12);transition:all 0.2s;';
-        closeBtn.onmouseover = function() { closeBtn.style.transform = 'translateY(-2px)'; closeBtn.style.boxShadow = '0 8px 25px rgba(0,0,0,0.18)'; };
-        closeBtn.onmouseout = function() { closeBtn.style.transform = ''; closeBtn.style.boxShadow = '0 5px 15px rgba(0,0,0,0.12)'; };
-        closeBtn.onclick = function() {
-            // Clear SOP data when closing example
-            allSopData = {};
-            
-            firstResultsBlock.classList.remove('visible');
-            setTimeout(() => {
-                firstResultsBlock.style.display = 'none';
-                firstResultsBlock.querySelector('.results-container').innerHTML = '';
-                closeBtn.remove();
-                clientCoordinatesFormBlock.classList.remove('minimized');
-                hideStatusMessage();
-            }, 500);
-            
-            // Hide recommendation block if present
-            if (recommendationBlock) {
-                recommendationBlock.classList.remove('visible');
-                setTimeout(() => {
-                    recommendationBlock.style.display = 'none';
-                }, 500);
-            }
-        };
-        firstResultsBlock.parentNode.insertBefore(closeBtn, firstResultsBlock.nextSibling);
-    }
-}
 
-if (loadExampleButton) {
-    loadExampleButton.addEventListener('click', () => {
-        // Clear previous SOP data and set sample AigentID
-        allSopData = {};
-        currentAigentID = 'AIG-SAMPLE-20241201-000000-XXXXX';
-        updateAigentIDDisplay(currentAigentID);
-        
-        hideStatusMessage();
-        // Do NOT minimize the form block
-        // Show results below the form
-        loadingBlock.style.display = 'none';
-        loadingBlock.classList.remove('visible');
-        firstResultsBlock.style.display = 'block';
-        setTimeout(() => {
-            firstResultsBlock.classList.add('visible');
-        }, 50);
-        populateResultsBlock(sampleData);
-        addCloseExampleButton();
-        scrollToResults();
-    });
-}
+
+
 
 // Confirm Address Button Click Handler
 if (confirmAddressButton) {
@@ -1143,9 +1061,7 @@ if (confirmAddressButton) {
         workflowStartTime = new Date();
         workflowEndTime = null;
         
-        // Remove example close button and hide results if present
-        const closeBtn = document.getElementById('close-example-btn');
-        if (closeBtn) closeBtn.remove();
+
         firstResultsBlock.classList.remove('visible');
         setTimeout(() => {
             firstResultsBlock.style.display = 'none';
@@ -1244,33 +1160,10 @@ if (confirmAddressButton) {
             hideCoordinateLoading();
             showStatusMessage('Error: ' + (error.message || error), 'error');
         } finally {
-            // Always trigger the smooth closing of the form block
-            clientCoordinatesFormBlock.classList.add('minimized');
-            // Wait for the minimize animation to complete, then show edit button
+            // Keep the form open and smoothly scroll to next section
             setTimeout(() => {
-                // Create and append the edit address button
-                const editButton = document.createElement('a');
-                editButton.href = '#';
-                editButton.className = 'reopen-form-button';
-                editButton.textContent = 'Editar dirección';
-                // Add click handler for the edit button
-                editButton.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    clientCoordinatesFormBlock.classList.remove('minimized');
-                    editButton.classList.remove('visible');
-                    setTimeout(() => {
-                        if (editButton.parentNode) {
-                            editButton.remove();
-                        }
-                    }, 300);
-                });
-                // Append to analysis section
-                document.getElementById('analysis').appendChild(editButton);
-                // Show the edit button with animation
-                setTimeout(() => {
-                    editButton.classList.add('visible');
-                }, 50);
-            }, 600);
+                scrollToSection('recommendations');
+            }, 1000);
         }
     });
 }
