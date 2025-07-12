@@ -118,6 +118,8 @@ async function handleConfirmSelection() {
     };
 
     try {
+        // Show loading animation immediately
+        showSOPLoading();
         showStatusMessage('Sending selection to server...', 'info');
         
         // Send POST request to n8n selection webhook
@@ -134,6 +136,9 @@ async function handleConfirmSelection() {
         }
 
         const responseData = await response.json();
+        
+        // Hide loading animation
+        hideSOPLoading();
         
         // Log success with complete data
         console.log('Selection sent successfully:', responseData);
@@ -168,6 +173,9 @@ async function handleConfirmSelection() {
         }
         
     } catch (error) {
+        // Hide loading animation on error
+        hideSOPLoading();
+        
         // Log error
         console.error('Error sending selection:', error);
         showStatusMessage(`Error sending selection: ${error.message}`, 'error');
@@ -386,6 +394,62 @@ function deselectAllKits() {
     
     // Clear selected kit data
     window.selectedKitData = null;
+}
+
+// Function to show coordinate confirmation loading state
+function showCoordinateLoading() {
+    const loadingBlock = document.getElementById('loading-block');
+    const loadingText = loadingBlock.querySelector('p');
+    
+    // Show loading block
+    loadingBlock.style.display = 'block';
+    setTimeout(() => {
+        loadingBlock.classList.add('visible');
+    }, 50);
+    
+    // Update loading text
+    if (loadingText) {
+        loadingText.textContent = 'Procesando datos geográficos...';
+    }
+}
+
+// Function to hide coordinate confirmation loading state
+function hideCoordinateLoading() {
+    const loadingBlock = document.getElementById('loading-block');
+    
+    // Hide loading block
+    loadingBlock.classList.remove('visible');
+    setTimeout(() => {
+        loadingBlock.style.display = 'none';
+    }, 600);
+}
+
+// Function to show SOP confirmation loading state
+function showSOPLoading() {
+    const loadingBlock = document.getElementById('loading-block');
+    const loadingText = loadingBlock.querySelector('p');
+    
+    // Show loading block
+    loadingBlock.style.display = 'block';
+    setTimeout(() => {
+        loadingBlock.classList.add('visible');
+    }, 50);
+    
+    // Update loading text
+    if (loadingText) {
+        loadingText.textContent = 'Procesando selección de SOP...';
+    }
+}
+
+// Function to hide SOP confirmation loading state
+function hideSOPLoading() {
+    const loadingBlock = document.getElementById('loading-block');
+    
+    // Hide loading block
+    loadingBlock.classList.remove('visible');
+    setTimeout(() => {
+        loadingBlock.style.display = 'none';
+    }, 600);
 }
 
 // Function to show kit confirmation loading state
@@ -872,12 +936,9 @@ if (confirmAddressButton) {
         };
         
         try {
+            // Show loading animation immediately
+            showCoordinateLoading();
             showStatusMessage('Conectando con el servidor...', 'info');
-            // Show loading block
-            loadingBlock.style.display = 'block';
-            setTimeout(() => {
-                loadingBlock.classList.add('visible');
-            }, 50);
             showStatusMessage('Enviando datos al servidor...', 'info');
             // Send POST request to n8n webhook
             const response = await fetch(n8nWebhookUrl, {
@@ -915,11 +976,8 @@ if (confirmAddressButton) {
                 throw new Error('Los resultados no contienen datos válidos de análisis.');
             }
 
-            // Hide loading block
-            loadingBlock.classList.remove('visible');
-            setTimeout(() => {
-                loadingBlock.style.display = 'none';
-            }, 600);
+            // Hide loading animation
+            hideCoordinateLoading();
             // Show and populate first results block
             setTimeout(() => {
                 populateResultsBlock(results); // Use the corrected 'results' object
@@ -931,10 +989,8 @@ if (confirmAddressButton) {
                 scrollToResults();
             }, 700);
         } catch (error) {
-            loadingBlock.classList.remove('visible');
-            setTimeout(() => {
-                loadingBlock.style.display = 'none';
-            }, 600);
+            // Hide loading animation on error
+            hideCoordinateLoading();
             showStatusMessage('Error: ' + (error.message || error), 'error');
         } finally {
             // Always trigger the smooth closing of the form block
