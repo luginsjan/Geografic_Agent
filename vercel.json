@@ -6,6 +6,9 @@
     },
     "api/get-SOP-selection.js": {
       "maxDuration": 30
+    },
+    "api/get-KIT-selection.js": {
+      "maxDuration": 30
     }
   },
   "headers": [

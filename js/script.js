@@ -411,7 +411,7 @@ async function handleKitConfirmation() {
         };
         
         // Send POST request to kit selection webhook
-        const response = await fetch('https://aigentinc.app.n8n.cloud/webhook/get-KIT-selection', {
+        const response = await fetch(n8nKitSelectionWebhookUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -591,6 +591,9 @@ const n8nWebhookUrl = '/api/get-coordinates';
 
 // Vercel API Proxy Selection URL
 const n8nSelectionWebhookUrl = '/api/get-SOP-selection';
+
+// Vercel API Proxy Kit Selection URL
+const n8nKitSelectionWebhookUrl = '/api/get-KIT-selection';
 
 // Sample data for UX validation
 const sampleData = {

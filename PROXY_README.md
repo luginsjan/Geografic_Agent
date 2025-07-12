@@ -19,6 +19,7 @@ Created Vercel API proxy endpoints that:
 ### New API Endpoints
 - `api/get-coordinates.js` - Proxy for coordinates webhook
 - `api/get-SOP-selection.js` - Proxy for SOP selection webhook
+- `api/get-KIT-selection.js` - Proxy for KIT selection webhook
 - `vercel.json` - Vercel configuration for API routing and CORS headers
 
 ### Modified Files
@@ -38,6 +39,12 @@ Created Vercel API proxy endpoints that:
 - **Request Body**: `{ "selectedResultId": "SOP-00008" }`
 - **Response**: Same as n8n webhook with CORS headers
 
+### `/api/get-KIT-selection`
+- **Method**: POST
+- **Purpose**: Proxy for `https://aigentinc.app.n8n.cloud/webhook/get-KIT-selection`
+- **Request Body**: `{ "selectedKit": {...}, "AigentID": "..." }`
+- **Response**: Same as n8n webhook with CORS headers
+
 ## CORS Headers
 All proxy responses include:
 ```
@@ -55,6 +62,7 @@ Use `test-proxy.html` to test the proxy endpoints locally before deployment.
 2. The API endpoints will be available at:
    - `https://geografic-agent.vercel.app/api/get-coordinates`
    - `https://geografic-agent.vercel.app/api/get-SOP-selection`
+   - `https://geografic-agent.vercel.app/api/get-KIT-selection`
 
 ## Error Handling
 - OPTIONS requests return 200 with CORS headers

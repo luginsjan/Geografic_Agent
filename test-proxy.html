@@ -69,6 +69,13 @@
         <button onclick="testGetSOPSelection()">Test get-SOP-selection</button>
         <div id="sop-result" class="result" style="display: none;"></div>
     </div>
+    
+    <div class="test-section">
+        <h2>Test get-KIT-selection Proxy</h2>
+        <p>This will test the proxy endpoint for the KIT selection webhook.</p>
+        <button onclick="testGetKITSelection()">Test get-KIT-selection</button>
+        <div id="kit-result" class="result" style="display: none;"></div>
+    </div>
 
     <script>
         async function testGetCoordinates() {
@@ -113,6 +120,45 @@
                     },
                     body: JSON.stringify({
                         selectedResultId: "SOP-00008"
+                    })
+                });
+                
+                const data = await response.json();
+                
+                resultDiv.className = response.ok ? 'result success' : 'result error';
+                resultDiv.textContent = `Status: ${response.status}\nHeaders: ${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}\nResponse: ${JSON.stringify(data, null, 2)}`;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        async function testGetKITSelection() {
+            const resultDiv = document.getElementById('kit-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch('/api/get-KIT-selection', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        selectedKit: {
+                            name: "KIT 1",
+                            radio: "Mimosa C5x",
+                            antenna: "Antena Mimosa N5X25",
+                            frequency_band: "4.9 - 6.4 GHz",
+                            max_throughput: "700 Mbps",
+                            transmit_power: "27 dBm",
+                            antenna_gain: "25 dBi",
+                            link_margin: "21.36 dB",
+                            cost: "691 USD"
+                        },
+                        AigentID: "AIG-20250712-200313-9RQS6"
                     })
                 });
                 
