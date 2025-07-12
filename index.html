@@ -52,6 +52,41 @@
         </div>
         
         <button id="confirm-selection-button">Confirm Selection</button>
+        
+        <div id="recommendation-block" style="display: none;">
+            <h2>Recomendación Kit</h2>
+            <div class="recommendation-container">
+                <div class="kit-dropdown-section">
+                    <label for="kit-dropdown">Seleccionar Kit:</label>
+                    <select id="kit-dropdown" class="kit-dropdown">
+                        <option value="">Seleccione un kit...</option>
+                    </select>
+                </div>
+                
+                <div class="viable-kits-section">
+                    <h3>Kits Viables</h3>
+                    <div class="kits-grid">
+                        <!-- Dynamic kit cards will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="recommendations-section">
+                    <div class="recommendation-card high-reliability">
+                        <h3>Alta Confiabilidad</h3>
+                        <div class="recommendation-content">
+                            <!-- High reliability recommendation will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="recommendation-card best-value">
+                        <h3>Mejor Valor</h3>
+                        <div class="recommendation-content">
+                            <!-- Best value recommendation will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <nav class="navbar">

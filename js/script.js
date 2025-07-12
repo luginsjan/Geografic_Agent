@@ -16,6 +16,7 @@ const statusMessage = document.getElementById('status-message');
 const loadExampleButton = document.getElementById('load-example-button');
 const aigentIdDisplay = document.querySelector('#aigent-id-display');
 const aigentIdValue = document.querySelector('#aigent-id-value');
+const recommendationBlock = document.querySelector('#recommendation-block');
 
 // Store complete SOP data for each result
 let allSopData = {};
@@ -140,6 +141,30 @@ async function handleConfirmSelection() {
         console.log('AigentID used:', currentAigentID);
         showStatusMessage(`Selection confirmed: ${selectedResultId}`, 'success');
         
+        // Handle kit recommendations if present in response
+        if (responseData) {
+            let recommendationData = null;
+            
+            // Check if response has output property (direct format)
+            if (responseData.output) {
+                recommendationData = responseData.output;
+            }
+            // Check if response is an array with output property (array format)
+            else if (Array.isArray(responseData) && responseData.length > 0 && responseData[0].output) {
+                recommendationData = responseData[0].output;
+            }
+            // Check if response has the structure directly
+            else if (responseData.viable_kits || responseData.high_reliability_recommendation || responseData.best_value_recommendation) {
+                recommendationData = responseData;
+            }
+            
+            if (recommendationData) {
+                displayKitRecommendations(recommendationData);
+            } else {
+                console.log('No kit recommendations found in response:', responseData);
+            }
+        }
+        
     } catch (error) {
         // Log error
         console.error('Error sending selection:', error);
@@ -173,11 +198,202 @@ async function handleConfirmSelection() {
     }
 }
 
+// Function to display kit recommendations
+function displayKitRecommendations(recommendationData) {
+    console.log('Displaying kit recommendations:', recommendationData);
+    
+    // Hide the first results block smoothly
+    if (firstResultsBlock) {
+        firstResultsBlock.classList.remove('visible');
+        setTimeout(() => {
+            firstResultsBlock.style.display = 'none';
+            // Clear the results container
+            const resultsContainer = firstResultsBlock.querySelector('.results-container');
+            if (resultsContainer) {
+                resultsContainer.innerHTML = '';
+            }
+            // Reset the confirm button state
+            const confirmButton = document.getElementById('confirm-selection-button');
+            if (confirmButton) {
+                confirmButton.classList.remove('enabled');
+            }
+        }, 500);
+    }
+    
+    // Populate the recommendation block
+    populateRecommendationBlock(recommendationData);
+    
+    // Show the recommendation block smoothly
+    if (recommendationBlock) {
+        recommendationBlock.style.display = 'block';
+        setTimeout(() => {
+            recommendationBlock.classList.add('visible');
+        }, 100);
+    }
+    
+    // Scroll to the recommendation block
+    setTimeout(() => {
+        if (recommendationBlock) {
+            window.scrollTo({
+                top: recommendationBlock.getBoundingClientRect().top + window.scrollY - 30,
+                behavior: 'smooth'
+            });
+        }
+    }, 800);
+}
+
+// Function to populate the recommendation block with data
+function populateRecommendationBlock(data) {
+    console.log('Populating recommendation block with data:', data);
+    
+    const kitDropdown = document.getElementById('kit-dropdown');
+    const kitsGrid = document.querySelector('.kits-grid');
+    const highReliabilityContent = document.querySelector('.recommendation-card.high-reliability .recommendation-content');
+    const bestValueContent = document.querySelector('.recommendation-card.best-value .recommendation-content');
+    
+    // Clear existing content
+    if (kitDropdown) {
+        kitDropdown.innerHTML = '<option value="">Seleccione un kit...</option>';
+    }
+    if (kitsGrid) {
+        kitsGrid.innerHTML = '';
+    }
+    if (highReliabilityContent) {
+        highReliabilityContent.innerHTML = '';
+    }
+    if (bestValueContent) {
+        bestValueContent.innerHTML = '';
+    }
+    
+    // Validate data structure
+    if (!data) {
+        console.error('No data provided to populateRecommendationBlock');
+        return;
+    }
+    
+    // Populate dropdown with viable kits
+    if (data.viable_kits && Array.isArray(data.viable_kits)) {
+        console.log(`Found ${data.viable_kits.length} viable kits`);
+        data.viable_kits.forEach((kit, index) => {
+            if (kitDropdown && kit.name) {
+                const option = document.createElement('option');
+                option.value = kit.name;
+                option.textContent = kit.name;
+                kitDropdown.appendChild(option);
+            }
+        });
+    } else {
+        console.warn('No viable_kits found in data or invalid format');
+    }
+    
+    // Create kit cards
+    if (data.viable_kits && Array.isArray(data.viable_kits)) {
+        data.viable_kits.forEach((kit, index) => {
+            if (kitsGrid) {
+                const kitCard = createKitCard(kit);
+                kitsGrid.appendChild(kitCard);
+            }
+        });
+    }
+    
+    // Populate recommendation cards
+    if (data.high_reliability_recommendation && highReliabilityContent) {
+        highReliabilityContent.textContent = data.high_reliability_recommendation;
+    } else {
+        console.warn('No high_reliability_recommendation found');
+    }
+    
+    if (data.best_value_recommendation && bestValueContent) {
+        bestValueContent.textContent = data.best_value_recommendation;
+    } else {
+        console.warn('No best_value_recommendation found');
+    }
+}
+
+// Function to create a kit card
+function createKitCard(kit) {
+    const card = document.createElement('div');
+    card.className = 'kit-card';
+    
+    // Helper function to safely get property values
+    const getValue = (obj, key, defaultValue = 'N/A') => {
+        return obj && obj[key] ? obj[key] : defaultValue;
+    };
+    
+    card.innerHTML = `
+        <h4>${getValue(kit, 'name', 'Kit Sin Nombre')}</h4>
+        <div class="kit-details">
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Radio</span>
+                <span class="kit-detail-value">${getValue(kit, 'radio')}</span>
+            </div>
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Antena</span>
+                <span class="kit-detail-value">${getValue(kit, 'antenna')}</span>
+            </div>
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Banda de Frecuencia</span>
+                <span class="kit-detail-value">${getValue(kit, 'frequency_band')}</span>
+            </div>
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Throughput Máximo</span>
+                <span class="kit-detail-value">${getValue(kit, 'max_throughput')}</span>
+            </div>
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Potencia de Transmisión</span>
+                <span class="kit-detail-value">${getValue(kit, 'transmit_power')}</span>
+            </div>
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Ganancia de Antena</span>
+                <span class="kit-detail-value">${getValue(kit, 'antenna_gain')}</span>
+            </div>
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Margen de Enlace</span>
+                <span class="kit-detail-value highlight">${getValue(kit, 'link_margin')}</span>
+            </div>
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Costo</span>
+                <span class="kit-detail-value highlight">${getValue(kit, 'cost')}</span>
+            </div>
+        </div>
+    `;
+    
+    return card;
+}
+
 // Add event listener for confirm selection button
 const confirmSelectionButton = document.getElementById('confirm-selection-button');
 if (confirmSelectionButton) {
     confirmSelectionButton.addEventListener('click', handleConfirmSelection);
 }
+
+// Add event listener for kit dropdown
+document.addEventListener('DOMContentLoaded', function() {
+    const kitDropdown = document.getElementById('kit-dropdown');
+    if (kitDropdown) {
+        kitDropdown.addEventListener('change', function() {
+            const selectedKit = this.value;
+            if (selectedKit) {
+                // Highlight the selected kit card
+                const kitCards = document.querySelectorAll('.kit-card');
+                kitCards.forEach(card => {
+                    card.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                    card.style.transform = 'translateY(0)';
+                });
+                
+                const selectedCard = Array.from(kitCards).find(card => 
+                    card.querySelector('h4').textContent === selectedKit
+                );
+                
+                if (selectedCard) {
+                    selectedCard.style.borderColor = '#4CAF50';
+                    selectedCard.style.transform = 'translateY(-4px)';
+                    selectedCard.style.boxShadow = '0 12px 30px rgba(76, 175, 80, 0.3)';
+                }
+            }
+        });
+    }
+});
 
 // Vercel API Proxy URLs
 const n8nWebhookUrl = '/api/get-coordinates';
@@ -325,6 +541,14 @@ function addCloseExampleButton() {
                 clientCoordinatesFormBlock.classList.remove('minimized');
                 hideStatusMessage();
             }, 500);
+            
+            // Hide recommendation block if present
+            if (recommendationBlock) {
+                recommendationBlock.classList.remove('visible');
+                setTimeout(() => {
+                    recommendationBlock.style.display = 'none';
+                }, 500);
+            }
         };
         firstResultsBlock.parentNode.insertBefore(closeBtn, firstResultsBlock.nextSibling);
     }
@@ -368,6 +592,14 @@ if (confirmAddressButton) {
             firstResultsBlock.style.display = 'none';
             firstResultsBlock.querySelector('.results-container').innerHTML = '';
         }, 400);
+        
+        // Hide recommendation block if present
+        if (recommendationBlock) {
+            recommendationBlock.classList.remove('visible');
+            setTimeout(() => {
+                recommendationBlock.style.display = 'none';
+            }, 400);
+        }
         // Get the values from the inputs
         const clientAddressInput = document.querySelector('#client-address-input');
         const clientAddress = clientAddressInput.value.trim();
