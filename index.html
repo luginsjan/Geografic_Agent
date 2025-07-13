@@ -70,9 +70,8 @@
             <div class="container">
                 <h2 class="section-title">Resultados del Análisis</h2>
                 <div class="about-content">
-                    <div id="status-message" style="display:none;"></div>
-                    
-                    <div id="loading-block" style="display: none;">
+                    <div id="status-message-analysis" class="status-message" style="display:none;"></div>
+                    <div id="loading-block-analysis" class="loading-block" style="display: none;">
                         <div class="loading-spinner">
                             <div class="spinner"></div>
                             <p>Procesando datos geográficos...</p>
@@ -83,9 +82,8 @@
                         <div class="results-container">
                             <!-- Dynamic content will be populated here -->
                         </div>
+                        <button id="confirm-selection-button">Confirm Selection</button>
                     </div>
-                    
-                    <button id="confirm-selection-button">Confirm Selection</button>
                 </div>
             </div>
         </section>
@@ -94,6 +92,13 @@
             <div class="container">
                 <h2 class="section-title">Recomendaciones de Kits</h2>
                 <div class="work-grid">
+                    <div id="status-message-recommendations" class="status-message" style="display:none;"></div>
+                    <div id="loading-block-recommendations" class="loading-block" style="display: none;">
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                            <p>Generando recomendaciones de kits...</p>
+                        </div>
+                    </div>
                     <div id="recommendation-block" style="display: none;">
                         <div class="recommendation-container">
                             <!-- Loading state -->
@@ -153,6 +158,13 @@
             <div class="container">
                 <h2 class="section-title">Reporte Final</h2>
                 <div class="contact-content">
+                    <div id="status-message-report" class="status-message" style="display:none;"></div>
+                    <div id="loading-block-report" class="loading-block" style="display: none;">
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                            <p>Generando reporte final...</p>
+                        </div>
+                    </div>
                     <div id="final-report-block" style="display: none;">
                         <div class="final-report-container">
                             <!-- Report Header -->

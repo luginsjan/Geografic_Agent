@@ -163,11 +163,10 @@ async function handleConfirmSelection() {
     };
 
     try {
-        // Show loading animation and status message in recommendations section
         scrollToSection('recommendations');
         setTimeout(() => {
-            showSOPLoading();
-            showStatusMessage('Sending selection to server...', 'info');
+            showLoadingBlock('recommendations');
+            showStatusMessage('Sending selection to server...', 'info', 'recommendations');
         }, 500);
         
         // Send POST request to n8n selection webhook
@@ -185,14 +184,13 @@ async function handleConfirmSelection() {
 
         const responseData = await response.json();
         
-        // Hide loading animation
-        hideSOPLoading();
+        hideLoadingBlock('recommendations');
         
         // Log success with complete data
         console.log('Selection sent successfully:', responseData);
         console.log('Complete SOP data sent:', completeSopData);
         console.log('AigentID used:', currentAigentID);
-        showStatusMessage(`Selection confirmed: ${selectedResultId}`, 'success');
+        showStatusMessage(`Selection confirmed: ${selectedResultId}`, 'success', 'recommendations');
         
         // Handle kit recommendations if present in response
         if (responseData) {
@@ -250,12 +248,11 @@ async function handleConfirmSelection() {
         }
         
     } catch (error) {
-        // Hide loading animation on error
-        hideSOPLoading();
+        hideLoadingBlock('recommendations');
         
         // Log error
         console.error('Error sending selection:', error);
-        showStatusMessage(`Error sending selection: ${error.message}`, 'error');
+        showStatusMessage(`Error sending selection: ${error.message}`, 'error', 'recommendations');
     } finally {
         // Keep containers open and smoothly move to recommendations section
         setTimeout(() => {
@@ -743,7 +740,8 @@ async function handleKitConfirmation() {
     showKitConfirmationLoading();
     
     try {
-        showStatusMessage('Sending kit selection to server...', 'info');
+        showLoadingBlock('report');
+        showStatusMessage('Sending kit selection to server...', 'info', 'report');
         
         // Prepare the request data
         const requestData = {
@@ -767,7 +765,7 @@ async function handleKitConfirmation() {
         const responseData = await response.json();
         
         console.log('Kit selection sent successfully:', responseData);
-        showStatusMessage(`Kit selection confirmed: ${window.selectedKitData.name}`, 'success');
+        showStatusMessage(`Kit selection confirmed: ${window.selectedKitData.name}`, 'success', 'report');
         
         // Store confirmed kit for final report
         confirmedKit = window.selectedKitData;
@@ -789,7 +787,7 @@ async function handleKitConfirmation() {
         
     } catch (error) {
         console.error('Error sending kit selection:', error);
-        showStatusMessage(`Error sending kit selection: ${error.message}`, 'error');
+        showStatusMessage(`Error sending kit selection: ${error.message}`, 'error', 'report');
         
         // Hide loading on error
         hideKitConfirmationLoading();
@@ -1052,16 +1050,28 @@ window.addEventListener('load', () => {
     }
 });
 
-function showStatusMessage(message, type = 'info') {
-    statusMessage.textContent = message;
-    statusMessage.className = '';
-    statusMessage.style.display = 'block';
-    statusMessage.classList.add('status-' + type);
+// Utility to show status message in a specific section
+function showStatusMessage(message, type = 'info', section = 'analysis') {
+    let statusEl = document.getElementById(`status-message-${section}`);
+    if (!statusEl) return;
+    statusEl.textContent = message;
+    statusEl.className = `status-message status-${type}`;
+    statusEl.style.display = 'block';
 }
-function hideStatusMessage() {
-    statusMessage.textContent = '';
-    statusMessage.className = '';
-    statusMessage.style.display = 'none';
+function hideStatusMessage(section = 'analysis') {
+    let statusEl = document.getElementById(`status-message-${section}`);
+    if (!statusEl) return;
+    statusEl.style.display = 'none';
+}
+function showLoadingBlock(section = 'analysis') {
+    let loadingEl = document.getElementById(`loading-block-${section}`);
+    if (!loadingEl) return;
+    loadingEl.style.display = 'block';
+}
+function hideLoadingBlock(section = 'analysis') {
+    let loadingEl = document.getElementById(`loading-block-${section}`);
+    if (!loadingEl) return;
+    loadingEl.style.display = 'none';
 }
 
 function scrollToResults() {
@@ -1120,9 +1130,9 @@ if (confirmAddressButton) {
         hideStatusMessage();
         const requestData = { clientAddress: clientAddress };
         try {
-            showCoordinateLoading();
-            showStatusMessage('Conectando con el servidor...', 'info');
-            showStatusMessage('Enviando datos al servidor...', 'info');
+            showLoadingBlock('analysis');
+            showStatusMessage('Conectando con el servidor...', 'info', 'analysis');
+            showStatusMessage('Enviando datos al servidor...', 'info', 'analysis');
             const response = await fetch(n8nWebhookUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1148,7 +1158,7 @@ if (confirmAddressButton) {
             if (!results.trueResults && !results.falseResults) {
                 throw new Error('Los resultados no contienen datos válidos de análisis.');
             }
-            hideCoordinateLoading();
+            hideLoadingBlock('analysis');
             setTimeout(() => {
                 populateResultsBlock(results);
                 firstResultsBlock.style.display = 'block';
@@ -1163,11 +1173,11 @@ if (confirmAddressButton) {
                     // Scroll to analysis/results section now
                     scrollToSection('analysis');
                 }, 50);
-                showStatusMessage(`¡Análisis completado! (ID: ${currentAigentID || 'N/A'})`, 'success');
+                showStatusMessage(`¡Análisis completado! (ID: ${currentAigentID || 'N/A'})`, 'success', 'analysis');
             }, 700);
         } catch (error) {
-            hideCoordinateLoading();
-            showStatusMessage('Error: ' + (error.message || error), 'error');
+            hideLoadingBlock('analysis');
+            showStatusMessage('Error: ' + (error.message || error), 'error', 'analysis');
         }
     });
 }
