@@ -2440,32 +2440,75 @@ function exportReportToPDF() {
     // 3. Add a wrapper for A4 sizing and margin
     const wrapper = document.createElement('div');
     wrapper.style.width = '210mm'; // A4 width
-    wrapper.style.minHeight = '297mm'; // A4 height
+    // Remove fixed height to allow content to flow naturally
     wrapper.style.background = '#fff';
     wrapper.style.margin = '0 auto';
     wrapper.style.padding = '20mm'; // A4 margin
     wrapper.style.boxSizing = 'border-box';
-    wrapper.style.display = 'flex';
-    wrapper.style.flexDirection = 'column';
-    wrapper.style.justifyContent = 'flex-start';
-    wrapper.style.alignItems = 'stretch';
-    // 4. Add the pdf-export class for any future print styles
+    wrapper.style.display = 'block'; // Use block instead of flex
+    wrapper.style.fontFamily = 'Arial, sans-serif'; // Ensure font compatibility
+    // 4. Add print-specific styles to the clone
     clone.classList.add('pdf-export');
-    // 5. Append clone to wrapper
+    // Add CSS to prevent elements from breaking across pages
+    const style = document.createElement('style');
+    style.textContent = `
+        .pdf-export {
+            color: #000 !important;
+            background: transparent !important;
+        }
+        .pdf-export * {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+        .pdf-export .report-section {
+            margin-bottom: 10mm !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+        .pdf-export .elevation-chart {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+        .pdf-export table {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+        .pdf-export h1, .pdf-export h2, .pdf-export h3 {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+        }
+    `;
+    // 5. Append styles and clone to wrapper
+    wrapper.appendChild(style);
     wrapper.appendChild(clone);
     // 6. Append wrapper to body (off-screen)
     wrapper.style.position = 'absolute';
     wrapper.style.left = '-9999px';
     document.body.appendChild(wrapper);
-    // 7. Generate PDF from the wrapper
+    // 7. Generate PDF from the wrapper with updated options
     html2pdf(wrapper, {
-        margin: 0,
+        margin: 0, // No additional margin since we set it in CSS
         filename: 'reporte-final.pdf',
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        html2canvas: { 
+            scale: 2, 
+            useCORS: true,
+            allowTaint: true,
+            height: wrapper.scrollHeight, // Use actual content height
+            windowHeight: wrapper.scrollHeight
+        },
+        jsPDF: { 
+            unit: 'mm', 
+            format: 'a4', 
+            orientation: 'portrait'
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } // Enable page break control
     }).then(() => {
         // 8. Remove the wrapper after export
         document.body.removeChild(wrapper);
+    }).catch((error) => {
+        console.error('PDF generation failed:', error);
+        document.body.removeChild(wrapper);
     });
 }
+window.exportReportToPDF = exportReportToPDF;
