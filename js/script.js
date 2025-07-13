@@ -2429,27 +2429,43 @@ window.scrollToSection = scrollToSection;
 window.retryKitRecommendations = retryKitRecommendations; 
 
 function exportReportToPDF() {
-    // 1. Clone the report node
-    const report = document.querySelector('.container'); // or your report's main selector
+    // 1. Select the final report block only
+    const report = document.getElementById('final-report-block');
+    if (!report) {
+        alert('No final report found!');
+        return;
+    }
+    // 2. Clone the report node
     const clone = report.cloneNode(true);
-
-    // 2. Add the pdf-export class
+    // 3. Add a wrapper for A4 sizing and margin
+    const wrapper = document.createElement('div');
+    wrapper.style.width = '210mm'; // A4 width
+    wrapper.style.minHeight = '297mm'; // A4 height
+    wrapper.style.background = '#fff';
+    wrapper.style.margin = '0 auto';
+    wrapper.style.padding = '20mm'; // A4 margin
+    wrapper.style.boxSizing = 'border-box';
+    wrapper.style.display = 'flex';
+    wrapper.style.flexDirection = 'column';
+    wrapper.style.justifyContent = 'flex-start';
+    wrapper.style.alignItems = 'stretch';
+    // 4. Add the pdf-export class for any future print styles
     clone.classList.add('pdf-export');
-
-    // 3. Append clone to body (off-screen)
-    clone.style.position = 'absolute';
-    clone.style.left = '-9999px';
-    document.body.appendChild(clone);
-
-    // 4. Generate PDF from the clone
-    html2pdf(clone, {
-        margin: 10,
+    // 5. Append clone to wrapper
+    wrapper.appendChild(clone);
+    // 6. Append wrapper to body (off-screen)
+    wrapper.style.position = 'absolute';
+    wrapper.style.left = '-9999px';
+    document.body.appendChild(wrapper);
+    // 7. Generate PDF from the wrapper
+    html2pdf(wrapper, {
+        margin: 0,
         filename: 'reporte-final.pdf',
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     }).then(() => {
-        // 5. Remove the clone after export
-        document.body.removeChild(clone);
+        // 8. Remove the wrapper after export
+        document.body.removeChild(wrapper);
     });
 }
