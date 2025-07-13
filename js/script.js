@@ -177,7 +177,7 @@ function extractKitRecommendationData(responseData) {
 }
 
 // Function to handle different types of errors from kit recommendations
-function handleKitRecommendationError(errorMessage, section = 'recommendations') {
+function handleKitRecommendationError(errorMessage, section = 'recommendations', requestData = null) {
     console.error('Kit recommendation error:', errorMessage);
     
     // Show error message to user
@@ -203,15 +203,177 @@ function handleKitRecommendationError(errorMessage, section = 'recommendations')
     }
     if (recommendationContent) {
         recommendationContent.style.display = 'block';
+        
+        // Enhanced error display with better formatting
+        let errorDisplay = errorMessage;
+        
+        // Check if error message contains error code format (Error XXX: description)
+        if (errorMessage.includes('Error ') && errorMessage.includes(':')) {
+            const parts = errorMessage.split(':');
+            const errorCode = parts[0].trim();
+            const errorDescription = parts.slice(1).join(':').trim();
+            
+            errorDisplay = `
+                <div class="error-code" style="font-size: 1.2rem; font-weight: 600; margin-bottom: 0.5rem; color: #ff6b6b;">
+                    ${errorCode}
+                </div>
+                <div class="error-description" style="font-size: 1rem; color: #ff6b6b; margin-bottom: 1.5rem;">
+                    ${errorDescription}
+                </div>
+            `;
+        } else {
+            errorDisplay = `<p style="margin-bottom: 1.5rem;">${errorMessage}</p>`;
+        }
+        
         recommendationContent.innerHTML = `
-            <div class="error-message" style="text-align: center; padding: 2rem; color: #ff6b6b;">
-                <h3>Error en las Recomendaciones</h3>
-                <p>${errorMessage}</p>
-                <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            <div class="error-message" style="text-align: center; padding: 2rem; color: #ff6b6b; background: rgba(255, 107, 107, 0.1); border-radius: 8px; border: 1px solid rgba(255, 107, 107, 0.3);">
+                <h3 style="margin-bottom: 1rem; color: #ff6b6b;">Error en las Recomendaciones</h3>
+                ${errorDisplay}
+                <button id="retry_agent_response_kit" onclick="retryKitRecommendations()" style="
+                    margin-top: 1rem; 
+                    padding: 1rem 2rem; 
+                    background: #ffffff; 
+                    color: #000000; 
+                    border: none; 
+                    border-radius: 4px; 
+                    cursor: pointer;
+                    font-size: 1rem;
+                    font-weight: 500;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                ">
                     Reintentar
                 </button>
             </div>
         `;
+        
+        // Add hover effects to the retry button
+        const retryButton = document.getElementById('retry_agent_response_kit');
+        if (retryButton) {
+            retryButton.onmouseover = function() {
+                this.style.background = '#f0f0f0';
+                this.style.transform = 'translateY(-2px)';
+                this.style.boxShadow = '0 5px 15px rgba(0, 0, 0, 0.2)';
+            };
+            retryButton.onmouseout = function() {
+                this.style.background = '#ffffff';
+                this.style.transform = 'none';
+                this.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+            };
+            retryButton.onmousedown = function() {
+                this.style.transform = 'translateY(0)';
+            };
+            retryButton.onmouseup = function() {
+                this.style.transform = 'translateY(-2px)';
+            };
+        }
+        
+        // Store request data for retry functionality
+        if (requestData) {
+            window.lastKitRequestData = requestData;
+        }
+    }
+}
+
+// Function to retry kit recommendations
+async function retryKitRecommendations() {
+    console.log('Retrying kit recommendations...');
+    
+    // Get the stored request data
+    const requestData = window.lastKitRequestData;
+    if (!requestData) {
+        showStatusMessage('No hay datos de solicitud disponibles para reintentar', 'error', 'recommendations');
+        return;
+    }
+    
+    // Disable retry button and show loading state
+    const retryButton = document.getElementById('retry_agent_response_kit');
+    if (retryButton) {
+        retryButton.disabled = true;
+        retryButton.textContent = 'Reintentando...';
+        retryButton.style.opacity = '0.7';
+        retryButton.style.cursor = 'not-allowed';
+    }
+    
+    // Clear previous error message
+    hideStatusMessage('recommendations');
+    
+    // Show loading state
+    showLoadingBlock('recommendations');
+    showStatusMessage('Reintentando obtener recomendaciones...', 'info', 'recommendations');
+    
+    // Hide error content and show loading
+    const recommendationContent = document.getElementById('recommendation-content');
+    const recommendationLoading = document.getElementById('recommendation-loading');
+    
+    if (recommendationContent) {
+        recommendationContent.style.display = 'none';
+    }
+    if (recommendationLoading) {
+        recommendationLoading.style.display = 'flex';
+    }
+    
+    try {
+        // Send POST request to n8n selection webhook
+        const response = await fetch(n8nSelectionWebhookUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server responded with error: ${response.status} ${response.statusText}`);
+        }
+
+        const responseData = await response.json();
+        
+        hideLoadingBlock('recommendations');
+        
+        // Log success
+        console.log('Retry successful:', responseData);
+        showStatusMessage('Recomendaciones obtenidas exitosamente', 'success', 'recommendations');
+        
+        // Handle kit recommendations if present in response
+        if (responseData) {
+            const { data: recommendationData, error: errorMessage } = extractKitRecommendationData(responseData);
+            
+            // If there's an error, display it and don't show recommendations
+            if (errorMessage) {
+                handleKitRecommendationError(errorMessage, 'recommendations', requestData);
+                return;
+            }
+            
+            // If we have recommendation data, display it
+            if (recommendationData) {
+                displayKitRecommendations(recommendationData);
+            } else {
+                showStatusMessage('No se encontraron recomendaciones de kits en el reintento', 'error', 'recommendations');
+                // Show error state again
+                handleKitRecommendationError('No se encontraron recomendaciones de kits en el reintento', 'recommendations', requestData);
+            }
+        }
+        
+    } catch (error) {
+        hideLoadingBlock('recommendations');
+        
+        // Log error
+        console.error('Error in retry:', error);
+        showStatusMessage(`Error en el reintento: ${error.message}`, 'error', 'recommendations');
+        
+        // Show error state again
+        handleKitRecommendationError(`Error en el reintento: ${error.message}`, 'recommendations', requestData);
+    } finally {
+        // Reset retry button
+        if (retryButton) {
+            retryButton.disabled = false;
+            retryButton.textContent = 'Reintentar';
+            retryButton.style.opacity = '1';
+            retryButton.style.cursor = 'pointer';
+        }
     }
 }
 
@@ -299,7 +461,7 @@ async function handleConfirmSelection() {
             
             // If there's an error, display it and don't show recommendations
             if (errorMessage) {
-                handleKitRecommendationError(errorMessage, 'recommendations');
+                handleKitRecommendationError(errorMessage, 'recommendations', requestData);
                 return;
             }
             
@@ -327,7 +489,7 @@ async function handleConfirmSelection() {
                             const { data: retryRecommendationData, error: retryErrorMessage } = extractKitRecommendationData(retryData);
                             
                             if (retryErrorMessage) {
-                                handleKitRecommendationError(retryErrorMessage, 'recommendations');
+                                handleKitRecommendationError(retryErrorMessage, 'recommendations', requestData);
                                 return;
                             }
                             
@@ -2216,4 +2378,5 @@ window.addEventListener('beforeunload', function() {
 // Make test functions available globally
 window.testKitRecommendations = testKitRecommendations;
 window.testFinalReport = testFinalReport;
-window.scrollToSection = scrollToSection; 
+window.scrollToSection = scrollToSection;
+window.retryKitRecommendations = retryKitRecommendations; 
