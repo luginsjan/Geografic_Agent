@@ -145,13 +145,17 @@ async function handleConfirmSelection() {
     }
     
     // Store confirmed SOP for final report (store the full object)
+    // Ensure all required fields are present for report rendering
+    let sopToStore = JSON.parse(JSON.stringify(completeSopData));
+    if (!('status' in sopToStore)) sopToStore.status = sopToStore.lineOfSight?.hasLineOfSight ? 'Clear' : 'Blocked';
+    if (!('results' in sopToStore)) sopToStore.results = [];
+    if (!('lineOfSight' in sopToStore)) sopToStore.lineOfSight = null;
     confirmedSOP = {
         id: selectedResultId,
-        data: JSON.parse(JSON.stringify(completeSopData)) // deep copy to avoid mutation
+        data: sopToStore
     };
-    
     // Debug: Log the complete SOP data being sent (can be removed in production)
-    console.log('Retrieved complete SOP data for', selectedResultId, ':', completeSopData);
+    console.log('Retrieved complete SOP data for', selectedResultId, ':', sopToStore);
     console.log('Bandwidth being sent:', storedBandwidth);
 
     // Prepare the request data with complete SOP information, bandwidth, and AigentID
@@ -624,9 +628,9 @@ function populateSOPDetails() {
         return;
     }
     const sopData = confirmedSOP.data;
-    const isSuccess = sopData.status === 'Clear' || sopData.status === 'clear';
-    const chartId = `report-chart-${sopData.SOP.replace('-', '')}`;
-    // Render all details as in SOP selection
+    // Defensive: fallback for status
+    const isSuccess = sopData.status === 'Clear' || sopData.status === 'clear' || sopData.lineOfSight?.hasLineOfSight;
+    const chartId = `report-chart-${sopData.SOP ? sopData.SOP.replace('-', '') : 'unknown'}`;
     sopDetailsContainer.innerHTML = `
         <div class="card-header">
             <div class="card-title" style="color:#222;">${sopData.SOP || sopData.id || 'SOP'} - ${sopData.Plaza || sopData.plaza || ''}</div>
@@ -649,7 +653,7 @@ function populateSOPDetails() {
             </div>
             <div class="info-item">
                 <div class="info-label" style="color:#333;">Status</div>
-                <div class="info-value" style="color:#222;">${sopData.status || 'N/A'}</div>
+                <div class="info-value" style="color:#222;">${sopData.status || (sopData.lineOfSight?.hasLineOfSight ? 'Clear' : 'Blocked') || 'N/A'}</div>
             </div>
         </div>
         <div class="recommendation" style="margin-top:1rem;color:#222;">
@@ -661,12 +665,12 @@ function populateSOPDetails() {
         </div>
     `;
     setTimeout(() => {
-        if (sopData.results && sopData.results.length > 0 && sopData.lineOfSight) {
+        if (Array.isArray(sopData.results) && sopData.results.length > 0 && sopData.lineOfSight) {
             createElevationChart(sopData, chartId);
         } else {
             const canvas = document.getElementById(chartId);
             if (canvas) canvas.parentElement.innerHTML += '<p class="no-data" style="color:#c00;text-align:center;">No elevation data available.</p>';
-            console.warn('No elevation data for SOP chart.');
+            console.warn('No elevation data for SOP chart.', sopData);
         }
     }, 100);
 }
