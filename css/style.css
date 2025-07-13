@@ -1082,7 +1082,56 @@ section {
     color: #2196F3;
 }
 
- 
+/* Error Message Styles */
+.error-message {
+    background: rgba(255, 107, 107, 0.1);
+    border: 1px solid rgba(255, 107, 107, 0.3);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(255, 107, 107, 0.1);
+    transition: all 0.3s ease;
+}
+
+.error-message h3 {
+    color: #ff6b6b;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.error-message p {
+    color: #ff8a8a;
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.error-message button {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.error-message button:hover {
+    background: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.error-message button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
 
 /* Recommendation Block Styles */
 #recommendation-block {
@@ -1388,6 +1437,19 @@ section {
     
     .confirm-kit-button {
         padding: 12px 24px;
+        font-size: 1rem;
+    }
+    
+    .error-message {
+        padding: 1.5rem;
+        margin: 1rem;
+    }
+    
+    .error-message h3 {
+        font-size: 1.3rem;
+    }
+    
+    .error-message p {
         font-size: 1rem;
     }
 }

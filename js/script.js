@@ -118,6 +118,95 @@ function validateAndExtractResponseData(responseData) {
     return null;
 }
 
+// Function to extract and validate kit recommendation data from various response formats
+function extractKitRecommendationData(responseData) {
+    console.log('Extracting kit recommendation data from:', responseData);
+    
+    let recommendationData = null;
+    let errorMessage = null;
+    
+    // Check if response has "0" key with output property (new format)
+    if (responseData["0"] && responseData["0"].output) {
+        recommendationData = responseData["0"].output;
+    }
+    // Check if response has output property (direct format)
+    else if (responseData.output) {
+        recommendationData = responseData.output;
+    }
+    // Check if response is an array with output property (array format)
+    else if (Array.isArray(responseData) && responseData.length > 0 && responseData[0].output) {
+        recommendationData = responseData[0].output;
+    }
+    // Check if response has the structure directly
+    else if (responseData.viable_kits || responseData.high_reliability_recommendation || responseData.best_value_recommendation) {
+        recommendationData = responseData;
+    }
+    
+    // If we found recommendation data, check for errors
+    if (recommendationData) {
+        // Check for error_code and error_explanation
+        if (recommendationData.error_code && recommendationData.error_code !== null) {
+            errorMessage = `Error ${recommendationData.error_code}: ${recommendationData.error_explanation || 'Error desconocido'}`;
+        }
+        
+        // Check for los_viable status
+        if (recommendationData.los_viable === false) {
+            errorMessage = 'No hay línea de vista viable para esta ubicación.';
+        }
+        
+        // Additional validation: check if we have viable kits
+        if (!recommendationData.viable_kits || !Array.isArray(recommendationData.viable_kits) || recommendationData.viable_kits.length === 0) {
+            if (!errorMessage) {
+                errorMessage = 'No se encontraron kits viables para esta ubicación.';
+            }
+        }
+    }
+    
+    return {
+        data: recommendationData,
+        error: errorMessage
+    };
+}
+
+// Function to handle different types of errors from kit recommendations
+function handleKitRecommendationError(errorMessage, section = 'recommendations') {
+    console.error('Kit recommendation error:', errorMessage);
+    
+    // Show error message to user
+    showStatusMessage(errorMessage, 'error', section);
+    
+    // Hide loading states
+    hideLoadingBlock(section);
+    
+    // Show recommendation block but with error state
+    if (recommendationBlock) {
+        recommendationBlock.style.display = 'block';
+        setTimeout(() => {
+            recommendationBlock.classList.add('visible');
+        }, 100);
+    }
+    
+    // Hide loading, show error content
+    const recommendationLoading = document.getElementById('recommendation-loading');
+    const recommendationContent = document.getElementById('recommendation-content');
+    
+    if (recommendationLoading) {
+        recommendationLoading.style.display = 'none';
+    }
+    if (recommendationContent) {
+        recommendationContent.style.display = 'block';
+        recommendationContent.innerHTML = `
+            <div class="error-message" style="text-align: center; padding: 2rem; color: #ff6b6b;">
+                <h3>Error en las Recomendaciones</h3>
+                <p>${errorMessage}</p>
+                <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Reintentar
+                </button>
+            </div>
+        `;
+    }
+}
+
 // Function to handle confirmation button click
 async function handleConfirmSelection() {
     const selectedCard = document.querySelector('.card.is-selected');
@@ -198,57 +287,56 @@ async function handleConfirmSelection() {
         
         // Handle kit recommendations if present in response
         if (responseData) {
-            let recommendationData = null;
-            // Check if response has "0" key with output property (new format)
-            if (responseData["0"] && responseData["0"].output) {
-                recommendationData = responseData["0"].output;
+            const { data: recommendationData, error: errorMessage } = extractKitRecommendationData(responseData);
+            
+            // If there's an error, display it and don't show recommendations
+            if (errorMessage) {
+                handleKitRecommendationError(errorMessage, 'recommendations');
+                return;
             }
-            // Check if response has output property (direct format)
-            else if (responseData.output) {
-                recommendationData = responseData.output;
-            }
-            // Check if response is an array with output property (array format)
-            else if (Array.isArray(responseData) && responseData.length > 0 && responseData[0].output) {
-                recommendationData = responseData[0].output;
-            }
-            // Check if response has the structure directly
-            else if (responseData.viable_kits || responseData.high_reliability_recommendation || responseData.best_value_recommendation) {
-                recommendationData = responseData;
-            }
+            
+            // If we have recommendation data, display it
             if (recommendationData) {
                 displayKitRecommendations(recommendationData);
-                    } else {
-            console.log('No kit recommendations found in response:', responseData);
-            showStatusMessage('No se encontraron recomendaciones de kits. Reintentando...', 'info');
-            
-            // Retry after 2 seconds
-            setTimeout(async () => {
-                try {
-                    showStatusMessage('Reintentando obtener recomendaciones...', 'info');
-                    const retryResponse = await fetch(n8nSelectionWebhookUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(requestData)
-                    });
-                    
-                    if (retryResponse.ok) {
-                        const retryData = await retryResponse.json();
-                        if (retryData && (retryData.output || retryData.viable_kits)) {
-                            showStatusMessage('Recomendaciones obtenidas en el segundo intento', 'success');
-                            displayKitRecommendations(retryData.output || retryData);
+            } else {
+                console.log('No kit recommendations found in response:', responseData);
+                showStatusMessage('No se encontraron recomendaciones de kits. Reintentando...', 'info');
+                
+                // Retry after 2 seconds
+                setTimeout(async () => {
+                    try {
+                        showStatusMessage('Reintentando obtener recomendaciones...', 'info');
+                        const retryResponse = await fetch(n8nSelectionWebhookUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(requestData)
+                        });
+                        
+                        if (retryResponse.ok) {
+                            const retryData = await retryResponse.json();
+                            const { data: retryRecommendationData, error: retryErrorMessage } = extractKitRecommendationData(retryData);
+                            
+                            if (retryErrorMessage) {
+                                handleKitRecommendationError(retryErrorMessage, 'recommendations');
+                                return;
+                            }
+                            
+                            if (retryRecommendationData) {
+                                showStatusMessage('Recomendaciones obtenidas en el segundo intento', 'success');
+                                displayKitRecommendations(retryRecommendationData);
+                            } else {
+                                showStatusMessage('No se pudieron obtener recomendaciones después del reintento', 'error');
+                            }
                         } else {
-                            showStatusMessage('No se pudieron obtener recomendaciones después del reintento', 'error');
+                            showStatusMessage('Error en el reintento: ' + retryResponse.status, 'error');
                         }
-                    } else {
-                        showStatusMessage('Error en el reintento: ' + retryResponse.status, 'error');
+                    } catch (retryError) {
+                        showStatusMessage('Error en el reintento: ' + retryError.message, 'error');
                     }
-                } catch (retryError) {
-                    showStatusMessage('Error en el reintento: ' + retryError.message, 'error');
-                }
-            }, 2000);
-        }
+                }, 2000);
+            }
         }
         
     } catch (error) {
@@ -823,6 +911,12 @@ function populateRecommendationBlock(data) {
     if (!data) {
         console.error('No data provided to populateRecommendationBlock');
         return;
+    }
+    
+    // Update AigentID if present in the new format
+    if (data.aigent_id && data.aigent_id !== currentAigentID) {
+        currentAigentID = data.aigent_id;
+        updateAigentIDDisplay(currentAigentID);
     }
     
     // Populate dropdown with viable kits
