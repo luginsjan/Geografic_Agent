@@ -1165,6 +1165,34 @@ if (confirmAddressButton) {
                     if (confirmSelectionBtn) {
                         confirmSelectionBtn.style.display = 'block';
                         confirmSelectionBtn.classList.add('enabled');
+                        // Apply same design as confirm-address-button
+                        confirmSelectionBtn.style.background = '#ffffff';
+                        confirmSelectionBtn.style.color = '#000000';
+                        confirmSelectionBtn.style.border = 'none';
+                        confirmSelectionBtn.style.padding = '1rem 2rem';
+                        confirmSelectionBtn.style.fontSize = '1rem';
+                        confirmSelectionBtn.style.fontWeight = '500';
+                        confirmSelectionBtn.style.cursor = 'pointer';
+                        confirmSelectionBtn.style.transition = 'all 0.3s ease';
+                        confirmSelectionBtn.style.textTransform = 'uppercase';
+                        confirmSelectionBtn.style.letterSpacing = '1px';
+                        confirmSelectionBtn.style.borderRadius = '4px';
+                        confirmSelectionBtn.onmouseover = function() {
+                            this.style.background = '#f0f0f0';
+                            this.style.transform = 'translateY(-2px)';
+                            this.style.boxShadow = '0 5px 15px rgba(255, 255, 255, 0.2)';
+                        };
+                        confirmSelectionBtn.onmouseout = function() {
+                            this.style.background = '#ffffff';
+                            this.style.transform = 'none';
+                            this.style.boxShadow = 'none';
+                        };
+                        confirmSelectionBtn.onmousedown = function() {
+                            this.style.transform = 'translateY(0)';
+                        };
+                        confirmSelectionBtn.onmouseup = function() {
+                            this.style.transform = 'translateY(-2px)';
+                        };
                     }
                     // Scroll to analysis/results section now
                     scrollToSection('analysis');
