@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Scroll Behavior - Agente Geográfico</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <h2>AIGENT INC</h2>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#home" class="nav-link">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#analysis" class="nav-link">Analysis</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#recommendations" class="nav-link">Recommendations</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#report" class="nav-link">Report</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <section id="home" class="hero">
+            <div class="container">
+                <h2 class="section-title">Test Scroll Behavior</h2>
+                <div class="about-content">
+                    <div class="about-text">
+                        <p>This is the home section. The page should automatically scroll here on load.</p>
+                    </div>
+                    
+                    <div class="form-box">
+                        <label for="test-input">Test Input</label>
+                        <input type="text" id="test-input" placeholder="Enter some text...">
+                        
+                        <button id="test-button">Test Scroll to Analysis</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="analysis" class="about">
+            <div class="container">
+                <h2 class="section-title">Analysis Section</h2>
+                <div class="about-content">
+                    <div class="about-text">
+                        <p>This is the analysis section. You should be scrolled here when clicking the test button.</p>
+                    </div>
+                    
+                    <div class="form-box">
+                        <p>✅ If you can see this, the scroll to analysis is working!</p>
+                        <button onclick="scrollToSection('home')">Go Back to Home</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="recommendations" class="work">
+            <div class="container">
+                <h2 class="section-title">Recommendations Section</h2>
+                <div class="about-content">
+                    <div class="about-text">
+                        <p>This is the recommendations section.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="report" class="contact">
+            <div class="container">
+                <h2 class="section-title">Report Section</h2>
+                <div class="about-content">
+                    <div class="about-text">
+                        <p>This is the report section.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Test scroll function
+        function scrollToSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                // Use both scrollIntoView and window.scrollTo for better compatibility
+                try {
+                    section.scrollIntoView({ 
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                } catch (error) {
+                    // Fallback to window.scrollTo if scrollIntoView fails
+                    const offsetTop = section.offsetTop - 80; // Account for fixed navbar
+                    window.scrollTo({
+                        top: offsetTop,
+                        behavior: 'smooth'
+                    });
+                }
+                
+                // Double-check scroll position after a short delay
+                setTimeout(() => {
+                    const currentScrollTop = window.pageYOffset;
+                    const sectionTop = section.offsetTop - 80;
+                    const tolerance = 50; // Allow some tolerance
+                    
+                    if (Math.abs(currentScrollTop - sectionTop) > tolerance) {
+                        window.scrollTo({
+                            top: sectionTop,
+                            behavior: 'smooth'
+                        });
+                    }
+                }, 300);
+            }
+        }
+
+        // Initialize page state and ensure home section is visible
+        function initializePageState() {
+            // Reset any URL hash to ensure clean state
+            if (window.location.hash && window.location.hash !== '#home') {
+                history.replaceState(null, null, window.location.pathname);
+            }
+            
+            // Ensure home section is visible and at the top
+            const homeSection = document.getElementById('home');
+            if (homeSection) {
+                homeSection.style.display = 'block';
+                homeSection.style.visibility = 'visible';
+                homeSection.style.opacity = '1';
+            }
+            
+            // Scroll to home section
+            scrollToSection('home');
+        }
+
+        // Test button click handler
+        document.getElementById('test-button').addEventListener('click', function() {
+            // Provide immediate visual feedback
+            this.disabled = true;
+            this.textContent = 'Procesando...';
+            
+            // Scroll to analysis section immediately
+            scrollToSection('analysis');
+            
+            // Simulate processing
+            setTimeout(() => {
+                this.disabled = false;
+                this.textContent = 'Test Scroll to Analysis';
+            }, 2000);
+        });
+
+        // Auto-scroll to home section on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOMContentLoaded - Initializing page state');
+            initializePageState();
+        });
+
+        // Also handle page refresh and direct navigation
+        window.addEventListener('load', function() {
+            console.log('Window load - Double-checking page state');
+            setTimeout(() => {
+                initializePageState();
+            }, 200);
+        });
+
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', function() {
+            console.log('Popstate - Resetting to home');
+            setTimeout(() => {
+                initializePageState();
+            }, 100);
+        });
+
+        // Handle page visibility changes (when user returns to tab)
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                console.log('Page visible - Ensuring home section');
+                setTimeout(() => {
+                    initializePageState();
+                }, 100);
+            }
+        });
+
+        // Log current scroll position for debugging
+        window.addEventListener('scroll', function() {
+            console.log('Scroll position:', window.pageYOffset);
+        });
+    </script>
+
+    <style>
+        .form-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            margin: 2rem 0;
+        }
+        
+        .form-box label {
+            display: block;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #ffffff;
+            margin-bottom: 1rem;
+        }
+        
+        .form-box input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            font-size: 1rem;
+            color: #ffffff;
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-box button {
+            background: #ffffff;
+            color: #000000;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .form-box button:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+        }
+        
+        .form-box button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+</body>
+</html> 

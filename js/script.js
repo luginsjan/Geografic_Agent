@@ -1218,11 +1218,25 @@ if (confirmAddressButton) {
         inputCoordinates = clientAddress;
         console.log('Bandwidth stored:', storedBandwidth);
         hideStatusMessage();
+        
+        // Provide immediate visual feedback and scroll to analysis section
+        confirmAddressButton.disabled = true;
+        confirmAddressButton.textContent = 'Procesando...';
+        
+        // Scroll to analysis section immediately when button is clicked
+        scrollToSection('analysis');
+        
         const requestData = { clientAddress: clientAddress };
         try {
             showLoadingBlock('analysis');
             showStatusMessage('Conectando con el servidor...', 'info', 'analysis');
             showStatusMessage('Enviando datos al servidor...', 'info', 'analysis');
+            
+            // Ensure we're still in the analysis section after loading starts
+            setTimeout(() => {
+                scrollToSection('analysis');
+            }, 100);
+            
             const response = await fetch(n8nWebhookUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1288,14 +1302,20 @@ if (confirmAddressButton) {
                             this.style.transform = 'translateY(-2px)';
                         };
                     }
-                    // Scroll to analysis/results section now
-                    scrollToSection('analysis');
+                    // Ensure we're still in the analysis section after results load
+                    setTimeout(() => {
+                        scrollToSection('analysis');
+                    }, 100);
                 }, 50);
                 showStatusMessage(`¡Análisis completado! (ID: ${currentAigentID || 'N/A'})`, 'success', 'analysis');
             }, 700);
         } catch (error) {
             hideLoadingBlock('analysis');
             showStatusMessage('Error: ' + (error.message || error), 'error', 'analysis');
+        } finally {
+            // Reset button state
+            confirmAddressButton.disabled = false;
+            confirmAddressButton.textContent = 'Confirmar';
         }
     });
 }
@@ -2077,18 +2097,85 @@ async function downloadPDF() {
 function scrollToSection(sectionId) {
     const section = document.getElementById(sectionId);
     if (section) {
-        section.scrollIntoView({ 
-            behavior: 'smooth',
-            block: 'start'
-        });
+        // Use both scrollIntoView and window.scrollTo for better compatibility
+        try {
+            section.scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'start'
+            });
+        } catch (error) {
+            // Fallback to window.scrollTo if scrollIntoView fails
+            const offsetTop = section.offsetTop - 80; // Account for fixed navbar
+            window.scrollTo({
+                top: offsetTop,
+                behavior: 'smooth'
+            });
+        }
+        
+        // Double-check scroll position after a short delay
+        setTimeout(() => {
+            const currentScrollTop = window.pageYOffset;
+            const sectionTop = section.offsetTop - 80;
+            const tolerance = 50; // Allow some tolerance
+            
+            if (Math.abs(currentScrollTop - sectionTop) > tolerance) {
+                window.scrollTo({
+                    top: sectionTop,
+                    behavior: 'smooth'
+                });
+            }
+        }, 300);
     }
+}
+
+// Initialize page state and ensure home section is visible
+function initializePageState() {
+    // Reset any URL hash to ensure clean state
+    if (window.location.hash && window.location.hash !== '#home') {
+        history.replaceState(null, null, window.location.pathname);
+    }
+    
+    // Ensure home section is visible and at the top
+    const homeSection = document.getElementById('home');
+    if (homeSection) {
+        homeSection.style.display = 'block';
+        homeSection.style.visibility = 'visible';
+        homeSection.style.opacity = '1';
+    }
+    
+    // Scroll to home section
+    scrollToSection('home');
 }
 
 // Auto-scroll to home section on page load
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize page state
+    initializePageState();
+});
+
+// Also handle page refresh and direct navigation
+window.addEventListener('load', function() {
+    // Double-check we're at home section after everything loads
     setTimeout(() => {
-        scrollToSection('home');
+        initializePageState();
+    }, 200);
+});
+
+// Handle browser back/forward buttons
+window.addEventListener('popstate', function() {
+    setTimeout(() => {
+        initializePageState();
     }, 100);
+});
+
+// Handle page visibility changes (when user returns to tab)
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+        // When page becomes visible again, ensure we're at home
+        setTimeout(() => {
+            initializePageState();
+        }, 100);
+    }
 });
 
 // Make test functions available globally
