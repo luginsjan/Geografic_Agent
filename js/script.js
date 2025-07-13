@@ -45,6 +45,102 @@ let confirmedKit = null;
 let workflowStartTime = null;
 let workflowEndTime = null;
 
+// Global function to create elevation charts (moved from populateResultsBlock)
+function createElevationChart(result, canvasId) {
+    console.log('createElevationChart called with:', { result, canvasId });
+    
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) {
+        console.error('Canvas element not found for ID:', canvasId);
+        return;
+    }
+    
+    if (!result.results || result.results.length === 0) {
+        console.warn('No results data available for chart:', result);
+        canvas.parentElement.innerHTML += '<p class="no-data" style="color:#666;text-align:center;">No elevation data available.</p>';
+        return;
+    }
+
+    console.log('Creating chart with data:', {
+        resultsLength: result.results.length,
+        lineOfSight: result.lineOfSight,
+        totalDistance: result.lineOfSight?.totalDistanceKm
+    });
+
+    const ctx = canvas.getContext('2d');
+    const hasObstructions = !result.lineOfSight?.hasLineOfSight;
+    const totalDistance = result.lineOfSight.totalDistanceKm;
+
+    // Use real elevation data from the webhook response
+    const labels = result.results.map((_, index) => {
+        const distancePoint = (totalDistance * index) / (result.results.length - 1);
+        return distancePoint.toFixed(2);
+    });
+    const elevationData = result.results.map(p => p.elevation);
+
+    // Generate the straight line of sight using adjusted start and end points
+    const startElevation = result.lineOfSight.firstPoint.adjustedElevation;
+    const endElevation = result.lineOfSight.lastPoint.adjustedElevation;
+    const sightLineData = result.results.map((_, index) => {
+         return startElevation - ((startElevation - endElevation) * index / (result.results.length - 1));
+    });
+
+    console.log('Chart data prepared:', {
+        labelsCount: labels.length,
+        elevationDataCount: elevationData.length,
+        sightLineDataCount: sightLineData.length,
+        startElevation,
+        endElevation,
+        hasObstructions
+    });
+
+    // Destroy existing chart to prevent rendering issues on updates
+    const existingChart = Chart.getChart(canvasId);
+    if (existingChart) {
+        console.log('Destroying existing chart for ID:', canvasId);
+        existingChart.destroy();
+    }
+
+    try {
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Terrain Elevation',
+                    data: elevationData,
+                    borderColor: hasObstructions ? '#f44336' : '#4CAF50',
+                    backgroundColor: hasObstructions ? 'rgba(244, 67, 54, 0.1)' : 'rgba(76, 175, 80, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 1
+                }, {
+                    label: 'Line of Sight',
+                    data: sightLineData,
+                    borderColor: '#2196F3',
+                    backgroundColor: 'transparent',
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: 'Distance (km)' } },
+                    y: { title: { display: true, text: 'Elevation (m)' } }
+                },
+                plugins: { legend: { position: 'top' } }
+            }
+        });
+        console.log('Chart created successfully for ID:', canvasId);
+    } catch (error) {
+        console.error('Error creating chart:', error);
+        canvas.parentElement.innerHTML += '<p class="no-data" style="color:#c00;text-align:center;">Error creating chart: ' + error.message + '</p>';
+    }
+}
+
 // Function to update AigentID display
 function updateAigentIDDisplay(aigentID) {
     if (aigentIdValue && aigentIdDisplay) {
@@ -886,6 +982,12 @@ function populateSOPDetails() {
         return;
     }
     const sopData = confirmedSOP.data;
+    
+    // Debug logging to help identify data issues
+    console.log('Populating SOP details with data:', sopData);
+    console.log('SOP data results array:', sopData.results);
+    console.log('SOP data lineOfSight:', sopData.lineOfSight);
+    
     // Defensive: fallback for status
     const isSuccess = sopData.status === 'Clear' || sopData.status === 'clear' || sopData.lineOfSight?.hasLineOfSight;
     const chartId = `report-chart-${sopData.SOP ? sopData.SOP.replace('-', '') : 'unknown'}`;
@@ -923,12 +1025,23 @@ function populateSOPDetails() {
         </div>
     `;
     setTimeout(() => {
+        console.log('Attempting to create elevation chart with ID:', chartId);
+        console.log('Chart data check - results array:', Array.isArray(sopData.results));
+        console.log('Chart data check - results length:', sopData.results?.length);
+        console.log('Chart data check - lineOfSight exists:', !!sopData.lineOfSight);
+        
         if (Array.isArray(sopData.results) && sopData.results.length > 0 && sopData.lineOfSight) {
+            console.log('Creating elevation chart with data:', sopData);
             createElevationChart(sopData, chartId);
         } else {
             const canvas = document.getElementById(chartId);
             if (canvas) canvas.parentElement.innerHTML += '<p class="no-data" style="color:#c00;text-align:center;">No elevation data available.</p>';
-            console.warn('No elevation data for SOP chart.', sopData);
+            console.warn('No elevation data for SOP chart. Data structure:', {
+                hasResults: Array.isArray(sopData.results),
+                resultsLength: sopData.results?.length,
+                hasLineOfSight: !!sopData.lineOfSight,
+                sopData: sopData
+            });
         }
     }, 100);
 }
@@ -1597,72 +1710,6 @@ function populateResultsBlock(responseData) {
         }, 100);
 
         return card;
-    }
-
-    // Helper to create the elevation chart (dummy data for now)
-    function createElevationChart(result, canvasId) {
-        const canvas = document.getElementById(canvasId);
-        if (!canvas || !result.results || result.results.length === 0) {
-            if (canvas) canvas.parentElement.innerHTML += '<p class="no-data" style="color:#666;text-align:center;">No elevation data available.</p>';
-            return;
-        }
-
-        const ctx = canvas.getContext('2d');
-        const hasObstructions = !result.lineOfSight?.hasLineOfSight;
-        const totalDistance = result.lineOfSight.totalDistanceKm;
-
-        // Use real elevation data from the webhook response
-        const labels = result.results.map((_, index) => {
-            const distancePoint = (totalDistance * index) / (result.results.length - 1);
-            return distancePoint.toFixed(2);
-        });
-        const elevationData = result.results.map(p => p.elevation);
-
-        // Generate the straight line of sight using adjusted start and end points
-        const startElevation = result.lineOfSight.firstPoint.adjustedElevation;
-        const endElevation = result.lineOfSight.lastPoint.adjustedElevation;
-        const sightLineData = result.results.map((_, index) => {
-             return startElevation - ((startElevation - endElevation) * index / (result.results.length - 1));
-        });
-
-        // Destroy existing chart to prevent rendering issues on updates
-        const existingChart = Chart.getChart(canvasId);
-        if (existingChart) {
-            existingChart.destroy();
-        }
-
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Terrain Elevation',
-                    data: elevationData,
-                    borderColor: hasObstructions ? '#f44336' : '#4CAF50',
-                    backgroundColor: hasObstructions ? 'rgba(244, 67, 54, 0.1)' : 'rgba(76, 175, 80, 0.1)',
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 1
-                }, {
-                    label: 'Line of Sight',
-                    data: sightLineData,
-                    borderColor: '#2196F3',
-                    backgroundColor: 'transparent',
-                    borderDash: [5, 5],
-                    fill: false,
-                    pointRadius: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: { title: { display: true, text: 'Distance (km)' } },
-                    y: { title: { display: true, text: 'Elevation (m)' } }
-                },
-                plugins: { legend: { position: 'top' } }
-            }
-        });
     }
 
     // Function to handle card selection
