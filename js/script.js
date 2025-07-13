@@ -45,6 +45,44 @@ let confirmedKit = null;
 let workflowStartTime = null;
 let workflowEndTime = null;
 
+// Helper function to make fetch requests with timeout
+async function fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    
+    // Start progress indicator for long requests
+    let progressInterval;
+    if (timeoutMs > 10000) { // Only show progress for requests longer than 10 seconds
+        let elapsed = 0;
+        progressInterval = setInterval(() => {
+            elapsed += 2;
+            const progress = Math.min((elapsed / (timeoutMs / 1000)) * 100, 95); // Cap at 95% to show it's still working
+            showStatusMessage(`Procesando... (${Math.round(progress)}%)`, 'info', 'recommendations');
+        }, 2000); // Update every 2 seconds
+    }
+    
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (progressInterval) {
+            clearInterval(progressInterval);
+        }
+        return response;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (progressInterval) {
+            clearInterval(progressInterval);
+        }
+        if (error.name === 'AbortError') {
+            throw new Error(`Request timed out after ${timeoutMs / 1000} seconds`);
+        }
+        throw error;
+    }
+}
+
 // Global function to create elevation charts (moved from populateResultsBlock)
 function createElevationChart(result, canvasId) {
     console.log('createElevationChart called with:', { result, canvasId });
@@ -276,8 +314,16 @@ function extractKitRecommendationData(responseData) {
 function handleKitRecommendationError(errorMessage, section = 'recommendations', requestData = null) {
     console.error('Kit recommendation error:', errorMessage);
     
+    // Check if this is a timeout error and provide more helpful message
+    let displayMessage = errorMessage;
+    if (errorMessage.includes('timed out') || errorMessage.includes('timeout') || errorMessage.includes('504')) {
+        displayMessage = 'La solicitud tardó demasiado tiempo en completarse. El servidor puede estar ocupado. Por favor, inténtelo de nuevo.';
+    } else if (errorMessage.includes('500')) {
+        displayMessage = 'Error interno del servidor. El sistema puede estar experimentando problemas temporales. Por favor, inténtelo de nuevo.';
+    }
+    
     // Show error message to user
-    showStatusMessage(errorMessage, 'error', section);
+    showStatusMessage(displayMessage, 'error', section);
     
     // Hide loading states
     hideLoadingBlock(section);
@@ -301,11 +347,11 @@ function handleKitRecommendationError(errorMessage, section = 'recommendations',
         recommendationContent.style.display = 'block';
         
         // Enhanced error display with better formatting
-        let errorDisplay = errorMessage;
+        let errorDisplay = displayMessage;
         
         // Check if error message contains error code format (Error XXX: description)
-        if (errorMessage.includes('Error ') && errorMessage.includes(':')) {
-            const parts = errorMessage.split(':');
+        if (displayMessage.includes('Error ') && displayMessage.includes(':')) {
+            const parts = displayMessage.split(':');
             const errorCode = parts[0].trim();
             const errorDescription = parts.slice(1).join(':').trim();
             
@@ -318,7 +364,7 @@ function handleKitRecommendationError(errorMessage, section = 'recommendations',
                 </div>
             `;
         } else {
-            errorDisplay = `<p style="margin-bottom: 1.5rem;">${errorMessage}</p>`;
+            errorDisplay = `<p style="margin-bottom: 1.5rem;">${displayMessage}</p>`;
         }
         
         recommendationContent.innerHTML = `
@@ -412,14 +458,14 @@ async function retryKitRecommendations() {
     }
     
     try {
-        // Send POST request to n8n selection webhook
-        const response = await fetch(n8nSelectionWebhookUrl, {
+        // Send POST request to n8n selection webhook with timeout
+        const response = await fetchWithTimeout(n8nSelectionWebhookUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(requestData)
-        });
+        }, 30000); // 30 second timeout
 
         if (!response.ok) {
             throw new Error(`Server responded with error: ${response.status} ${response.statusText}`);
@@ -528,14 +574,14 @@ async function handleConfirmSelection() {
             showStatusMessage('Sending selection to server...', 'info', 'recommendations');
         }, 500);
         
-        // Send POST request to n8n selection webhook
-        const response = await fetch(n8nSelectionWebhookUrl, {
+        // Send POST request to n8n selection webhook with timeout
+        const response = await fetchWithTimeout(n8nSelectionWebhookUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(requestData)
-        });
+        }, 30000); // 30 second timeout
 
         if (!response.ok) {
             throw new Error(`Server responded with error: ${response.status} ${response.statusText}`);
@@ -572,13 +618,13 @@ async function handleConfirmSelection() {
                 setTimeout(async () => {
                     try {
                         showStatusMessage('Reintentando obtener recomendaciones...', 'info');
-                        const retryResponse = await fetch(n8nSelectionWebhookUrl, {
+                        const retryResponse = await fetchWithTimeout(n8nSelectionWebhookUrl, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
                             },
                             body: JSON.stringify(requestData)
-                        });
+                        }, 30000); // 30 second timeout
                         
                         if (retryResponse.ok) {
                             const retryData = await retryResponse.json();
@@ -1116,14 +1162,14 @@ async function handleKitConfirmation() {
             AigentID: currentAigentID
         };
         
-        // Send POST request to kit selection webhook
-        const response = await fetch(n8nKitSelectionWebhookUrl, {
+        // Send POST request to kit selection webhook with timeout
+        const response = await fetchWithTimeout(n8nKitSelectionWebhookUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(requestData)
-        });
+        }, 30000); // 30 second timeout
         
         if (!response.ok) {
             throw new Error(`Server responded with error: ${response.status} ${response.statusText}`);
@@ -1520,11 +1566,11 @@ if (confirmAddressButton) {
                 scrollToSection('analysis');
             }, 100);
             
-            const response = await fetch(n8nWebhookUrl, {
+            const response = await fetchWithTimeout(n8nWebhookUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestData)
-            });
+            }, 30000); // 30 second timeout
             if (!response.ok) {
                 throw new Error('El servidor respondió con un error (' + response.status + ')');
             }

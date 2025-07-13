@@ -57,7 +57,7 @@ export default async function handler(req, res) {
     
     // Add timeout to prevent hanging
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 28000); // 28 second timeout
     
     // Forward the request to n8n
     const n8nResponse = await fetch(N8N_WEBHOOK_URL, {
