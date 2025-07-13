@@ -322,44 +322,7 @@ section {
 }
 
 .card-select-button {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    background: rgba(76, 175, 80, 0.1);
-    color: #4CAF50;
-    border: 1px solid #4CAF50;
-    border-radius: 20px;
-    padding: 6px 12px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    z-index: 10;
-    opacity: 0;
-    transform: scale(0.8);
-}
-
-.card:hover .card-select-button {
-    opacity: 1;
-    transform: scale(1);
-}
-
-.card-select-button:hover {
-    background: #4CAF50;
-    color: white;
-    transform: scale(1.1);
-}
-
-.card.is-selected .card-select-button {
-    background: #4CAF50;
-    color: white;
-    opacity: 1;
-    transform: scale(1);
-}
-
-.card.is-selected .card-select-button:hover {
-    background: #45a049;
-    transform: scale(1.1);
+    display: none !important;
 }
 
 #confirm-selection-button {
@@ -1043,13 +1006,6 @@ section {
     .chart-container {
         padding: 5px;
         height: 180px;
-    }
-    
-    .card-select-button {
-        top: 10px;
-        right: 10px;
-        padding: 4px 8px;
-        font-size: 0.7rem;
     }
     
     #confirm-selection-button {
@@ -1763,7 +1719,7 @@ section {
     }
 }
 
-.container, .about-content, .final-report-container, .contact-content {
+#first-results-block, .about-content, .final-report-container, .contact-content {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1786,10 +1742,10 @@ section {
 
 .results-container {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
     gap: 2rem;
     width: 100%;
-    max-width: 900px;
+    max-width: 600px;
     margin: 0 auto 2rem auto;
     justify-items: center;
 }
@@ -1799,6 +1755,10 @@ section {
     max-width: 420px;
     width: 100%;
     box-sizing: border-box;
+}
+
+.card-select-button {
+    display: none !important;
 }
 
 @media (max-width: 900px) {
@@ -1816,7 +1776,7 @@ section {
         grid-template-columns: 1fr;
         max-width: 98vw;
     }
-    #first-results-block, .container, .about-content, .final-report-container, .contact-content {
+    #first-results-block, .container, .about-content {
         max-width: 98vw;
     }
     .card {
