@@ -539,14 +539,6 @@ function hideKitConfirmationLoading() {
 function showFinalReport() {
     console.log('Showing final report...');
     
-    // Hide recommendation block
-    if (recommendationBlock) {
-        recommendationBlock.classList.remove('visible');
-        setTimeout(() => {
-            recommendationBlock.style.display = 'none';
-        }, 500);
-    }
-    
     // Show final report block
     if (finalReportBlock) {
         finalReportBlock.style.display = 'block';

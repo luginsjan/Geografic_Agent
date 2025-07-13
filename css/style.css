@@ -1786,12 +1786,29 @@ section {
 
 .results-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 2rem;
     width: 100%;
     max-width: 900px;
     margin: 0 auto 2rem auto;
     justify-items: center;
+}
+
+.card {
+    min-width: 320px;
+    max-width: 420px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media (max-width: 900px) {
+    .results-container {
+        max-width: 98vw;
+    }
+    .card {
+        min-width: 260px;
+        max-width: 98vw;
+    }
 }
 
 @media (max-width: 800px) {
@@ -1800,6 +1817,10 @@ section {
         max-width: 98vw;
     }
     #first-results-block, .container, .about-content, .final-report-container, .contact-content {
+        max-width: 98vw;
+    }
+    .card {
+        min-width: 220px;
         max-width: 98vw;
     }
 }
