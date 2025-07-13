@@ -2427,3 +2427,29 @@ window.testKitRecommendations = testKitRecommendations;
 window.testFinalReport = testFinalReport;
 window.scrollToSection = scrollToSection;
 window.retryKitRecommendations = retryKitRecommendations; 
+
+function exportReportToPDF() {
+    // 1. Clone the report node
+    const report = document.querySelector('.container'); // or your report's main selector
+    const clone = report.cloneNode(true);
+
+    // 2. Add the pdf-export class
+    clone.classList.add('pdf-export');
+
+    // 3. Append clone to body (off-screen)
+    clone.style.position = 'absolute';
+    clone.style.left = '-9999px';
+    document.body.appendChild(clone);
+
+    // 4. Generate PDF from the clone
+    html2pdf(clone, {
+        margin: 10,
+        filename: 'reporte-final.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }).then(() => {
+        // 5. Remove the clone after export
+        document.body.removeChild(clone);
+    });
+}
