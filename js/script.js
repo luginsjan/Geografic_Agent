@@ -1,3 +1,11 @@
+// Disable browser scroll restoration immediately
+if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+}
+
+// Force scroll to top on page load
+window.scrollTo(0, 0);
+
 // DOM Elements
 const hamburger = document.querySelector('.hamburger');
 const navMenu = document.querySelector('.nav-menu');
@@ -2130,10 +2138,18 @@ function scrollToSection(sectionId) {
 
 // Initialize page state and ensure home section is visible
 function initializePageState() {
+    // Disable browser scroll restoration to prevent remembering previous position
+    if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+    }
+    
     // Reset any URL hash to ensure clean state
     if (window.location.hash && window.location.hash !== '#home') {
         history.replaceState(null, null, window.location.pathname);
     }
+    
+    // Force scroll to top immediately
+    window.scrollTo(0, 0);
     
     // Ensure home section is visible and at the top
     const homeSection = document.getElementById('home');
@@ -2143,18 +2159,26 @@ function initializePageState() {
         homeSection.style.opacity = '1';
     }
     
-    // Scroll to home section
-    scrollToSection('home');
+    // Scroll to home section with a slight delay to ensure DOM is ready
+    setTimeout(() => {
+        scrollToSection('home');
+    }, 50);
 }
 
 // Auto-scroll to home section on page load
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOMContentLoaded - Initializing page state');
+    // Force scroll to top immediately
+    window.scrollTo(0, 0);
     // Initialize page state
     initializePageState();
 });
 
 // Also handle page refresh and direct navigation
 window.addEventListener('load', function() {
+    console.log('Window load - Double-checking page state');
+    // Force scroll to top immediately
+    window.scrollTo(0, 0);
     // Double-check we're at home section after everything loads
     setTimeout(() => {
         initializePageState();
@@ -2163,6 +2187,9 @@ window.addEventListener('load', function() {
 
 // Handle browser back/forward buttons
 window.addEventListener('popstate', function() {
+    console.log('Popstate - Resetting to home');
+    // Force scroll to top immediately
+    window.scrollTo(0, 0);
     setTimeout(() => {
         initializePageState();
     }, 100);
@@ -2171,11 +2198,19 @@ window.addEventListener('popstate', function() {
 // Handle page visibility changes (when user returns to tab)
 document.addEventListener('visibilitychange', function() {
     if (!document.hidden) {
-        // When page becomes visible again, ensure we're at home
+        console.log('Page visible - Ensuring home section');
+        // Force scroll to top immediately
+        window.scrollTo(0, 0);
         setTimeout(() => {
             initializePageState();
         }, 100);
     }
+});
+
+// Additional event listener for beforeunload to ensure clean state
+window.addEventListener('beforeunload', function() {
+    // Force scroll to top before page unloads
+    window.scrollTo(0, 0);
 });
 
 // Make test functions available globally

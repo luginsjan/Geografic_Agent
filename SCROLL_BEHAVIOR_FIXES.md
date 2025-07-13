@@ -19,7 +19,10 @@ This document describes the fixes implemented to resolve two critical scroll beh
 
 **Problem**: The page didn't consistently show the home section when users reloaded the page or visited it for the first time.
 
-**Root Cause**: Insufficient event handling for different page load scenarios and browser navigation events.
+**Root Cause**: 
+1. Browser's default scroll restoration behavior was remembering the previous scroll position
+2. The `scroll-behavior: smooth;` CSS property was interfering with immediate scroll positioning
+3. Insufficient event handling for different page load scenarios and browser navigation events
 
 ## Solutions Implemented
 
@@ -52,18 +55,25 @@ This document describes the fixes implemented to resolve two critical scroll beh
 
 **Changes Made**:
 
-1. **New `initializePageState()` Function**: Created a comprehensive function that:
+1. **Browser Scroll Restoration Disabled**: Added `history.scrollRestoration = 'manual'` to prevent the browser from remembering scroll position.
+
+2. **Immediate Scroll to Top**: Added `window.scrollTo(0, 0)` at multiple points to force the page to start at the top.
+
+3. **New `initializePageState()` Function**: Created a comprehensive function that:
+   - Disables browser scroll restoration
    - Resets URL hash to ensure clean state
+   - Forces scroll to top immediately
    - Ensures home section is visible and properly styled
    - Scrolls to home section reliably
 
-2. **Multiple Event Listeners**: Added event listeners for all relevant page load scenarios:
+4. **Multiple Event Listeners**: Added event listeners for all relevant page load scenarios:
    - `DOMContentLoaded`: Initial page load
    - `window.load`: After all resources load
    - `popstate`: Browser back/forward navigation
    - `visibilitychange`: When user returns to the tab
+   - `beforeunload`: Before page unloads
 
-3. **Enhanced `scrollToSection()` Function**: Improved the scroll function with:
+5. **Enhanced `scrollToSection()` Function**: Improved the scroll function with:
    - Fallback mechanisms for browser compatibility
    - Double-check scroll position after delay
    - Tolerance for scroll position accuracy
@@ -73,25 +83,40 @@ This document describes the fixes implemented to resolve two critical scroll beh
 ### Modified Files
 
 1. **`js/script.js`**:
+   - Added browser scroll restoration disable at script start
    - Enhanced confirm address button click handler
-   - Added `initializePageState()` function
+   - Added `initializePageState()` function with scroll restoration handling
    - Improved `scrollToSection()` function
    - Added multiple event listeners for page state management
+   - Added `beforeunload` event listener
 
 2. **`test-scroll-behavior.html`** (New):
    - Test file to verify scroll behavior fixes
    - Includes all the same event handlers and functions
    - Can be used for testing and validation
 
+3. **`test-scroll-restoration-fix.html`** (New):
+   - Specific test file to verify scroll restoration fix
+   - Shows scroll position and restoration settings
+   - Provides step-by-step testing instructions
+
 ### Key Functions Added/Modified
 
 #### `initializePageState()`
 ```javascript
 function initializePageState() {
+    // Disable browser scroll restoration to prevent remembering previous position
+    if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+    }
+    
     // Reset any URL hash to ensure clean state
     if (window.location.hash && window.location.hash !== '#home') {
         history.replaceState(null, null, window.location.pathname);
     }
+    
+    // Force scroll to top immediately
+    window.scrollTo(0, 0);
     
     // Ensure home section is visible and at the top
     const homeSection = document.getElementById('home');
@@ -101,8 +126,10 @@ function initializePageState() {
         homeSection.style.opacity = '1';
     }
     
-    // Scroll to home section
-    scrollToSection('home');
+    // Scroll to home section with a slight delay to ensure DOM is ready
+    setTimeout(() => {
+        scrollToSection('home');
+    }, 50);
 }
 ```
 
@@ -196,6 +223,10 @@ The test file includes:
 3. **Button Click**: Click the test button and verify immediate scroll to analysis
 4. **Browser Navigation**: Use back/forward buttons and verify home section
 5. **Tab Switching**: Switch tabs and return, verify home section
+6. **Scroll Restoration Test**: 
+   - Scroll to any section
+   - Reload the page
+   - Verify you return to home section (not the previous section)
 
 ## Benefits
 
@@ -204,6 +235,8 @@ The test file includes:
 3. **Better UX**: Smooth, predictable scroll behavior
 4. **Robust Error Handling**: Fallback mechanisms for browser compatibility
 5. **Comprehensive Coverage**: Handles all page load and navigation scenarios
+6. **No Scroll Memory**: Browser doesn't remember previous scroll position on reload
+7. **Always Starts at Home**: Page consistently starts at the home section regardless of previous state
 
 ## Browser Compatibility
 

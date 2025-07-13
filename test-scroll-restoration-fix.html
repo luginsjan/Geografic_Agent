@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Scroll Behavior - Agente Geográfico</title>
+    <title>Test Scroll Restoration Fix - Agente Geográfico</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,17 +35,25 @@
     <main>
         <section id="home" class="hero">
             <div class="container">
-                <h2 class="section-title">Test Scroll Behavior</h2>
+                <h2 class="section-title">Home Section</h2>
                 <div class="about-content">
                     <div class="about-text">
-                        <p>This is the home section. The page should automatically scroll here on load.</p>
+                        <p>This is the HOME section. The page should ALWAYS start here on reload.</p>
+                        <p>Current scroll position: <span id="scroll-position">0</span></p>
+                        <p>Scroll restoration setting: <span id="scroll-restoration">auto</span></p>
                     </div>
                     
                     <div class="form-box">
-                        <label for="test-input">Test Input</label>
-                        <input type="text" id="test-input" placeholder="Enter some text...">
+                        <h3>Test Instructions:</h3>
+                        <ol>
+                            <li>Scroll down to any other section</li>
+                            <li>Reload the page (Ctrl+R or Cmd+R)</li>
+                            <li>Verify you're back at the HOME section</li>
+                        </ol>
                         
-                        <button id="test-button">Test Scroll to Analysis</button>
+                        <button onclick="scrollToSection('analysis')">Go to Analysis</button>
+                        <button onclick="scrollToSection('recommendations')">Go to Recommendations</button>
+                        <button onclick="scrollToSection('report')">Go to Report</button>
                     </div>
                 </div>
             </div>
@@ -56,11 +64,13 @@
                 <h2 class="section-title">Analysis Section</h2>
                 <div class="about-content">
                     <div class="about-text">
-                        <p>This is the analysis section. You should be scrolled here when clicking the test button.</p>
+                        <p>This is the ANALYSIS section.</p>
+                        <p>Current scroll position: <span id="scroll-position-analysis">0</span></p>
                     </div>
                     
                     <div class="form-box">
-                        <p>✅ If you can see this, the scroll to analysis is working!</p>
+                        <p>✅ If you can see this, you've scrolled to the analysis section.</p>
+                        <p>Now reload the page and verify you return to HOME.</p>
                         <button onclick="scrollToSection('home')">Go Back to Home</button>
                     </div>
                 </div>
@@ -72,7 +82,14 @@
                 <h2 class="section-title">Recommendations Section</h2>
                 <div class="about-content">
                     <div class="about-text">
-                        <p>This is the recommendations section.</p>
+                        <p>This is the RECOMMENDATIONS section.</p>
+                        <p>Current scroll position: <span id="scroll-position-recommendations">0</span></p>
+                    </div>
+                    
+                    <div class="form-box">
+                        <p>✅ If you can see this, you've scrolled to the recommendations section.</p>
+                        <p>Now reload the page and verify you return to HOME.</p>
+                        <button onclick="scrollToSection('home')">Go Back to Home</button>
                     </div>
                 </div>
             </div>
@@ -83,7 +100,14 @@
                 <h2 class="section-title">Report Section</h2>
                 <div class="about-content">
                     <div class="about-text">
-                        <p>This is the report section.</p>
+                        <p>This is the REPORT section.</p>
+                        <p>Current scroll position: <span id="scroll-position-report">0</span></p>
+                    </div>
+                    
+                    <div class="form-box">
+                        <p>✅ If you can see this, you've scrolled to the report section.</p>
+                        <p>Now reload the page and verify you return to HOME.</p>
+                        <button onclick="scrollToSection('home')">Go Back to Home</button>
                     </div>
                 </div>
             </div>
@@ -163,28 +187,33 @@
             }, 50);
         }
 
-        // Test button click handler
-        document.getElementById('test-button').addEventListener('click', function() {
-            // Provide immediate visual feedback
-            this.disabled = true;
-            this.textContent = 'Procesando...';
+        // Update scroll position displays
+        function updateScrollDisplays() {
+            const scrollPosition = window.pageYOffset;
+            const scrollRestoration = history.scrollRestoration || 'auto';
             
-            // Scroll to analysis section immediately
-            scrollToSection('analysis');
+            document.getElementById('scroll-position').textContent = scrollPosition;
+            document.getElementById('scroll-restoration').textContent = scrollRestoration;
             
-            // Simulate processing
-            setTimeout(() => {
-                this.disabled = false;
-                this.textContent = 'Test Scroll to Analysis';
-            }, 2000);
-        });
+            // Update section-specific displays
+            const sections = ['analysis', 'recommendations', 'report'];
+            sections.forEach(sectionId => {
+                const element = document.getElementById(`scroll-position-${sectionId}`);
+                if (element) {
+                    element.textContent = scrollPosition;
+                }
+            });
+        }
 
         // Auto-scroll to home section on page load
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOMContentLoaded - Initializing page state');
             // Force scroll to top immediately
             window.scrollTo(0, 0);
+            // Initialize page state
             initializePageState();
+            // Update displays
+            updateScrollDisplays();
         });
 
         // Also handle page refresh and direct navigation
@@ -192,8 +221,10 @@
             console.log('Window load - Double-checking page state');
             // Force scroll to top immediately
             window.scrollTo(0, 0);
+            // Double-check we're at home section after everything loads
             setTimeout(() => {
                 initializePageState();
+                updateScrollDisplays();
             }, 200);
         });
 
@@ -204,6 +235,7 @@
             window.scrollTo(0, 0);
             setTimeout(() => {
                 initializePageState();
+                updateScrollDisplays();
             }, 100);
         });
 
@@ -215,6 +247,7 @@
                 window.scrollTo(0, 0);
                 setTimeout(() => {
                     initializePageState();
+                    updateScrollDisplays();
                 }, 100);
             }
         });
@@ -225,10 +258,21 @@
             window.scrollTo(0, 0);
         });
 
-        // Log current scroll position for debugging
+        // Update scroll displays on scroll
         window.addEventListener('scroll', function() {
-            console.log('Scroll position:', window.pageYOffset);
+            updateScrollDisplays();
         });
+
+        // Test function to simulate the issue
+        function testScrollRestoration() {
+            console.log('Testing scroll restoration...');
+            console.log('Current scroll position:', window.pageYOffset);
+            console.log('Scroll restoration setting:', history.scrollRestoration);
+            console.log('URL hash:', window.location.hash);
+        }
+
+        // Make test function available globally
+        window.testScrollRestoration = testScrollRestoration;
     </script>
 
     <style>
@@ -242,46 +286,39 @@
             margin: 2rem 0;
         }
         
-        .form-box label {
-            display: block;
-            font-size: 1.1rem;
-            font-weight: 500;
-            color: #ffffff;
+        .form-box h3 {
+            color: #4CAF50;
             margin-bottom: 1rem;
         }
         
-        .form-box input {
-            width: 100%;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            padding: 1rem;
-            font-size: 1rem;
+        .form-box ol {
             color: #ffffff;
             margin-bottom: 1.5rem;
+            padding-left: 1.5rem;
+        }
+        
+        .form-box li {
+            margin-bottom: 0.5rem;
         }
         
         .form-box button {
-            background: #ffffff;
-            color: #000000;
+            background: #4CAF50;
+            color: white;
             border: none;
-            padding: 1rem 2rem;
-            font-size: 1rem;
-            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+            margin: 0.5rem;
+            border-radius: 8px;
             cursor: pointer;
-            border-radius: 4px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            font-size: 1rem;
         }
         
         .form-box button:hover {
-            background: #f0f0f0;
-            transform: translateY(-2px);
+            background: #45a049;
         }
         
-        .form-box button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
+        #scroll-position, #scroll-restoration {
+            font-weight: bold;
+            color: #4CAF50;
         }
     </style>
 </body>
