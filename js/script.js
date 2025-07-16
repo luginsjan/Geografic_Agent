@@ -942,7 +942,6 @@ function hideKitConfirmationLoading() {
 // Function to show final report
 function showFinalReport() {
     console.log('Showing final report...');
-    
     // Show final report block
     if (finalReportBlock) {
         finalReportBlock.style.display = 'block';
@@ -950,10 +949,11 @@ function showFinalReport() {
             finalReportBlock.classList.add('visible');
         }, 100);
     }
-    
     // Populate report data
     populateFinalReport();
-    
+    // Enable the export button after report is populated
+    const exportBtn = document.getElementById('download-pdf-button');
+    if (exportBtn) exportBtn.disabled = false;
     // Scroll to final report
     setTimeout(() => {
         if (finalReportBlock) {
@@ -963,6 +963,16 @@ function showFinalReport() {
             });
         }
     }, 800);
+}
+
+// Helper to check if report is populated
+function isReportPopulated() {
+    return (
+        document.getElementById('report-date')?.textContent.trim() &&
+        document.getElementById('report-aigent-id')?.textContent.trim() &&
+        document.getElementById('report-coordinates')?.textContent.trim() &&
+        document.getElementById('report-bandwidth')?.textContent.trim()
+    );
 }
 
 // Function to populate final report
@@ -2745,11 +2755,15 @@ window.exportReportToPDF = exportReportToPDF;
 
 // --- Robust PDF Export for Testing ---
 async function downloadPDFRobust() {
+    if (!isReportPopulated()) {
+        alert('El reporte no está listo. Por favor, complete el flujo antes de exportar.');
+        return;
+    }
     console.log('[PDF Robust] Starting export...');
-    const testButton = document.getElementById('download-pdf-test-button');
-    if (testButton) {
-        testButton.disabled = true;
-        testButton.innerHTML = '<span class="download-icon">⏳</span> Generando PDF...';
+    const downloadButton = document.getElementById('download-pdf-button');
+    if (downloadButton) {
+        downloadButton.disabled = true;
+        downloadButton.innerHTML = '<span class="download-icon">⏳</span> Generando PDF...';
     }
     let wrapper = null;
     try {
@@ -2832,9 +2846,9 @@ async function downloadPDFRobust() {
         if (wrapper && wrapper.parentNode) {
             wrapper.parentNode.removeChild(wrapper);
         }
-        if (testButton) {
-            testButton.disabled = false;
-            testButton.innerHTML = '<span class="download-icon">📄</span> Descargar Reporte PDF (Test)';
+        if (downloadButton) {
+            downloadButton.disabled = false;
+            downloadButton.innerHTML = '<span class="download-icon">📄</span> Descargar Reporte PDF (Test)';
         }
     }
 }
