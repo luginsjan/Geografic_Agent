@@ -2742,3 +2742,99 @@ function exportReportToPDF() {
     });
 }
 window.exportReportToPDF = exportReportToPDF;
+
+// --- Robust PDF Export for Testing ---
+async function downloadPDFRobust() {
+    console.log('[PDF Robust] Starting export...');
+    const testButton = document.getElementById('download-pdf-test-button');
+    if (testButton) {
+        testButton.disabled = true;
+        testButton.innerHTML = '<span class="download-icon">⏳</span> Generando PDF...';
+    }
+    let wrapper = null;
+    try {
+        // Defensive: check for required elements
+        const header = document.querySelector('.report-header');
+        const sections = Array.from(document.querySelectorAll('.report-section'));
+        if (!header || sections.length === 0) {
+            alert('No report header or sections found.');
+            return;
+        }
+        // Create wrapper for A4 sizing and margin
+        wrapper = document.createElement('div');
+        wrapper.style.width = '210mm';
+        wrapper.style.background = '#fff';
+        wrapper.style.margin = '0 auto';
+        wrapper.style.padding = '20mm';
+        wrapper.style.boxSizing = 'border-box';
+        wrapper.style.display = 'block';
+        wrapper.style.fontFamily = 'Arial, sans-serif';
+        // Clone header and sections
+        const headerClone = header.cloneNode(true);
+        const sectionClones = sections.map(section => section.cloneNode(true));
+        // Style header clone as card
+        headerClone.style.background = '#f8f9fa';
+        headerClone.style.border = '1px solid #dee2e6';
+        headerClone.style.padding = '8px 16px';
+        headerClone.style.borderRadius = '8px';
+        // Append clones to wrapper
+        wrapper.appendChild(headerClone);
+        sectionClones.forEach(clone => wrapper.appendChild(clone));
+        // Replace canvas with image in wrapper
+        const origCanvases = document.querySelectorAll('canvas');
+        const cloneCanvases = wrapper.querySelectorAll('canvas');
+        for (let i = 0; i < cloneCanvases.length; i++) {
+            const cloneCanvas = cloneCanvases[i];
+            let origCanvas = null;
+            if (cloneCanvas.id) {
+                origCanvas = document.getElementById(cloneCanvas.id);
+            } else {
+                origCanvas = origCanvases[i];
+            }
+            if (origCanvas) {
+                const img = document.createElement('img');
+                img.src = origCanvas.toDataURL('image/png');
+                img.style.display = 'block';
+                img.style.maxWidth = '100%';
+                img.style.height = cloneCanvas.style.height || '160px';
+                cloneCanvas.replaceWith(img);
+            }
+        }
+        // Add print-specific styles to the wrapper
+        wrapper.classList.add('pdf-export');
+        // Append wrapper to body (off-screen)
+        wrapper.style.position = 'absolute';
+        wrapper.style.left = '-9999px';
+        document.body.appendChild(wrapper);
+        // PDF options
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        const pageWidth = 210, pageHeight = 297, margin = 10;
+        const usableHeight = pageHeight - 2 * margin;
+        // Render the wrapper to a canvas
+        await new Promise(r => setTimeout(r, 100));
+        const canvas = await html2canvas(wrapper, { scale: 2, useCORS: true, backgroundColor: '#fff' });
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        const imgProps = pdf.getImageProperties(imgData);
+        let pdfWidth = pageWidth - 2 * margin;
+        let pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        if (pdfHeight > usableHeight) {
+            pdfHeight = usableHeight;
+            pdfWidth = (imgProps.width * pdfHeight) / imgProps.height;
+        }
+        pdf.addImage(imgData, 'JPEG', margin, margin, pdfWidth, pdfHeight);
+        pdf.save(`Agente_Geografico_Report_${window.currentAigentID || 'N/A'}_${new Date().toISOString().split('T')[0]}.pdf`);
+        console.log('[PDF Robust] PDF generated successfully');
+    } catch (error) {
+        console.error('[PDF Robust] Error generating PDF:', error);
+        alert('Error al generar el PDF: ' + error.message);
+    } finally {
+        if (wrapper && wrapper.parentNode) {
+            wrapper.parentNode.removeChild(wrapper);
+        }
+        if (testButton) {
+            testButton.disabled = false;
+            testButton.innerHTML = '<span class="download-icon">📄</span> Descargar Reporte PDF (Test)';
+        }
+    }
+}
