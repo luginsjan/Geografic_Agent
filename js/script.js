@@ -2222,19 +2222,39 @@ function testFinalReport() {
 async function downloadPDF() {
     console.log('Generating PDF report...');
     const downloadButton = document.getElementById('download-pdf-button');
-    
     // Update button state
     if (downloadButton) {
         downloadButton.disabled = true;
         downloadButton.innerHTML = '<span class="download-icon">⏳</span> Generando PDF...';
     }
-
     try {
         const reportContainer = document.querySelector('.final-report-container');
         if (!reportContainer) {
             throw new Error('Report container not found');
         }
-
+        // Ensure all required fields are populated
+        const requiredFields = [
+            'report-date',
+            'report-aigent-id',
+            'report-timestamp',
+            'report-coordinates',
+            'report-bandwidth'
+        ];
+        let missingFields = [];
+        for (const id of requiredFields) {
+            const el = reportContainer.querySelector(`#${id}`);
+            if (!el || !el.textContent.trim()) {
+                missingFields.push(id);
+            }
+        }
+        if (missingFields.length > 0) {
+            alert('Algunos campos requeridos no están poblados en el reporte: ' + missingFields.join(', '));
+            if (downloadButton) {
+                downloadButton.disabled = false;
+                downloadButton.innerHTML = '<span class="download-icon">📄</span> Descargar Reporte PDF';
+            }
+            return;
+        }
         // Create a dedicated PDF container
         const pdfWrapper = document.createElement('div');
         pdfWrapper.style.cssText = `
@@ -2249,30 +2269,27 @@ async function downloadPDF() {
             color: #333;
             padding: 40px;
             box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         `;
-
-        // Clone the report container with deep cloning
+        // Clone the report container with deep cloning (ensure it's the visible, populated one)
         const pdfContainer = reportContainer.cloneNode(true);
-        
         // Remove the download button from PDF
         const pdfDownloadButton = pdfContainer.querySelector('.download-pdf-button');
         if (pdfDownloadButton) {
             pdfDownloadButton.parentNode.removeChild(pdfDownloadButton);
         }
-
         // Apply comprehensive PDF styles
         applyPDFStyles(pdfContainer);
-        
         // Handle charts and canvas elements
         await handleChartsForPDF(reportContainer, pdfContainer);
-        
         // Add the container to wrapper and DOM
         pdfWrapper.appendChild(pdfContainer);
         document.body.appendChild(pdfWrapper);
-
         // Wait for any dynamic content to load
         await new Promise(resolve => setTimeout(resolve, 500));
-
         // Configure PDF options with optimized settings
         const opt = {
             margin: [20, 20, 20, 20],
@@ -2308,28 +2325,23 @@ async function downloadPDF() {
                 after: '.page-break-after'
             }
         };
-
         // Generate PDF
         await html2pdf().set(opt).from(pdfWrapper).save();
-        
         console.log('PDF generated successfully');
         showStatusMessage('PDF generado y descargado exitosamente', 'success');
-
     } catch (error) {
         console.error('Error generating PDF:', error);
         showStatusMessage('Error al generar el PDF: ' + error.message, 'error');
-    } finally {
-        // Clean up
-        const pdfWrapper = document.querySelector('div[style*="position: fixed"][style*="top: -10000px"]');
-        if (pdfWrapper) {
-            document.body.removeChild(pdfWrapper);
-        }
-        
-        // Reset button
-        if (downloadButton) {
-            downloadButton.disabled = false;
-            downloadButton.innerHTML = '<span class="download-icon">📄</span> Descargar Reporte PDF';
-        }
+    }
+    // Clean up
+    const pdfWrapper = document.querySelector('div[style*="position: fixed"][style*="top: -10000px"]');
+    if (pdfWrapper) {
+        document.body.removeChild(pdfWrapper);
+    }
+    // Reset button
+    if (downloadButton) {
+        downloadButton.disabled = false;
+        downloadButton.innerHTML = '<span class="download-icon">📄</span> Descargar Reporte PDF';
     }
 }
 
@@ -2342,10 +2354,14 @@ function applyPDFStyles(container) {
         font-family: Arial, sans-serif !important;
         font-size: 14px !important;
         line-height: 1.4 !important;
-        max-width: 100% !important;
-        margin: 0 !important;
+        max-width: 900px !important;
+        margin: 0 auto !important;
         padding: 0 !important;
         box-sizing: border-box !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
     `;
 
     // Report header styles
