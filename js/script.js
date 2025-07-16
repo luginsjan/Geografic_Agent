@@ -2232,6 +2232,12 @@ async function downloadPDF() {
         if (!reportContainer) {
             throw new Error('Report container not found');
         }
+        // Debug: Log all values before export
+        const debugValues = {};
+        reportContainer.querySelectorAll('.input-value, .info-value, .kit-detail-value').forEach(el => {
+            debugValues[el.id || el.className || el.parentNode?.className] = el.textContent;
+        });
+        console.log('PDF Export - Values in DOM:', debugValues);
         // Ensure all required fields are populated
         const requiredFields = [
             'report-date',
