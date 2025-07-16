@@ -2208,150 +2208,334 @@ function testFinalReport() {
 }
 
 // Function to download PDF report
+// Improved PDF generation function with better formatting
 async function downloadPDF() {
     console.log('Generating PDF report...');
     const downloadButton = document.getElementById('download-pdf-button');
+    
+    // Update button state
     if (downloadButton) {
         downloadButton.disabled = true;
         downloadButton.innerHTML = '<span class="download-icon">⏳</span> Generando PDF...';
     }
+
     try {
         const reportContainer = document.querySelector('.final-report-container');
-        // Wrap in a centering div for PDF
-        const wrapper = document.createElement('div');
-        wrapper.style.display = 'flex';
-        wrapper.style.justifyContent = 'center';
-        wrapper.style.alignItems = 'center';
-        wrapper.style.minHeight = '1122px'; // A4 height at 96dpi
-        wrapper.style.background = '#f8f9fa';
-        wrapper.style.padding = '32px';
-        wrapper.style.textAlign = 'center';
-        // Clone the report
+        if (!reportContainer) {
+            throw new Error('Report container not found');
+        }
+
+        // Create a dedicated PDF container
+        const pdfWrapper = document.createElement('div');
+        pdfWrapper.style.cssText = `
+            position: fixed;
+            top: -10000px;
+            left: -10000px;
+            width: 794px;
+            background: white;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.4;
+            color: #333;
+            padding: 40px;
+            box-sizing: border-box;
+        `;
+
+        // Clone the report container with deep cloning
         const pdfContainer = reportContainer.cloneNode(true);
-        pdfContainer.style.background = 'white';
-        pdfContainer.style.color = '#222';
-        pdfContainer.style.padding = '32px';
-        pdfContainer.style.maxWidth = '700px';
-        pdfContainer.style.margin = '0 auto';
-        pdfContainer.style.textAlign = 'center';
-        pdfContainer.style.fontFamily = 'Arial, sans-serif';
-        pdfContainer.style.boxSizing = 'border-box';
-        pdfContainer.style.width = '100%';
-        pdfContainer.style.borderRadius = '12px';
-        pdfContainer.style.boxShadow = '0 0 12px rgba(0,0,0,0.08)';
-        pdfContainer.style.border = '1.5px solid #e0e0e0';
-        // Remove all canvas and re-render static images for charts
-        const canvases = reportContainer.querySelectorAll('canvas');
-        const pdfCanvases = pdfContainer.querySelectorAll('canvas');
-        canvases.forEach((canvas, idx) => {
-            const img = document.createElement('img');
-            img.src = canvas.toDataURL('image/png');
-            img.style.display = 'block';
-            img.style.maxWidth = '100%';
-            img.style.height = '200px';
-            pdfCanvases[idx].replaceWith(img);
-        });
-        // Universal override for all text in PDF
-        pdfContainer.querySelectorAll('*').forEach(el => {
-            if (el.nodeType === 1) {
-                el.style.color = '#222';
-            }
-        });
-        // Add PDF-specific styles to sections
-        const sections = pdfContainer.querySelectorAll('.report-section');
-        sections.forEach(section => {
-            section.style.background = '#f8f9fa';
-            section.style.border = '1px solid #dee2e6';
-            section.style.color = '#222';
-            section.style.pageBreakInside = 'avoid';
-        });
-        // Update headers for PDF
-        const headers = pdfContainer.querySelectorAll('h3, h4');
-        headers.forEach(header => {
-            header.style.color = '#2c5aa0';
-        });
-        // Update SOP details for PDF
-        const sopDetails = pdfContainer.querySelector('.sop-details');
-        if (sopDetails) {
-            sopDetails.style.background = 'white';
-            sopDetails.style.border = '1px solid #dee2e6';
-            sopDetails.style.color = '#222';
-            sopDetails.style.pageBreakInside = 'avoid';
+        
+        // Remove the download button from PDF
+        const pdfDownloadButton = pdfContainer.querySelector('.download-pdf-button');
+        if (pdfDownloadButton) {
+            pdfDownloadButton.parentNode.removeChild(pdfDownloadButton);
         }
-        // Update kit details for PDF
-        const kitDetails = pdfContainer.querySelector('.kit-details');
-        if (kitDetails) {
-            kitDetails.style.background = '#f8f9fa';
-            kitDetails.style.border = '1px solid #dee2e6';
-            kitDetails.style.color = '#222';
-            kitDetails.style.pageBreakInside = 'avoid';
-        }
-        // Update input values for PDF
-        const inputValues = pdfContainer.querySelectorAll('.input-value');
-        inputValues.forEach(input => {
-            input.style.background = 'white';
-            input.style.border = '1px solid #dee2e6';
-            input.style.color = '#222';
-        });
-        // Update report meta for PDF
-        const reportMeta = pdfContainer.querySelector('.report-meta');
-        if (reportMeta) {
-            reportMeta.style.background = '#f8f9fa';
-            reportMeta.style.border = '1px solid #dee2e6';
-            reportMeta.style.color = '#222';
-            reportMeta.style.padding = '1rem';
-            reportMeta.style.borderRadius = '4px';
-            reportMeta.style.pageBreakInside = 'avoid';
-        }
-        // Update timestamp and duration for PDF
-        const timestampSpans = pdfContainer.querySelectorAll('.report-timestamp span, .report-duration span');
-        timestampSpans.forEach(span => {
-            span.style.color = '#222';
-        });
-        // Highlight duration in PDF
-        const durationSpan = pdfContainer.querySelector('.report-duration span');
-        if (durationSpan) {
-            durationSpan.style.color = '#28a745';
-            durationSpan.style.fontWeight = 'bold';
-        }
-        // Append the report to the wrapper
-        wrapper.appendChild(pdfContainer);
-        // Configure PDF options with 70% zoom and centered content
+
+        // Apply comprehensive PDF styles
+        applyPDFStyles(pdfContainer);
+        
+        // Handle charts and canvas elements
+        await handleChartsForPDF(reportContainer, pdfContainer);
+        
+        // Add the container to wrapper and DOM
+        pdfWrapper.appendChild(pdfContainer);
+        document.body.appendChild(pdfWrapper);
+
+        // Wait for any dynamic content to load
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Configure PDF options with optimized settings
         const opt = {
-            margin: [15, 15, 15, 15],
+            margin: [20, 20, 20, 20],
             filename: `Agente_Geografico_Report_${currentAigentID || 'N/A'}_${new Date().toISOString().split('T')[0]}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
+            image: { 
+                type: 'jpeg', 
+                quality: 0.95 
+            },
             html2canvas: { 
-                scale: 1.4, // 70% of original 2.0 scale
+                scale: 2,
                 useCORS: true,
-                backgroundColor: '#f8f9fa',
+                backgroundColor: '#ffffff',
                 scrollY: 0,
-                windowWidth: 900,
-                windowHeight: 1300
+                windowWidth: 794,
+                windowHeight: 1123,
+                onclone: function(clonedDoc) {
+                    // Ensure all styles are properly applied in the cloned document
+                    const clonedContainer = clonedDoc.querySelector('.final-report-container');
+                    if (clonedContainer) {
+                        applyPDFStyles(clonedContainer);
+                    }
+                }
             },
             jsPDF: { 
                 unit: 'mm', 
                 format: 'a4', 
-                orientation: 'portrait' 
+                orientation: 'portrait',
+                compress: true
             },
-            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-        };
-        await html2pdf().set(opt).from(wrapper).toPdf().get('pdf').then(pdf => {
-            const pageCount = pdf.internal.getNumberOfPages();
-            if (pageCount > 1) {
-                pdf.setPage(1);
-                pdf.internal.scaleFactor = 0.7; // 70% zoom
+            pagebreak: { 
+                mode: ['avoid-all', 'css'],
+                before: '.report-section',
+                after: '.page-break-after'
             }
-        }).save();
+        };
+
+        // Generate PDF
+        await html2pdf().set(opt).from(pdfWrapper).save();
+        
         console.log('PDF generated successfully');
         showStatusMessage('PDF generado y descargado exitosamente', 'success');
+
     } catch (error) {
         console.error('Error generating PDF:', error);
         showStatusMessage('Error al generar el PDF: ' + error.message, 'error');
     } finally {
+        // Clean up
+        const pdfWrapper = document.querySelector('div[style*="position: fixed"][style*="top: -10000px"]');
+        if (pdfWrapper) {
+            document.body.removeChild(pdfWrapper);
+        }
+        
+        // Reset button
         if (downloadButton) {
             downloadButton.disabled = false;
             downloadButton.innerHTML = '<span class="download-icon">📄</span> Descargar Reporte PDF';
+        }
+    }
+}
+
+// Function to apply comprehensive PDF styles
+function applyPDFStyles(container) {
+    // Main container styles
+    container.style.cssText = `
+        background: white !important;
+        color: #333 !important;
+        font-family: Arial, sans-serif !important;
+        font-size: 14px !important;
+        line-height: 1.4 !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+    `;
+
+    // Report header styles
+    const reportHeader = container.querySelector('.report-header');
+    if (reportHeader) {
+        reportHeader.style.cssText = `
+            margin-bottom: 30px !important;
+            padding: 20px !important;
+            background: #f8f9fa !important;
+            border: 1px solid #dee2e6 !important;
+            border-radius: 8px !important;
+            page-break-inside: avoid !important;
+        `;
+        
+        const h3 = reportHeader.querySelector('h3');
+        if (h3) {
+            h3.style.cssText = `
+                color: #2c5aa0 !important;
+                font-size: 24px !important;
+                font-weight: bold !important;
+                margin: 0 0 15px 0 !important;
+                text-align: center !important;
+            `;
+        }
+    }
+
+    // Report meta styles
+    const reportMeta = container.querySelector('.report-meta');
+    if (reportMeta) {
+        reportMeta.style.cssText = `
+            background: white !important;
+            border: 1px solid #dee2e6 !important;
+            border-radius: 4px !important;
+            padding: 15px !important;
+            margin-top: 15px !important;
+            page-break-inside: avoid !important;
+        `;
+        
+        const metaItems = reportMeta.querySelectorAll('p');
+        metaItems.forEach(item => {
+            item.style.cssText = `
+                margin: 8px 0 !important;
+                color: #333 !important;
+                font-size: 14px !important;
+            `;
+            
+            const span = item.querySelector('span');
+            if (span) {
+                span.style.cssText = `
+                    color: #2c5aa0 !important;
+                    font-weight: bold !important;
+                `;
+            }
+        });
+    }
+
+    // Report sections styles
+    const reportSections = container.querySelectorAll('.report-section');
+    reportSections.forEach(section => {
+        section.style.cssText = `
+            margin: 25px 0 !important;
+            padding: 20px !important;
+            background: #f8f9fa !important;
+            border: 1px solid #dee2e6 !important;
+            border-radius: 8px !important;
+            page-break-inside: avoid !important;
+        `;
+        
+        const h4 = section.querySelector('h4');
+        if (h4) {
+            h4.style.cssText = `
+                color: #2c5aa0 !important;
+                font-size: 18px !important;
+                font-weight: bold !important;
+                margin: 0 0 15px 0 !important;
+                border-bottom: 2px solid #2c5aa0 !important;
+                padding-bottom: 8px !important;
+            `;
+        }
+    });
+
+    // Input details styles
+    const inputDetails = container.querySelector('.input-details');
+    if (inputDetails) {
+        inputDetails.style.cssText = `
+            background: white !important;
+            border: 1px solid #dee2e6 !important;
+            border-radius: 4px !important;
+            padding: 15px !important;
+        `;
+        
+        const inputItems = inputDetails.querySelectorAll('.input-item');
+        inputItems.forEach(item => {
+            item.style.cssText = `
+                margin: 10px 0 !important;
+                display: flex !important;
+                align-items: center !important;
+                flex-wrap: wrap !important;
+            `;
+            
+            const label = item.querySelector('.input-label');
+            if (label) {
+                label.style.cssText = `
+                    font-weight: bold !important;
+                    color: #555 !important;
+                    margin-right: 10px !important;
+                    min-width: 150px !important;
+                `;
+            }
+            
+            const value = item.querySelector('.input-value');
+            if (value) {
+                value.style.cssText = `
+                    color: #2c5aa0 !important;
+                    font-weight: bold !important;
+                    background: #f8f9fa !important;
+                    padding: 4px 8px !important;
+                    border-radius: 4px !important;
+                    border: 1px solid #dee2e6 !important;
+                `;
+            }
+        });
+    }
+
+    // SOP and Kit details styles
+    const sopDetails = container.querySelector('.sop-details');
+    if (sopDetails) {
+        sopDetails.style.cssText = `
+            background: white !important;
+            border: 1px solid #dee2e6 !important;
+            border-radius: 4px !important;
+            padding: 15px !important;
+            page-break-inside: avoid !important;
+        `;
+    }
+
+    const kitDetails = container.querySelector('.kit-details');
+    if (kitDetails) {
+        kitDetails.style.cssText = `
+            background: white !important;
+            border: 1px solid #dee2e6 !important;
+            border-radius: 4px !important;
+            padding: 15px !important;
+            page-break-inside: avoid !important;
+        `;
+    }
+
+    // Apply styles to all text elements
+    const allTextElements = container.querySelectorAll('*');
+    allTextElements.forEach(element => {
+        if (element.nodeType === 1) {
+            const computedStyle = window.getComputedStyle(element);
+            if (computedStyle.color !== 'rgb(51, 51, 51)') {
+                element.style.color = '#333 !important';
+            }
+        }
+    });
+}
+
+// Function to handle charts and canvas elements for PDF
+async function handleChartsForPDF(originalContainer, pdfContainer) {
+    const originalCanvases = originalContainer.querySelectorAll('canvas');
+    const pdfCanvases = pdfContainer.querySelectorAll('canvas');
+    
+    for (let i = 0; i < originalCanvases.length; i++) {
+        const originalCanvas = originalCanvases[i];
+        const pdfCanvas = pdfCanvases[i];
+        
+        if (originalCanvas && pdfCanvas) {
+            try {
+                // Create image from canvas
+                const img = document.createElement('img');
+                img.src = originalCanvas.toDataURL('image/png', 0.95);
+                
+                // Style the image for PDF
+                img.style.cssText = `
+                    display: block !important;
+                    max-width: 100% !important;
+                    height: auto !important;
+                    margin: 10px auto !important;
+                    border: 1px solid #dee2e6 !important;
+                    border-radius: 4px !important;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+                `;
+                
+                // Replace canvas with image
+                pdfCanvas.parentNode.replaceChild(img, pdfCanvas);
+                
+                // Wait for image to load
+                await new Promise((resolve) => {
+                    if (img.complete) {
+                        resolve();
+                    } else {
+                        img.onload = resolve;
+                        img.onerror = resolve;
+                    }
+                });
+            } catch (error) {
+                console.warn('Error converting canvas to image:', error);
+            }
         }
     }
 }
