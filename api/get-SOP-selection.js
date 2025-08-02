@@ -2,7 +2,7 @@
 // Vercel API Proxy for n8n get-SOP-selection webhook
 // Handles CORS and forwards requests to n8n webhook
 
-import { extractAigentID, isValidAigentID, generateAigentID } from './utils.js';
+const { extractAigentID, isValidAigentID, generateAigentID } = require('./utils.js');
 
 const N8N_WEBHOOK_URL = 'https://aigentinc.app.n8n.cloud/webhook/get-SOP-selection';
 
@@ -15,7 +15,7 @@ const corsHeaders = {
   'Content-Type': 'application/json'
 };
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Set CORS headers
   Object.entries(corsHeaders).forEach(([key, value]) => {
     res.setHeader(key, value);
@@ -35,6 +35,19 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Ensure request body is properly parsed
+    if (typeof req.body === 'string') {
+      try {
+        req.body = JSON.parse(req.body);
+      } catch (parseError) {
+        console.error('Error parsing request body:', parseError);
+        return res.status(400).json({
+          error: 'Invalid JSON in request body',
+          message: parseError.message
+        });
+      }
+    }
+
     // Extract or generate AigentID
     let aigentID = extractAigentID(req);
     
@@ -106,7 +119,23 @@ export default async function handler(req, res) {
     return res.status(n8nResponse.status).json(responseWithID);
     
   } catch (error) {
-    console.error('Proxy error:', error);
+    console.error('Proxy error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      requestBody: req.body,
+      requestHeaders: req.headers,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Define aigentID variable in catch block scope
+    let aigentID = null;
+    try {
+      aigentID = extractAigentID(req) || generateAigentID();
+    } catch (idError) {
+      console.error('Error handling AigentID:', idError);
+      aigentID = 'UNKNOWN';
+    }
     
     // Handle timeout specifically
     if (error.name === 'AbortError') {
@@ -114,7 +143,7 @@ export default async function handler(req, res) {
         error: 'Gateway timeout',
         message: 'Request to n8n webhook timed out',
         timestamp: new Date().toISOString(),
-        AigentID: aigentID || 'UNKNOWN'
+        AigentID: aigentID
       });
     }
     
@@ -122,7 +151,7 @@ export default async function handler(req, res) {
       error: 'Proxy request failed',
       message: error.message,
       timestamp: new Date().toISOString(),
-      AigentID: aigentID || 'UNKNOWN'
+      AigentID: aigentID
     });
   }
 } 

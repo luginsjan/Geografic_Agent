@@ -5,7 +5,7 @@
  * Format: AIG-YYYYMMDD-HHMMSS-XXXXX (where XXXXX is a random 5-character string)
  * @returns {string} Unique AigentID
  */
-export function generateAigentID() {
+function generateAigentID() {
   const now = new Date();
   const dateStr = now.getFullYear().toString() +
                  (now.getMonth() + 1).toString().padStart(2, '0') +
@@ -29,7 +29,7 @@ export function generateAigentID() {
  * @param {string} id - The ID to validate
  * @returns {boolean} True if valid format
  */
-export function isValidAigentID(id) {
+function isValidAigentID(id) {
   if (!id || typeof id !== 'string') return false;
   
   // Check format: AIG-YYYYMMDD-HHMMSS-XXXXX
@@ -42,7 +42,7 @@ export function isValidAigentID(id) {
  * @param {Object} req - The request object
  * @returns {string|null} The AigentID if found, null otherwise
  */
-export function extractAigentID(req) {
+function extractAigentID(req) {
   // Check in request body first
   if (req.body && req.body.AigentID) {
     return req.body.AigentID;
@@ -54,4 +54,10 @@ export function extractAigentID(req) {
   }
   
   return null;
-} 
+}
+
+module.exports = {
+  generateAigentID,
+  isValidAigentID,
+  extractAigentID
+}; 
