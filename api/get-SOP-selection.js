@@ -46,10 +46,14 @@ export default async function handler(req, res) {
       console.log('Using existing AigentID for SOP selection:', aigentID);
     }
     
-    // Ensure AigentID is in the request body
+    console.log('SOP Selection Request body received:', req.body);
+    console.log('SOP Selection Bandwidth data:', req.body.bandwidth);
+    
+    // Ensure AigentID is in the request body and bandwidth is included
     const requestBodyWithID = {
       ...req.body,
-      AigentID: aigentID
+      AigentID: aigentID,
+      bandwidth: req.body.bandwidth || null // Ensure bandwidth is forwarded
     };
     
     // Get the request body with AigentID

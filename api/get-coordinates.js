@@ -38,11 +38,14 @@ export default async function handler(req, res) {
     // Generate unique AigentID for this workflow execution
     const aigentID = generateAigentID();
     console.log('Generated AigentID:', aigentID);
+    console.log('Request body received:', req.body);
+    console.log('Bandwidth data:', req.body.bandwidth);
     
-    // Add AigentID to the request body
+    // Add AigentID to the request body and ensure bandwidth is included
     const requestBodyWithID = {
       ...req.body,
-      AigentID: aigentID
+      AigentID: aigentID,
+      bandwidth: req.body.bandwidth || null // Ensure bandwidth is forwarded
     };
     
     // Get the request body with AigentID

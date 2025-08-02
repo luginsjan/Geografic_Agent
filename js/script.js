@@ -566,6 +566,8 @@ async function handleConfirmSelection() {
         bandwidth: storedBandwidth, // Include the stored bandwidth value
         AigentID: currentAigentID // Include the current AigentID
     };
+    console.log('SOP Selection request data being sent:', requestData);
+    console.log('Bandwidth being sent to SOP selection endpoint:', storedBandwidth);
 
     try {
         scrollToSection('recommendations');
@@ -1169,8 +1171,11 @@ async function handleKitConfirmation() {
         // Prepare the request data
         const requestData = {
             selectedKit: window.selectedKitData,
-            AigentID: currentAigentID
+            AigentID: currentAigentID,
+            bandwidth: storedBandwidth // Include the stored bandwidth value
         };
+        console.log('KIT Selection request data being sent:', requestData);
+        console.log('Bandwidth being sent to KIT selection endpoint:', storedBandwidth);
         
         // Send POST request to kit selection webhook with timeout
         const response = await fetchWithTimeout(n8nKitSelectionWebhookUrl, {
@@ -1565,7 +1570,12 @@ if (confirmAddressButton) {
         // Scroll to analysis section immediately when button is clicked
         scrollToSection('analysis');
         
-        const requestData = { clientAddress: clientAddress };
+        const requestData = { 
+            clientAddress: clientAddress,
+            bandwidth: storedBandwidth // Include the stored bandwidth value
+        };
+        console.log('Coordinates request data being sent:', requestData);
+        console.log('Bandwidth being sent to coordinates endpoint:', storedBandwidth);
         try {
             showLoadingBlock('analysis');
             showStatusMessage('Conectando con el servidor...', 'info', 'analysis');
