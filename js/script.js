@@ -46,7 +46,7 @@ let workflowStartTime = null;
 let workflowEndTime = null;
 
 // Helper function to make fetch requests with timeout
-async function fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
+async function fetchWithTimeout(url, options = {}, timeoutMs = 60000) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     
@@ -465,7 +465,7 @@ async function retryKitRecommendations() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(requestData)
-        }, 30000); // 30 second timeout
+        }, 60000); // 60 second timeout
 
         if (!response.ok) {
             throw new Error(`Server responded with error: ${response.status} ${response.statusText}`);
@@ -581,7 +581,7 @@ async function handleConfirmSelection() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(requestData)
-        }, 30000); // 30 second timeout
+        }, 60000); // 60 second timeout
 
         if (!response.ok) {
             throw new Error(`Server responded with error: ${response.status} ${response.statusText}`);
@@ -624,7 +624,7 @@ async function handleConfirmSelection() {
                                 'Content-Type': 'application/json'
                             },
                             body: JSON.stringify(requestData)
-                        }, 30000); // 30 second timeout
+                        }, 60000); // 60 second timeout
                         
                         if (retryResponse.ok) {
                             const retryData = await retryResponse.json();
@@ -1179,7 +1179,7 @@ async function handleKitConfirmation() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(requestData)
-        }, 30000); // 30 second timeout
+        }, 60000); // 60 second timeout
         
         if (!response.ok) {
             throw new Error(`Server responded with error: ${response.status} ${response.statusText}`);
@@ -1580,7 +1580,7 @@ if (confirmAddressButton) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestData)
-            }, 30000); // 30 second timeout
+            }, 60000); // 60 second timeout
             if (!response.ok) {
                 throw new Error('El servidor respondió con un error (' + response.status + ')');
             }
