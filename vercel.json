@@ -5,7 +5,7 @@
       "maxDuration": 30
     },
     "api/get-SOP-selection.js": {
-      "maxDuration": 30
+      "maxDuration": 300
     },
     "api/get-KIT-selection.js": {
       "maxDuration": 30

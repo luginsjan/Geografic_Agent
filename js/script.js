@@ -458,14 +458,14 @@ async function retryKitRecommendations() {
     }
     
     try {
-        // Send POST request to n8n selection webhook with timeout
+        // Send POST request to n8n selection webhook with extended timeout
         const response = await fetchWithTimeout(n8nSelectionWebhookUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(requestData)
-        }, 60000); // 60 second timeout
+        }, 300000); // 5 minute timeout to match API timeout
 
         if (!response.ok) {
             throw new Error(`Server responded with error: ${response.status} ${response.statusText}`);
@@ -576,14 +576,14 @@ async function handleConfirmSelection() {
             showStatusMessage('Sending selection to server...', 'info', 'recommendations');
         }, 500);
         
-        // Send POST request to n8n selection webhook with timeout
+        // Send POST request to n8n selection webhook with extended timeout
         const response = await fetchWithTimeout(n8nSelectionWebhookUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(requestData)
-        }, 60000); // 60 second timeout
+        }, 300000); // 5 minute timeout to match API timeout
 
         if (!response.ok) {
             throw new Error(`Server responded with error: ${response.status} ${response.statusText}`);
@@ -626,7 +626,7 @@ async function handleConfirmSelection() {
                                 'Content-Type': 'application/json'
                             },
                             body: JSON.stringify(requestData)
-                        }, 60000); // 60 second timeout
+                        }, 300000); // 5 minute timeout to match API timeout
                         
                         if (retryResponse.ok) {
                             const retryData = await retryResponse.json();

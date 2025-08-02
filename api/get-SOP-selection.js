@@ -79,19 +79,33 @@ module.exports = async function handler(req, res) {
       'X-Aigent-ID': aigentID
     };
     
-    // Add timeout to prevent hanging
+    // Add robust timeout to prevent hanging - using longer timeout to override Vercel's internal limits
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 28000); // 28 second timeout
+    const startTime = new Date();
+    console.log('Starting n8n request at:', startTime.toISOString());
     
-    // Forward the request to n8n
+    const timeoutId = setTimeout(() => {
+      const elapsed = (new Date() - startTime) / 1000;
+      console.log(`Manual timeout triggered after ${elapsed} seconds`);
+      controller.abort();
+    }, 280000); // 280 seconds (4.67 minutes) - much longer than Vercel's internal timeout
+    
+    // Forward the request to n8n with explicit timeout handling
     const n8nResponse = await fetch(N8N_WEBHOOK_URL, {
       method: 'POST',
-      headers: n8nHeaders,
+      headers: {
+        ...n8nHeaders,
+        'User-Agent': 'Vercel-Function/1.0' // Sometimes helps with proxy timeouts
+      },
       body: body,
       signal: controller.signal
     });
     
     clearTimeout(timeoutId);
+    
+    const endTime = new Date();
+    const elapsed = (endTime - startTime) / 1000;
+    console.log(`n8n request completed successfully after ${elapsed} seconds`);
     
     // Get the response data
     const responseData = await n8nResponse.text();
@@ -137,13 +151,22 @@ module.exports = async function handler(req, res) {
       aigentID = 'UNKNOWN';
     }
     
-    // Handle timeout specifically
+    // Handle timeout specifically with better error detection
     if (error.name === 'AbortError') {
+      const elapsed = startTime ? (new Date() - startTime) / 1000 : 'unknown';
+      console.log(`Request was aborted after ${elapsed} seconds - likely due to timeout`);
+      console.log('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
       return res.status(504).json({
         error: 'Gateway timeout',
-        message: 'Request to n8n webhook timed out',
+        message: `Request to n8n webhook timed out after ${elapsed} seconds`,
         timestamp: new Date().toISOString(),
-        AigentID: aigentID
+        AigentID: aigentID,
+        details: 'This may be due to Vercel\'s internal timeout limits'
       });
     }
     
