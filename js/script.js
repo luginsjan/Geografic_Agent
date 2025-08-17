@@ -2902,55 +2902,96 @@ async function downloadFinalReportPDF() {
         const sourceContainer = document.querySelector('.final-report-container');
         if (!sourceContainer) throw new Error('Contenedor del reporte no encontrado');
 
-        // Build off-screen wrapper sized for A4 width at ~96 DPI (~794px)
+        // Constants for A4 at ~96 DPI
+        const A4_WIDTH_PX = 794;  // ~210mm
+        const A4_HEIGHT_PX = 1123; // ~297mm
+        const MARGIN_PX = 40;      // ~10mm
+        const USABLE_HEIGHT_PX = A4_HEIGHT_PX - (2 * MARGIN_PX);
+
+        // Off-screen wrapper for pages
         wrapper = document.createElement('div');
         wrapper.style.position = 'absolute';
         wrapper.style.left = '-9999px';
         wrapper.style.top = '0';
-        wrapper.style.width = '794px';
+        wrapper.style.width = A4_WIDTH_PX + 'px';
         wrapper.style.background = '#ffffff';
         wrapper.style.color = '#000000';
         wrapper.style.boxSizing = 'border-box';
-
-        // Deep clone of the entire report container
-        const clone = sourceContainer.cloneNode(true);
-
-        // Remove download button inside the clone
-        const btn = clone.querySelector('.download-pdf-button');
-        if (btn && btn.parentNode) btn.parentNode.removeChild(btn);
-
-        // Force light theme styles on the clone
-        clone.style.background = '#ffffff';
-        clone.style.color = '#222222';
-        clone.style.maxWidth = '794px';
-        clone.style.width = '100%';
-        clone.style.margin = '0 auto';
-        clone.style.padding = '0';
-
-        // Apply additional PDF-friendly styles to children
-        applyPDFStyles(clone);
-
-        // Replace canvases with images (to include charts)
-        await handleChartsForPDF(sourceContainer, clone);
-
-        // Append to wrapper and to DOM
-        wrapper.appendChild(clone);
         document.body.appendChild(wrapper);
 
-        // Small delay to allow layout
-        await new Promise(r => setTimeout(r, 100));
+        // Prepare a base clone with charts converted to images and light styling applied
+        const baseClone = sourceContainer.cloneNode(true);
+        const btn = baseClone.querySelector('.download-pdf-button');
+        if (btn && btn.parentNode) btn.parentNode.removeChild(btn);
+        baseClone.style.background = '#ffffff';
+        baseClone.style.color = '#222222';
+        baseClone.style.maxWidth = A4_WIDTH_PX + 'px';
+        baseClone.style.width = '100%';
+        baseClone.style.margin = '0 auto';
+        baseClone.style.padding = '0';
+        applyPDFStyles(baseClone);
+        await handleChartsForPDF(sourceContainer, baseClone);
 
-        // Render wrapper to canvas
-        const canvas = await html2canvas(wrapper, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: '#ffffff'
-        });
+        // Extract header and sections from the prepared clone
+        const headerClone = baseClone.querySelector('.report-header');
+        const sectionClones = Array.from(baseClone.querySelectorAll('.report-section'));
 
-        // Initialize jsPDF and paginate if needed
+        // Helper to create a new A4 page container with an inner content area
+        function createPage() {
+            const page = document.createElement('div');
+            page.style.width = A4_WIDTH_PX + 'px';
+            page.style.height = A4_HEIGHT_PX + 'px';
+            page.style.background = '#ffffff';
+            page.style.boxSizing = 'border-box';
+            page.style.pageBreakAfter = 'always';
+            const content = document.createElement('div');
+            content.style.width = (A4_WIDTH_PX - 2 * MARGIN_PX) + 'px';
+            content.style.minHeight = (USABLE_HEIGHT_PX) + 'px';
+            content.style.margin = MARGIN_PX + 'px';
+            content.style.boxSizing = 'border-box';
+            page.appendChild(content);
+            wrapper.appendChild(page);
+            return { page, content };
+        }
+
+        const pages = [];
+        let { page, content } = createPage();
+        pages.push({ page, content });
+
+        // Add header to first page
+        if (headerClone) {
+            content.appendChild(headerClone);
+        }
+
+        // Layout sections atomically: don't split a section across pages
+        for (const sec of sectionClones) {
+            content.appendChild(sec);
+            // Allow layout flush
+            // If the content now exceeds usable height, move the section to the next page
+            if (content.scrollHeight > USABLE_HEIGHT_PX) {
+                content.removeChild(sec);
+                ({ page, content } = createPage());
+                pages.push({ page, content });
+                content.appendChild(sec);
+            }
+        }
+
+        // Render each page individually to the PDF
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-        await addCanvasAsMultipagePDF(pdf, canvas, 10);
+
+        for (let i = 0; i < pages.length; i++) {
+            const pageEl = pages[i].page;
+            // Small delay to allow any images (charts) to fully layout
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise(r => setTimeout(r, 60));
+            // eslint-disable-next-line no-await-in-loop
+            const canvas = await html2canvas(pageEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            const imgData = canvas.toDataURL('image/jpeg', 0.98);
+            if (i > 0) pdf.addPage('a4', 'portrait');
+            pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+        }
+
         pdf.save(`Agente_Geografico_Report_${window.currentAigentID || 'N/A'}_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
         console.error('[PDF Final] Error generating PDF:', error);
