@@ -2884,3 +2884,129 @@ async function downloadPDFRobust() {
         }
     }
 }
+
+// --- Unified PDF export for full final report container ---
+async function downloadFinalReportPDF() {
+    if (!isReportPopulated()) {
+        alert('El reporte no está listo. Por favor, complete el flujo antes de exportar.');
+        return;
+    }
+    const downloadButton = document.getElementById('download-pdf-button');
+    if (downloadButton) {
+        downloadButton.disabled = true;
+        downloadButton.innerHTML = '<span class="download-icon">⏳</span> Generando PDF...';
+    }
+
+    let wrapper = null;
+    try {
+        const sourceContainer = document.querySelector('.final-report-container');
+        if (!sourceContainer) throw new Error('Contenedor del reporte no encontrado');
+
+        // Build off-screen wrapper sized for A4 width at ~96 DPI (~794px)
+        wrapper = document.createElement('div');
+        wrapper.style.position = 'absolute';
+        wrapper.style.left = '-9999px';
+        wrapper.style.top = '0';
+        wrapper.style.width = '794px';
+        wrapper.style.background = '#ffffff';
+        wrapper.style.color = '#000000';
+        wrapper.style.boxSizing = 'border-box';
+
+        // Deep clone of the entire report container
+        const clone = sourceContainer.cloneNode(true);
+
+        // Remove download button inside the clone
+        const btn = clone.querySelector('.download-pdf-button');
+        if (btn && btn.parentNode) btn.parentNode.removeChild(btn);
+
+        // Force light theme styles on the clone
+        clone.style.background = '#ffffff';
+        clone.style.color = '#222222';
+        clone.style.maxWidth = '794px';
+        clone.style.width = '100%';
+        clone.style.margin = '0 auto';
+        clone.style.padding = '0';
+
+        // Apply additional PDF-friendly styles to children
+        applyPDFStyles(clone);
+
+        // Replace canvases with images (to include charts)
+        await handleChartsForPDF(sourceContainer, clone);
+
+        // Append to wrapper and to DOM
+        wrapper.appendChild(clone);
+        document.body.appendChild(wrapper);
+
+        // Small delay to allow layout
+        await new Promise(r => setTimeout(r, 100));
+
+        // Render wrapper to canvas
+        const canvas = await html2canvas(wrapper, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff'
+        });
+
+        // Initialize jsPDF and paginate if needed
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        await addCanvasAsMultipagePDF(pdf, canvas, 10);
+        pdf.save(`Agente_Geografico_Report_${window.currentAigentID || 'N/A'}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+        console.error('[PDF Final] Error generating PDF:', error);
+        alert('Error al generar el PDF: ' + error.message);
+    } finally {
+        if (wrapper && wrapper.parentNode) {
+            wrapper.parentNode.removeChild(wrapper);
+        }
+        if (downloadButton) {
+            downloadButton.disabled = false;
+            downloadButton.innerHTML = '<span class="download-icon">📄</span> Descargar Reporte PDF';
+        }
+    }
+}
+
+// Helper: add a potentially tall canvas to jsPDF across multiple pages
+async function addCanvasAsMultipagePDF(pdf, canvas, marginMm) {
+    const pageWidthMm = 210;
+    const pageHeightMm = 297;
+    const usableWidthMm = pageWidthMm - 2 * marginMm;
+    const usableHeightMm = pageHeightMm - 2 * marginMm;
+
+    const canvasWidthPx = canvas.width;
+    const canvasHeightPx = canvas.height;
+
+    // Pixels per mm at the drawing width
+    const pxPerMm = canvasWidthPx / usableWidthMm;
+    const segmentHeightPx = Math.floor(usableHeightMm * pxPerMm);
+
+    let y = 0;
+    let isFirstPage = true;
+    while (y < canvasHeightPx) {
+        const remainingPx = canvasHeightPx - y;
+        const currentSegmentPx = Math.min(segmentHeightPx, remainingPx);
+
+        // Create a temporary canvas for the segment
+        const segmentCanvas = document.createElement('canvas');
+        segmentCanvas.width = canvasWidthPx;
+        segmentCanvas.height = currentSegmentPx;
+        const ctx = segmentCanvas.getContext('2d');
+        ctx.drawImage(
+            canvas,
+            0, y, canvasWidthPx, currentSegmentPx,
+            0, 0, canvasWidthPx, currentSegmentPx
+        );
+
+        const imgData = segmentCanvas.toDataURL('image/jpeg', 0.98);
+        const segmentHeightMm = currentSegmentPx / pxPerMm;
+
+        if (!isFirstPage) pdf.addPage('a4', 'portrait');
+        pdf.addImage(imgData, 'JPEG', marginMm, marginMm, usableWidthMm, segmentHeightMm);
+
+        y += currentSegmentPx;
+        isFirstPage = false;
+    }
+}
+
+// Expose unified exporter globally for HTML onclick
+window.downloadFinalReportPDF = downloadFinalReportPDF;
