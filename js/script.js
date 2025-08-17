@@ -2459,6 +2459,32 @@ function applyPDFStyles(container) {
         }
     });
 
+    // Ensure chart containers grow with images and do not clip content
+    const chartContainers = container.querySelectorAll('.chart-container');
+    chartContainers.forEach(cc => {
+        cc.style.height = 'auto';
+        cc.style.minHeight = '0';
+        cc.style.overflow = 'visible';
+        cc.style.background = '#ffffff';
+        cc.style.border = '1px solid #dee2e6';
+        cc.style.borderRadius = '4px';
+        cc.style.padding = '10px';
+        // Normalize inner chart title spacing
+        const title = cc.querySelector('.chart-title');
+        if (title) {
+            title.style.marginBottom = '8px';
+            title.style.color = '#333';
+        }
+        // Normalize images if present
+        const imgs = cc.querySelectorAll('img');
+        imgs.forEach(img => {
+            img.style.display = 'block';
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            img.style.margin = '0 auto';
+        });
+    });
+
     // Input details styles
     const inputDetails = container.querySelector('.input-details');
     if (inputDetails) {
@@ -2905,7 +2931,7 @@ async function downloadFinalReportPDF() {
         // Constants for A4 at ~96 DPI
         const A4_WIDTH_PX = 794;  // ~210mm
         const A4_HEIGHT_PX = 1123; // ~297mm
-        const MARGIN_PX = 40;      // ~10mm
+        const MARGIN_PX = 76;      // ~20mm
         const USABLE_HEIGHT_PX = A4_HEIGHT_PX - (2 * MARGIN_PX);
 
         // Off-screen wrapper for pages
@@ -2946,7 +2972,6 @@ async function downloadFinalReportPDF() {
             page.style.pageBreakAfter = 'always';
             const content = document.createElement('div');
             content.style.width = (A4_WIDTH_PX - 2 * MARGIN_PX) + 'px';
-            content.style.minHeight = (USABLE_HEIGHT_PX) + 'px';
             content.style.margin = MARGIN_PX + 'px';
             content.style.boxSizing = 'border-box';
             page.appendChild(content);
@@ -2965,8 +2990,8 @@ async function downloadFinalReportPDF() {
 
         // Layout sections atomically: don't split a section across pages
         for (const sec of sectionClones) {
+            // Append and measure; if it overflows, move to a new page first
             content.appendChild(sec);
-            // Allow layout flush
             // If the content now exceeds usable height, move the section to the next page
             if (content.scrollHeight > USABLE_HEIGHT_PX) {
                 content.removeChild(sec);
