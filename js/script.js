@@ -25,6 +25,11 @@ const aigentIdDisplay = document.querySelector('#aigent-id-display');
 const aigentIdValue = document.querySelector('#aigent-id-value');
 const recommendationBlock = document.querySelector('#recommendation-block');
 const finalReportBlock = document.querySelector('#final-report-block');
+const authOverlay = document.getElementById('auth-overlay');
+const authForm = document.getElementById('auth-form');
+const authUsernameInput = document.getElementById('auth-username');
+const authPasswordInput = document.getElementById('auth-password');
+const authError = document.getElementById('auth-error');
 
 // Store complete SOP data for each result
 let allSopData = {};
@@ -44,6 +49,109 @@ let confirmedKit = null;
 // Time tracking variables
 let workflowStartTime = null;
 let workflowEndTime = null;
+
+// Authentication constants
+const AUTH_SESSION_KEY = 'agenteGeograficoAuth';
+const AUTH_USERNAME = 'admin';
+const AUTH_PASSWORD = 'admin';
+
+function isAuthenticated() {
+    try {
+        return localStorage.getItem(AUTH_SESSION_KEY) === 'true';
+    } catch (error) {
+        console.warn('Authentication storage unavailable', error);
+        return false;
+    }
+}
+
+function persistAuthentication(isLoggedIn) {
+    try {
+        if (isLoggedIn) {
+            localStorage.setItem(AUTH_SESSION_KEY, 'true');
+        } else {
+            localStorage.removeItem(AUTH_SESSION_KEY);
+        }
+    } catch (error) {
+        console.warn('Unable to update authentication storage', error);
+    }
+}
+
+function lockInterface() {
+    document.body.classList.add('auth-locked');
+    if (authOverlay) {
+        authOverlay.classList.remove('hidden');
+    }
+}
+
+function unlockInterface() {
+    document.body.classList.remove('auth-locked');
+    if (authOverlay) {
+        authOverlay.classList.add('hidden');
+    }
+}
+
+function showAuthError(message) {
+    if (authError) {
+        authError.textContent = message;
+    }
+}
+
+function handleAuthSuccess() {
+    showAuthError('');
+    unlockInterface();
+    initializePageState();
+}
+
+function initializeAuthentication() {
+    if (!authOverlay || !authForm) {
+        document.body.classList.remove('auth-locked');
+        return;
+    }
+
+    showAuthError('');
+
+    const authenticated = isAuthenticated();
+
+    if (authenticated) {
+        unlockInterface();
+    } else {
+        lockInterface();
+        if (authUsernameInput) {
+            authUsernameInput.focus();
+        }
+    }
+
+    if (authForm.dataset.listenerAttached === 'true') {
+        return;
+    }
+
+    authForm.dataset.listenerAttached = 'true';
+
+    authForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+
+        const username = (authUsernameInput?.value || '').trim();
+        const password = authPasswordInput?.value || '';
+
+        if (username === AUTH_USERNAME && password === AUTH_PASSWORD) {
+            persistAuthentication(true);
+            if (authUsernameInput) {
+                authUsernameInput.value = '';
+            }
+            if (authPasswordInput) {
+                authPasswordInput.value = '';
+            }
+            handleAuthSuccess();
+        } else {
+            showAuthError('Credenciales inválidas. Intente nuevamente.');
+            persistAuthentication(false);
+            if (authPasswordInput) {
+                authPasswordInput.value = '';
+                authPasswordInput.focus();
+            }
+        }
+    });
+}
 
 // Helper function to make fetch requests with timeout
 async function fetchWithTimeout(url, options = {}, timeoutMs = 60000) {
@@ -2675,42 +2783,51 @@ function initializePageState() {
 // Auto-scroll to home section on page load
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded - Initializing page state');
-    // Force scroll to top immediately
     window.scrollTo(0, 0);
-    // Initialize page state
-    initializePageState();
+    initializeAuthentication();
+    if (isAuthenticated()) {
+        initializePageState();
+    }
 });
 
 // Also handle page refresh and direct navigation
 window.addEventListener('load', function() {
     console.log('Window load - Double-checking page state');
-    // Force scroll to top immediately
     window.scrollTo(0, 0);
-    // Double-check we're at home section after everything loads
-    setTimeout(() => {
-        initializePageState();
-    }, 200);
+    if (isAuthenticated()) {
+        setTimeout(() => {
+            initializePageState();
+        }, 200);
+    } else {
+        lockInterface();
+    }
 });
 
 // Handle browser back/forward buttons
 window.addEventListener('popstate', function() {
     console.log('Popstate - Resetting to home');
-    // Force scroll to top immediately
     window.scrollTo(0, 0);
-    setTimeout(() => {
-        initializePageState();
-    }, 100);
+    if (isAuthenticated()) {
+        setTimeout(() => {
+            initializePageState();
+        }, 100);
+    } else {
+        lockInterface();
+    }
 });
 
 // Handle page visibility changes (when user returns to tab)
 document.addEventListener('visibilitychange', function() {
     if (!document.hidden) {
         console.log('Page visible - Ensuring home section');
-        // Force scroll to top immediately
         window.scrollTo(0, 0);
-        setTimeout(() => {
-            initializePageState();
-        }, 100);
+        if (isAuthenticated()) {
+            setTimeout(() => {
+                initializePageState();
+            }, 100);
+        } else {
+            lockInterface();
+        }
     }
 });
 

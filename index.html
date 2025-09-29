@@ -10,7 +10,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 </head>
-<body>
+<body class="auth-locked">
+    <div id="auth-overlay" class="auth-overlay">
+        <div class="auth-modal">
+            <h2>Acceso restringido</h2>
+            <p class="auth-subtitle">Introduzca sus credenciales para continuar.</p>
+            <form id="auth-form" class="auth-form" autocomplete="off">
+                <label for="auth-username">Usuario</label>
+                <input type="text" id="auth-username" name="username" placeholder="Usuario" required>
+                <label for="auth-password">Contraseña</label>
+                <input type="password" id="auth-password" name="password" placeholder="Contraseña" required>
+                <p id="auth-error" class="auth-error" role="alert" aria-live="assertive"></p>
+                <button type="submit" id="auth-submit-button">Iniciar sesión</button>
+            </form>
+        </div>
+    </div>
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-logo">
