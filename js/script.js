@@ -131,7 +131,7 @@ function collectTechnicalReportData() {
 
 function buildTechnicalReportElement(data) {
     const container = document.createElement('div');
-    container.style.cssText = '
+    container.style.cssText = `
         background: #fff;
         color: #212121;
         font-family: Arial, sans-serif;
@@ -139,7 +139,7 @@ function buildTechnicalReportElement(data) {
         max-width: 800px;
         margin: 0 auto;
         box-sizing: border-box;
-    ';
+    `;
 
     const heading = document.createElement('h2');
     heading.textContent = data.title;
