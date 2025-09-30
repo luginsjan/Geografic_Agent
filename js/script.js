@@ -1,3 +1,14 @@
+// ============================================================================
+// TEST MODE TOGGLE
+// ---------------------------------------------------------------------------
+// Set TEST_MODE = true to load local sample data from './rf-kit-selector-clean.zip/sample-response.json'
+// This is useful for UI testing and development without calling the real webhook.
+// Set TEST_MODE = false to use the real webhook endpoints in production.
+// ----------------------------------------------------------------------------
+const TEST_MODE = true; // true = use sample-response.json, false = call real webhooks
+const TEST_SAMPLE_PATH = './rf-kit-selector-clean.zip/sample-response.json';
+// ============================================================================
+
 // Disable browser scroll restoration immediately
 if ('scrollRestoration' in history) {
     history.scrollRestoration = 'manual';
@@ -392,8 +403,42 @@ function extractKitRecommendationData(responseData) {
         recommendationData = responseData;
     }
     
-    // If we found recommendation data, check for errors
+    // If we found recommendation data, normalize new schema and check for errors
     if (recommendationData) {
+        // Map new webhook format to legacy-compatible fields used elsewhere in UI
+        try {
+            const hasNewKits = Array.isArray(recommendationData.recommendedKits);
+            const hasSummary = recommendationData.summary && typeof recommendationData.summary === 'object';
+            
+            // Create legacy alias array if new kits are present
+            if (hasNewKits) {
+                // Provide a minimal legacy-compatible projection for downstream UI that expects `viable_kits`
+                recommendationData.viable_kits = recommendationData.recommendedKits.map((kit) => {
+                    const firstRadio = Array.isArray(kit.radios) && kit.radios.length > 0 ? kit.radios[0] : null;
+                    return {
+                        name: kit.KIT || kit.kit || kit.name || null,
+                        link_margin: kit.rfCalculationSummary?.averageLinkMargin ?? firstRadio?.LinkMargin_dB ?? null,
+                        antenna_gain: firstRadio?.AntennaGain ?? null,
+                        cost: kit["Cost (USD)"] ?? kit.cost ?? null,
+                        raw: kit
+                    };
+                });
+            }
+            
+            // Derive recommendation names from summary
+            if (hasSummary) {
+                const bestTechKit = recommendationData.summary?.bestTechnicalPerformance?.KIT || null;
+                const bestValueKit = recommendationData.summary?.bestValue?.KIT || null;
+                const bestMarginKit = recommendationData.summary?.bestLinkMargin?.KIT || null;
+                
+                if (bestTechKit) recommendationData.high_reliability_recommendation = bestTechKit;
+                if (bestValueKit) recommendationData.best_value_recommendation = bestValueKit;
+                if (bestMarginKit) recommendationData.best_link_margin_recommendation = bestMarginKit;
+            }
+        } catch (normalizeError) {
+            console.warn('Normalization warning (non-fatal):', normalizeError);
+        }
+        
         // Check for error_code and error_explanation
         if (recommendationData.error_code && recommendationData.error_code !== null) {
             errorMessage = `Error ${recommendationData.error_code}: ${recommendationData.error_explanation || 'Error desconocido'}`;
@@ -404,8 +449,10 @@ function extractKitRecommendationData(responseData) {
             errorMessage = 'No hay línea de vista viable para esta ubicación.';
         }
         
-        // Additional validation: check if we have viable kits
-        if (!recommendationData.viable_kits || !Array.isArray(recommendationData.viable_kits) || recommendationData.viable_kits.length === 0) {
+        // Additional validation: accept new or legacy arrays
+        const hasLegacyKits = Array.isArray(recommendationData.viable_kits) && recommendationData.viable_kits.length > 0;
+        const hasNewKitsAfterNorm = Array.isArray(recommendationData.recommendedKits) && recommendationData.recommendedKits.length > 0;
+        if (!hasLegacyKits && !hasNewKitsAfterNorm) {
             if (!errorMessage) {
                 errorMessage = 'No se encontraron kits viables para esta ubicación.';
             }
@@ -567,19 +614,22 @@ async function retryKitRecommendations() {
     
     try {
         // Send POST request to n8n selection webhook with extended timeout
-        const response = await fetchWithTimeout(n8nSelectionWebhookUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestData)
-        }, 300000); // 5 minute timeout to match API timeout
+        const response = TEST_MODE
+            ? await fetch(TEST_SAMPLE_PATH)
+            : await fetchWithTimeout(n8nSelectionWebhookUrl, {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(requestData)
+              }, 300000); // 5 minute timeout to match API timeout
 
         if (!response.ok) {
             throw new Error(`Server responded with error: ${response.status} ${response.statusText}`);
         }
 
         const responseData = await response.json();
+        const normalizedResponse = TEST_MODE && Array.isArray(responseData) ? responseData[0].response?.body?.[0] || responseData : responseData;
         
         hideLoadingBlock('recommendations');
         
@@ -588,8 +638,8 @@ async function retryKitRecommendations() {
         showStatusMessage('Recomendaciones obtenidas exitosamente', 'success', 'recommendations');
         
         // Handle kit recommendations if present in response
-        if (responseData) {
-            const { data: recommendationData, error: errorMessage } = extractKitRecommendationData(responseData);
+        if (normalizedResponse) {
+            const { data: recommendationData, error: errorMessage } = extractKitRecommendationData(normalizedResponse);
             
             // If there's an error, display it and don't show recommendations
             if (errorMessage) {
@@ -728,17 +778,20 @@ async function handleConfirmSelection() {
                 setTimeout(async () => {
                     try {
                         showStatusMessage('Reintentando obtener recomendaciones...', 'info');
-                        const retryResponse = await fetchWithTimeout(n8nSelectionWebhookUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(requestData)
-                        }, 300000); // 5 minute timeout to match API timeout
+                        const retryResponse = TEST_MODE
+                            ? await fetch(TEST_SAMPLE_PATH)
+                            : await fetchWithTimeout(n8nSelectionWebhookUrl, {
+                                  method: 'POST',
+                                  headers: {
+                                      'Content-Type': 'application/json'
+                                  },
+                                  body: JSON.stringify(requestData)
+                              }, 300000); // 5 minute timeout to match API timeout
                         
                         if (retryResponse.ok) {
                             const retryData = await retryResponse.json();
-                            const { data: retryRecommendationData, error: retryErrorMessage } = extractKitRecommendationData(retryData);
+                            const normalizedRetry = TEST_MODE && Array.isArray(retryData) ? retryData[0].response?.body?.[0] || retryData : retryData;
+                            const { data: retryRecommendationData, error: retryErrorMessage } = extractKitRecommendationData(normalizedRetry);
                             
                             if (retryErrorMessage) {
                                 handleKitRecommendationError(retryErrorMessage, 'recommendations', requestData);
@@ -1371,24 +1424,26 @@ function populateRecommendationBlock(data) {
         updateAigentIDDisplay(currentAigentID);
     }
     
-    // Populate dropdown with viable kits
-    if (data.viable_kits && Array.isArray(data.viable_kits)) {
-        console.log(`Found ${data.viable_kits.length} viable kits`);
-        data.viable_kits.forEach((kit, index) => {
-            if (kitDropdown && kit.name) {
+    // Populate dropdown with kits (prefer new schema recommendedKits)
+    const kitsForDisplay = Array.isArray(data.recommendedKits) ? data.recommendedKits : (Array.isArray(data.viable_kits) ? data.viable_kits : []);
+    if (kitsForDisplay.length > 0) {
+        console.log(`Found ${kitsForDisplay.length} kits for display`);
+        kitsForDisplay.forEach((kit, index) => {
+            if (kitDropdown) {
                 const option = document.createElement('option');
-                option.value = kit.name;
-                option.textContent = kit.name;
+                const kitName = kit.KIT || kit.name;
+                option.value = kitName || `Kit-${index + 1}`;
+                option.textContent = kitName || `Kit ${index + 1}`;
                 kitDropdown.appendChild(option);
             }
         });
     } else {
-        console.warn('No viable_kits found in data or invalid format');
+        console.warn('No kits found in data or invalid format');
     }
     
-    // Create kit cards
-    if (data.viable_kits && Array.isArray(data.viable_kits)) {
-        data.viable_kits.forEach((kit, index) => {
+    // Create kit cards (prefer new schema recommendedKits)
+    if (kitsForDisplay.length > 0) {
+        kitsForDisplay.forEach((kit, index) => {
             if (kitsGrid) {
                 const kitCard = createKitCard(kit);
                 kitsGrid.appendChild(kitCard);
@@ -1396,33 +1451,66 @@ function populateRecommendationBlock(data) {
         });
     }
     
-    // Populate recommendation cards
-    // Robust: show details if kit found, else fallback to name or message
-    if (data.high_reliability_recommendation && highReliabilityContent) {
+    // Populate recommendation cards using new summary fields (with legacy fallbacks)
+    const bestValueName = data.summary?.bestValue?.KIT || data.best_value_recommendation || null;
+    const bestTechName = data.summary?.bestTechnicalPerformance?.KIT || data.high_reliability_recommendation || null;
+    const bestMarginName = data.summary?.bestLinkMargin?.KIT || data.best_link_margin_recommendation || null;
+
+    // High reliability (Best Technical Performance)
+    if (bestTechName && highReliabilityContent) {
         let text = '';
-        if (data.viable_kits && Array.isArray(data.viable_kits)) {
-            const kit = data.viable_kits.find(k => k.name === data.high_reliability_recommendation);
+        const lookupArray = Array.isArray(data.recommendedKits) ? data.recommendedKits : (Array.isArray(data.viable_kits) ? data.viable_kits : []);
+        if (lookupArray.length > 0) {
+            const kit = lookupArray.find(k => (k.KIT || k.name) === bestTechName);
             if (kit) {
-                text = `<strong>${kit.name}</strong> is recommended for high reliability with a link margin of <strong>${kit.link_margin}</strong> and antenna gain of <strong>${kit.antenna_gain}</strong>.`;
+                const kitName = kit.KIT || kit.name || 'Kit';
+                const linkMargin = (kit.radios && kit.radios[0] && (kit.radios[0].LinkMargin_dB ?? kit.radios[0].LinkMargin)) ?? kit.link_margin;
+                const antennaGain = (kit.radios && kit.radios[0] && kit.radios[0].AntennaGain) ?? kit.antenna_gain;
+                text = `<strong>${kitName}</strong> is recommended for high reliability with a link margin of <strong>${linkMargin ?? 'N/A'}</strong> and antenna gain of <strong>${antennaGain ?? 'N/A'}</strong>.`;
             }
         }
-        if (!text) text = typeof data.high_reliability_recommendation === 'string' ? data.high_reliability_recommendation : 'No recommendation.';
+        if (!text) text = typeof bestTechName === 'string' ? bestTechName : 'No recommendation.';
         highReliabilityContent.innerHTML = text;
     } else if (highReliabilityContent) {
         highReliabilityContent.textContent = 'No high reliability recommendation.';
     }
-    if (data.best_value_recommendation && bestValueContent) {
+
+    // Best value
+    if (bestValueName && bestValueContent) {
         let text = '';
-        if (data.viable_kits && Array.isArray(data.viable_kits)) {
-            const kit = data.viable_kits.find(k => k.name === data.best_value_recommendation);
+        const lookupArray = Array.isArray(data.recommendedKits) ? data.recommendedKits : (Array.isArray(data.viable_kits) ? data.viable_kits : []);
+        if (lookupArray.length > 0) {
+            const kit = lookupArray.find(k => (k.KIT || k.name) === bestValueName);
             if (kit) {
-                text = `<strong>${kit.name}</strong> is recommended as the best value option with a link margin of <strong>${kit.link_margin}</strong> and cost of <strong>${kit.cost}</strong>.`;
+                const kitName = kit.KIT || kit.name || 'Kit';
+                const linkMargin = (kit.radios && kit.radios[0] && (kit.radios[0].LinkMargin_dB ?? kit.radios[0].LinkMargin)) ?? kit.link_margin;
+                const cost = kit["Cost (USD)"] ?? kit.cost;
+                text = `<strong>${kitName}</strong> is recommended as the best value option with a link margin of <strong>${linkMargin ?? 'N/A'}</strong> and cost of <strong>${cost ?? 'N/A'}</strong>.`;
             }
         }
-        if (!text) text = typeof data.best_value_recommendation === 'string' ? data.best_value_recommendation : 'No recommendation.';
+        if (!text) text = typeof bestValueName === 'string' ? bestValueName : 'No recommendation.';
         bestValueContent.innerHTML = text;
     } else if (bestValueContent) {
         bestValueContent.textContent = 'No best value recommendation.';
+    }
+
+    // Best link margin (new)
+    const bestMarginContainer = document.querySelector('.recommendation-card.best-margin .recommendation-content');
+    if (bestMarginName && bestMarginContainer) {
+        let text = '';
+        const lookupArray = Array.isArray(data.recommendedKits) ? data.recommendedKits : (Array.isArray(data.viable_kits) ? data.viable_kits : []);
+        if (lookupArray.length > 0) {
+            const kit = lookupArray.find(k => (k.KIT || k.name) === bestMarginName);
+            if (kit) {
+                const kitName = kit.KIT || kit.name || 'Kit';
+                const linkMargin = (kit.radios && kit.radios[0] && (kit.radios[0].LinkMargin_dB ?? kit.radios[0].LinkMargin)) ?? kit.link_margin;
+                text = `<strong>${kitName}</strong> has the best link margin at <strong>${linkMargin ?? 'N/A'}</strong>.`;
+            }
+        }
+        if (!text) text = typeof bestMarginName === 'string' ? bestMarginName : 'No recommendation.';
+        bestMarginContainer.innerHTML = text;
+    } else if (bestMarginContainer) {
+        bestMarginContainer.textContent = 'No best link margin recommendation.';
     }
 }
 
@@ -1435,17 +1523,54 @@ function createKitCard(kit) {
     const getValue = (obj, key, defaultValue = 'N/A') => {
         return obj && obj[key] ? obj[key] : defaultValue;
     };
+    // Helper for nested values with safe fallback
+    const getNested = (getter, fallback = null) => {
+        try {
+            const val = getter();
+            return (val === undefined || val === null) ? fallback : val;
+        } catch (_) {
+            return fallback;
+        }
+    };
+    // Helper for clamping numbers
+    const clamp = (num, min, max) => {
+        if (typeof num !== 'number' || isNaN(num)) return null;
+        return Math.max(min, Math.min(max, num));
+    };
+    // Compute derived fields from new schema
+    const primaryRadio = Array.isArray(kit.radios) && kit.radios.length > 0 ? kit.radios[0] : null;
+    const technicalScore = getNested(() => kit.technicalScore, null);
+    const valueScore = getNested(() => kit.valueAnalysis.valueScore, null);
+    const recommendationCategory = getNested(() => kit.recommendation.category, null);
+    const linkQuality = getNested(() => primaryRadio.linkAnalysis.quality, null);
+    const technicalPercent = technicalScore !== null ? clamp(Math.round(technicalScore * 10) / 10, 0, 10) : null;
+    const valuePercent = valueScore !== null ? clamp(Math.round(valueScore * 10) / 10, 0, 10) : null;
+    const technicalWidth = technicalPercent !== null ? `${(technicalPercent / 10) * 100}%` : '0%';
+    const valueWidth = valuePercent !== null ? `${(valuePercent / 10) * 100}%` : '0%';
+    // Map link quality to colors
+    const qualityToColor = (q) => {
+        if (!q) return '#999';
+        const v = String(q).toLowerCase();
+        if (v === 'excellent') return '#16a34a';
+        if (v === 'good') return '#2563eb';
+        if (v === 'marginal') return '#f59e0b';
+        if (v === 'poor') return '#ef4444';
+        return '#6b7280';
+    };
+    const linkQualityColor = qualityToColor(linkQuality);
+    const linkQualityClass = linkQuality ? `quality-${String(linkQuality).toLowerCase()}` : '';
+    const categoryClass = (recommendationCategory ? String(recommendationCategory).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '') : '');
     
     card.innerHTML = `
-        <h4>${getValue(kit, 'name', 'Kit Sin Nombre')}</h4>
+        <h4>${getValue(kit, 'KIT', getValue(kit, 'name', 'Kit Sin Nombre'))}</h4>
         <div class="kit-details">
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Radio</span>
-                <span class="kit-detail-value">${getValue(kit, 'radio')}</span>
+                <span class="kit-detail-value">${(kit.radios && kit.radios[0] && getValue(kit.radios[0], 'Radio')) || getValue(kit, 'radio')}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Antena</span>
-                <span class="kit-detail-value">${getValue(kit, 'antenna')}</span>
+                <span class="kit-detail-value">${getValue(kit, 'Antena', getValue(kit, 'antenna'))}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Banda de Frecuencia</span>
@@ -1453,7 +1578,7 @@ function createKitCard(kit) {
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Throughput Máximo</span>
-                <span class="kit-detail-value">${getValue(kit, 'max_throughput')}</span>
+                <span class="kit-detail-value">${(kit.radios && kit.radios[0] && getValue(kit.radios[0], 'MaxThroughput')) || getValue(kit, 'max_throughput')}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Potencia de Transmisión</span>
@@ -1465,11 +1590,29 @@ function createKitCard(kit) {
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Margen de Enlace</span>
-                <span class="kit-detail-value highlight">${getValue(kit, 'link_margin')}</span>
+                <span class="kit-detail-value highlight">${(kit.radios && kit.radios[0] && (kit.radios[0].LinkMargin_dB ?? kit.radios[0].LinkMargin)) || getValue(kit, 'link_margin')}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Costo</span>
-                <span class="kit-detail-value highlight">${getValue(kit, 'cost')}</span>
+                <span class="kit-detail-value highlight">${getValue(kit, 'Cost (USD)', getValue(kit, 'cost'))}</span>
+            </div>
+        </div>
+        <div class="kit-metrics" style="margin-top: 12px; display: grid; gap: 8px;">
+            <div class="technical-score" style="display: grid; gap: 6px;">
+                <div class="metric-label" style="font-size: 0.9rem; color: #888;">Technical Rating: ${technicalScore !== null ? `${technicalScore}/10` : 'N/A'}</div>
+                <div class="metric-bar" style="background:#1f2937; border-radius: 6px; height: 8px; overflow: hidden;">
+                    <div class="score-bar" data-score="${technicalPercent !== null ? (technicalPercent * 10) : 0}" style="height:100%; width:${technicalWidth}; background:#06b6d4; transition: width 0.6s ease;"></div>
+                </div>
+            </div>
+            <div class="value-rating" style="display: grid; gap: 6px;">
+                <div class="metric-label" style="font-size: 0.9rem; color: #888;">Value Rating: ${valueScore !== null ? `${valueScore}/10` : 'N/A'}</div>
+                <div class="metric-bar" style="background:#1f2937; border-radius: 6px; height: 8px; overflow: hidden;">
+                    <div class="score-bar" data-score="${valuePercent !== null ? (valuePercent * 10) : 0}" style="height:100%; width:${valueWidth}; background:#84cc16; transition: width 0.6s ease;"></div>
+                </div>
+            </div>
+            <div class="badges" style="display:flex; gap:8px; flex-wrap: wrap; margin-top: 4px;">
+                ${recommendationCategory ? `<span class="rec-badge ${categoryClass}">${recommendationCategory}</span>` : ''}
+                ${linkQuality ? `<div class="link-quality ${linkQualityClass}" style="background:${linkQualityColor}">${linkQuality}</div>` : ''}
             </div>
         </div>
     `;
@@ -1694,17 +1837,24 @@ if (confirmAddressButton) {
                 scrollToSection('analysis');
             }, 100);
             
-            const response = await fetchWithTimeout(n8nWebhookUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData)
-            }, 60000); // 60 second timeout
+            let response;
+            if (TEST_MODE) {
+                response = await fetch(TEST_SAMPLE_PATH);
+            } else {
+                response = await fetchWithTimeout(n8nWebhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                }, 60000); // 60 second timeout
+            }
             if (!response.ok) {
                 throw new Error('El servidor respondió con un error (' + response.status + ')');
             }
             showStatusMessage('Procesando respuesta del servidor...', 'info');
             const responseData = await response.json();
-            const validatedData = validateAndExtractResponseData(responseData);
+            // In TEST_MODE, normalize the sample structure to match production
+            const normalizedData = TEST_MODE && Array.isArray(responseData) ? responseData[0].response?.body?.[0] || responseData : responseData;
+            const validatedData = validateAndExtractResponseData(normalizedData);
             if (!validatedData) {
                 throw new Error('La respuesta del servidor no tiene el formato esperado.');
             }

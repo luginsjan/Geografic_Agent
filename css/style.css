@@ -1354,6 +1354,25 @@ section {
     font-size: 0.9rem;
 }
 
+/* New: Expandable Kit Details */
+.kit-card .kit-details.collapsed {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.4s ease, opacity 0.3s ease;
+}
+.kit-card .kit-details.expanded {
+    max-height: 800px; /* large enough to show contents */
+    opacity: 1;
+    transition: max-height 0.6s ease, opacity 0.3s ease;
+}
+.kit-card .kit-details {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
 .kit-detail-item {
     display: flex;
     flex-direction: column;
@@ -1378,6 +1397,40 @@ section {
     font-weight: 600;
 }
 
+/* New: Progress Bars for Technical/Value Ratings */
+.technical-score, .value-rating {
+    display: grid;
+    gap: 6px;
+}
+.technical-score .metric-bar, .value-rating .metric-bar {
+    position: relative;
+    width: 100%;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 9999px;
+    overflow: hidden;
+}
+.technical-score .score-bar, .value-rating .score-bar {
+    position: relative;
+    display: block;
+    height: 100%;
+    min-width: 0%;
+    background: linear-gradient(90deg, #3b82f6 0%, #22c55e 100%);
+    border-radius: 9999px;
+    transition: width 0.6s ease;
+}
+.technical-score .score-bar::after, .value-rating .score-bar::after {
+    content: attr(data-score) '%';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #0b0f14;
+}
+
 /* Recommendations Section */
 .recommendations-section {
     display: grid;
@@ -1385,6 +1438,23 @@ section {
     gap: 2rem;
     margin-bottom: 2rem;
 }
+
+/* New: Recommendation Badge */
+.rec-badge {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.08);
+    color: #e5e7eb;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+/* Optional category modifiers (attach one of these classes when available) */
+.rec-badge.budget-choice { background: #0f172a; color: #e5e7eb; border-color: #334155; }
+.rec-badge.premium-choice { background: #1e293b; color: #e5e7eb; border-color: #475569; }
+.rec-badge.exceptional-value { background: #052e16; color: #bbf7d0; border-color: #166534; }
+.rec-badge.performance { background: #0b1020; color: #dbeafe; border-color: #1d4ed8; }
 
 .recommendation-card {
     background: rgba(255, 255, 255, 0.08);
@@ -1408,6 +1478,20 @@ section {
 .recommendation-card.best-value {
     border-left: 4px solid #FF9800;
 }
+
+/* New: Link Quality Indicator */
+.link-quality {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #0b0f14;
+}
+.link-quality.quality-excellent { background: #4CAF50; }
+.link-quality.quality-good { background: #2196F3; }
+.link-quality.quality-marginal { background: #FF9800; }
+.link-quality.quality-poor { background: #F44336; }
 
 .recommendation-card h3 {
     color: #ffffff;

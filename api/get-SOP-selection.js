@@ -120,17 +120,44 @@ module.exports = async function handler(req, res) {
       return res.status(n8nResponse.status).send(responseData);
     }
     
-    // Add AigentID to the response
-    const responseWithID = {
-      ...parsedData,
-      AigentID: aigentID
-    };
+    // Normalize various possible response formats into a stable shape
+    // Target normalized shape consumed by frontend: { output: { ... }, AigentID }
+    let normalized;
+    try {
+      // Case 1: New n8n format example: [ { response: { body: [ { recommendedKits, summary, ... } ], statusCode } } ]
+      if (Array.isArray(parsedData) && parsedData.length > 0 && parsedData[0] && parsedData[0].response) {
+        const bodyArray = parsedData[0].response.body;
+        if (Array.isArray(bodyArray) && bodyArray.length > 0 && bodyArray[0]) {
+          const bodyObj = bodyArray[0];
+          normalized = { output: bodyObj, AigentID: aigentID };
+        }
+      }
+      // Case 2: Already normalized with output
+      else if (parsedData && typeof parsedData === 'object' && parsedData.output) {
+        normalized = { ...parsedData, AigentID: aigentID };
+      }
+      // Case 3: Legacy array with first element having output
+      else if (Array.isArray(parsedData) && parsedData.length > 0 && parsedData[0] && parsedData[0].output) {
+        normalized = { output: parsedData[0].output, AigentID: aigentID };
+      }
+      // Case 4: Direct object with viable kit properties (legacy)
+      else if (parsedData && (parsedData.viable_kits || parsedData.high_reliability_recommendation || parsedData.best_value_recommendation)) {
+        normalized = { output: parsedData, AigentID: aigentID };
+      }
+      // Fallback: pass through as output payload
+      else {
+        normalized = { output: parsedData, AigentID: aigentID };
+      }
+    } catch (normErr) {
+      console.error('Normalization error:', normErr);
+      normalized = { output: parsedData, AigentID: aigentID };
+    }
     
     // Set AigentID in response headers as well
     res.setHeader('X-Aigent-ID', aigentID);
     
-    // Return the response with AigentID
-    return res.status(n8nResponse.status).json(responseWithID);
+    // Return the normalized response
+    return res.status(n8nResponse.status).json(normalized);
     
   } catch (error) {
     console.error('Proxy error details:', {

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RF Link Analysis & Kit Selection</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Requirements Cards -->
+            <section class="requirements-section">
+                <div class="requirements-grid">
+                    <div class="requirement-card">
+                        <div class="req-label">Distance</div>
+                        <div class="req-value">3.188 km</div>
+                    </div>
+                    <div class="requirement-card">
+                        <div class="req-label">Bandwidth</div>
+                        <div class="req-value">300 MB</div>
+                    </div>
+                    <div class="requirement-card">
+                        <div class="req-label">Frequency</div>
+                        <div class="req-value">40 MHz</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recommended Kit Card -->
+            <section class="recommended-kit">
+                <div class="kit-card primary-card">
+                    <div class="card-header">
+                        <div class="badge-container">
+                            <div class="crown-icon">👑</div>
+                            <span class="recommendation-badge">HIGHLY RECOMMENDED</span>
+                        </div>
+                        <h3 class="kit-title">KIT 3 - opción 3</h3>
+                    </div>
+                    
+                    <div class="card-content">
+                        <div class="scores-section">
+                            <div class="score-item">
+                                <div class="score-bar-container">
+                                    <div class="score-bar-label">Technical Score</div>
+                                    <div class="score-bar-wrapper">
+                                        <div class="score-bar technical-bar" data-score="94"></div>
+                                        <div class="score-value">9.4/10</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="score-item">
+                                <div class="score-bar-container">
+                                    <div class="score-bar-label">Value Score</div>
+                                    <div class="score-bar-wrapper">
+                                        <div class="score-bar value-bar" data-score="85"></div>
+                                        <div class="score-value">8.5/10</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="primary-metrics">
+                            <div class="cost-display">
+                                <span class="cost-label">Total Cost</span>
+                                <span class="cost-value">$2,130</span>
+                            </div>
+                            
+                            <div class="metrics-grid">
+                                <div class="metric-item">
+                                    <span class="metric-label">Link Margin</span>
+                                    <span class="metric-value excellent">59.4 dB</span>
+                                    <span class="metric-status excellent">Excellent</span>
+                                </div>
+                                
+                                <div class="metric-item">
+                                    <span class="metric-label">Max Throughput</span>
+                                    <span class="metric-value">1,800 Mbps</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="select-btn primary">SELECT THIS KIT</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Key Metrics Grid -->
+            <section class="key-metrics">
+                <h3 class="section-title">Key Performance Metrics</h3>
+                <div class="metrics-grid-main">
+                    <div class="metric-card">
+                        <span class="metric-title">Received Power</span>
+                        <span class="metric-main-value">-22.3 dBm</span>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <span class="metric-title">FSPL Average</span>
+                        <span class="metric-main-value">118.6 dB</span>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <span class="metric-title">Equipment Type</span>
+                        <span class="metric-main-value">Dual Radio System</span>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <span class="metric-title">Reliability</span>
+                        <span class="metric-main-value excellent">Excellent</span>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <span class="metric-title">Coverage Distance</span>
+                        <span class="metric-main-value success">3.2 km ✓</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Alternative Kits -->
+            <section class="alternative-kits">
+                <h3 class="section-title">Alternative Options</h3>
+                <div class="alternatives-container">
+                    <div class="kit-card alternative">
+                        <div class="alt-badge exceptional">Exceptional Value</div>
+                        <h4 class="alt-kit-title">KIT 2</h4>
+                        <div class="alt-score">8.3/10 Technical</div>
+                        <div class="alt-score">10/10 Value</div>
+                        <div class="alt-cost">$1,241</div>
+                        <button class="select-btn secondary">Select</button>
+                    </div>
+                    
+                    <div class="kit-card alternative">
+                        <div class="alt-badge budget">Budget Choice</div>
+                        <h4 class="alt-kit-title">KIT 1</h4>
+                        <div class="alt-score">8.0/10 Technical</div>
+                        <div class="alt-score">10/10 Value</div>
+                        <div class="alt-cost">$691</div>
+                        <button class="select-btn secondary">Select</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Expandable Technical Details -->
+            <section class="technical-details">
+                <div class="expandable-section">
+                    <button class="expand-btn" data-target="rf-analysis">
+                        <span>RF Engineering Analysis</span>
+                        <span class="expand-icon">▼</span>
+                    </button>
+                    <div class="expandable-content" id="rf-analysis">
+                        <div class="technical-grid">
+                            <div class="tech-item">
+                                <h5>FSPL Calculations</h5>
+                                <p><strong>Formula:</strong> FSPL = 20log₁₀(d) + 20log₁₀(f) + 32.45</p>
+                                <p>Free Space Path Loss: 118.6 dB</p>
+                                <p>Distance Component: 10.07 dB</p>
+                                <p>Frequency Component (Primary): 76.78 dB @ 60 GHz</p>
+                                <p>Frequency Component (Secondary): 75.42 dB @ 5.9 GHz</p>
+                            </div>
+                            <div class="tech-item">
+                                <h5>Link Budget Breakdown</h5>
+                                <p><strong>Primary Radio (60 GHz):</strong></p>
+                                <p>TX Power: 21 dBm</p>
+                                <p>TX Gain: 38 dBi</p>
+                                <p>RX Gain: 38 dBi</p>
+                                <p>FSPL: -119.30 dB</p>
+                                <p>Received Power: -22.30 dBm</p>
+                                <p>Link Margin: 67.70 dB</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="expandable-section">
+                    <button class="expand-btn" data-target="equipment-specs">
+                        <span>Equipment Specifications</span>
+                        <span class="expand-icon">▼</span>
+                    </button>
+                    <div class="expandable-content" id="equipment-specs">
+                        <div class="equipment-list">
+                            <div class="equipment-item">
+                                <h5>Primary Radio: Ubiquiti AF60-LR (60 GHz)</h5>
+                                <p>Model: AF60-LR</p>
+                                <p>Frequency: 60 GHz Band</p>
+                                <p>Max Throughput: 1,800 Mbps</p>
+                                <p>TX Power: 21 dBm | Antenna Gain: 38 dBi</p>
+                                <p>Link Margin: 67.7 dB</p>
+                            </div>
+                            <div class="equipment-item">
+                                <h5>Secondary Radio: Mimosa C5c (5 GHz)</h5>
+                                <p>Model: C5c</p>
+                                <p>Frequency: 5.9 GHz</p>
+                                <p>Max Throughput: 700 Mbps</p>
+                                <p>TX Power: 27 dBm | Antenna Gain: 26 dBi</p>
+                                <p>Link Margin: 51.06 dB</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="expandable-section">
+                    <button class="expand-btn" data-target="multi-radio">
+                        <span>Multi-Radio Analysis</span>
+                        <span class="expand-icon">▼</span>
+                    </button>
+                    <div class="expandable-content" id="multi-radio">
+                        <div class="radio-comparison">
+                            <div class="radio-item">
+                                <h5>60 GHz Radio Performance</h5>
+                                <p>Ultra-high capacity primary link</p>
+                                <p>Excellent for high-bandwidth applications</p>
+                                <p>Weather sensitivity managed by backup radio</p>
+                                <p>Link Budget: 97 dB total system gain</p>
+                            </div>
+                            <div class="radio-item">
+                                <h5>5 GHz Radio Performance</h5>
+                                <p>Reliable backup and load balancing</p>
+                                <p>Weather-resistant operation</p>
+                                <p>Lower latency for critical applications</p>
+                                <p>Link Budget: 79 dB total system gain</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Report Generation -->
+            <section class="report-generation">
+                <h3 class="section-title">Generate Reports</h3>
+                <div class="reports-container">
+                    <div class="report-card">
+                        <div class="report-icon business">📊</div>
+                        <h4>Commercial Report</h4>
+                        <div class="report-options">
+                            <label class="checkbox-label">
+                                <input type="checkbox" checked> Cost Analysis
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" checked> ROI Calculation
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox"> Executive Summary
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="report-card">
+                        <div class="report-icon technical">⚙️</div>
+                        <h4>Technical Report</h4>
+                        <div class="report-options">
+                            <label class="checkbox-label">
+                                <input type="checkbox" checked> Link Budget
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" checked> Equipment Specs
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox"> Installation Guide
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="generate-reports-btn" id="generateReports">
+                    <span class="btn-text">Generate Both Reports</span>
+                    <span class="loading-spinner hidden">⏳</span>
+                </button>
+            </section>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
