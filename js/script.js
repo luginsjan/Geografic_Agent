@@ -405,6 +405,10 @@ function extractKitRecommendationData(responseData) {
     
     // If we found recommendation data, normalize new schema and check for errors
     if (recommendationData) {
+        // If recommendationData is an array (e.g., output: [ { ... } ]), use the first element
+        if (Array.isArray(recommendationData) && recommendationData.length > 0 && typeof recommendationData[0] === 'object') {
+            recommendationData = recommendationData[0];
+        }
         // Map new webhook format to legacy-compatible fields used elsewhere in UI
         try {
             const hasNewKits = Array.isArray(recommendationData.recommendedKits);
