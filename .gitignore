@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+*.log
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Build Files/Packages
+*.zip
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Test files
+test-*.html
