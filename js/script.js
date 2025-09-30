@@ -212,19 +212,36 @@ async function downloadTechnicalReportPDF() {
 
         await new Promise((resolve) => setTimeout(resolve, 200));
 
-        const opt = {
-            margin: [20, 20, 20, 20],
-            filename: 'technical_report.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: '#ffffff'
-            },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }
-        };
+        const canvas = await html2canvas(reportElement, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff'
+        });
 
-        await html2pdf().set(opt).from(wrapper).save();
+        const imgData = canvas.toDataURL('image/jpeg', 0.98);
+        const { jsPDF } = window.jspdf || {};
+        if (!jsPDF) {
+            throw new Error('jsPDF no está disponible');
+        }
+
+        const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        const pageWidth = 210;
+        const pageHeight = 297;
+        const margin = 15;
+        const usableWidth = pageWidth - margin * 2;
+        const usableHeight = pageHeight - margin * 2;
+
+        let pdfWidth = usableWidth;
+        let pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        if (pdfHeight > usableHeight) {
+            pdfHeight = usableHeight;
+            pdfWidth = (canvas.width * pdfHeight) / canvas.height;
+        }
+
+        pdf.addImage(imgData, 'JPEG', margin, margin, pdfWidth, pdfHeight);
+        pdf.save('technical_report.pdf');
+
         showStatusMessage('Reporte técnico generado y descargado exitosamente', 'success', 'report');
     } catch (error) {
         console.error('Error generating technical report:', error);
