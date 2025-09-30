@@ -14,6 +14,232 @@ if ('scrollRestoration' in history) {
     history.scrollRestoration = 'manual';
 }
 
+function getPrimaryTechnicalKit() {
+    if (latestKitRecommendationData?.recommendedKits?.length) {
+        return latestKitRecommendationData.recommendedKits[0];
+    }
+    if (latestKitRecommendationData?.viable_kits?.length) {
+        const candidate = latestKitRecommendationData.viable_kits.find((kit) => kit?.raw);
+        if (candidate?.raw) {
+            return candidate.raw;
+        }
+    }
+    return null;
+}
+
+function collectTechnicalReportData() {
+    const sopData = confirmedSOP?.data || null;
+    const lineOfSight = sopData?.lineOfSight || null;
+    const lineSummary = lineOfSight?.summary || null;
+    const lineContext = lineOfSight?.context || {};
+    const kitNode = getPrimaryTechnicalKit();
+    const kitRadio = kitNode?.radios?.[0] || null;
+
+    const feasibility = lineOfSight ? (lineOfSight.hasLineOfSight ? 'Positiva' : 'Negativa') : 'Pendiente de confirmar';
+    const clientCoordinates = lineContext.userCoordinates || sopData?.user_coordinates || inputCoordinates || 'No disponible';
+    const technology = sopData?.technology || kitNode?.technology || lineContext.technology || 'PTP';
+
+    const minimumHeight = lineSummary?.minimumAntennaHeight ?? lineContext.structureHeight ?? null;
+    const requiredHeight = minimumHeight != null ? `${minimumHeight} metros de altura mínimo` : 'No especificado';
+
+    const trajectorySegments = [];
+    const clientLabel = clientCoordinates ? `Cliente (${clientCoordinates})` : 'Cliente';
+    trajectorySegments.push(clientLabel);
+    if (lineContext.sop || sopData?.SOP) {
+        trajectorySegments.push(lineContext.sop || sopData.SOP);
+    }
+    if (lineContext.targetCoordinates) {
+        trajectorySegments.push(lineContext.targetCoordinates);
+    }
+    const trajectory = trajectorySegments.length > 1 ? trajectorySegments.join(' - ') : (lineContext.targetCoordinates || 'No especificada');
+
+    const requiredFrequency = kitNode?.requirements?.requiredFrequency || kitRadio?.FrequencyMatchInfo?.matchedFrequency || null;
+
+    const rawBandwidth = kitNode?.requirements?.providedBandwidth ?? storedBandwidth ?? inputBandwidth ?? null;
+    const numericBandwidth = rawBandwidth !== null && rawBandwidth !== undefined && rawBandwidth !== '' && !Number.isNaN(Number(rawBandwidth)) ? Number(rawBandwidth) : null;
+    const bandwidthText = numericBandwidth !== null ? `${numericBandwidth.toFixed(0)} Mbps` : (rawBandwidth || null);
+
+    const rawDistance = kitNode?.requirements?.providedDistanceKm ?? lineOfSight?.totalDistanceKm ?? null;
+    const numericDistance = rawDistance !== null && rawDistance !== undefined && rawDistance !== '' && !Number.isNaN(Number(rawDistance)) ? Number(rawDistance) : null;
+    const distanceText = numericDistance !== null ? `${numericDistance.toFixed(2)} km` : (rawDistance ? `${rawDistance} km` : null);
+
+    const rawMargin = kitRadio?.LinkMargin_dB ?? kitNode?.rfCalculationSummary?.averageLinkMargin ?? null;
+    let marginNumber = null;
+    if (rawMargin !== null && rawMargin !== undefined) {
+        const parsedMargin = Number(rawMargin);
+        if (!Number.isNaN(parsedMargin)) {
+            marginNumber = parsedMargin;
+        } else if (typeof rawMargin === 'string') {
+            const match = rawMargin.match(/-?\d+(?:\.\d+)?/);
+            if (match) {
+                const fromString = Number(match[0]);
+                if (!Number.isNaN(fromString)) {
+                    marginNumber = fromString;
+                }
+            }
+        }
+    }
+    const marginText = marginNumber !== null ? `${marginNumber.toFixed(2)} dB` : (typeof rawMargin === 'string' ? rawMargin : rawMargin != null ? `${rawMargin}` : null);
+
+    const networkConsiderations = [
+        bandwidthText ? `Ancho de banda solicitado: ${bandwidthText}` : null,
+        requiredFrequency ? `Configuración de canal: ${requiredFrequency}` : null,
+        distanceText ? `Distancia estimada: ${distanceText}` : null,
+        marginText ? `Margen de enlace estimado: ${marginText}` : null
+    ].filter(Boolean).join('\n') || 'No disponible';
+
+    const siteConsiderationsParts = [];
+    if (minimumHeight != null) {
+        siteConsiderationsParts.push(`Altura mínima sugerida: ${minimumHeight} m`);
+    }
+    if (lineContext.structureHeight != null) {
+        siteConsiderationsParts.push(`Altura estructura actual: ${lineContext.structureHeight} m`);
+    }
+    if (lineOfSight?.analysis?.message) {
+        siteConsiderationsParts.push(lineOfSight.analysis.message);
+    } else if (lineSummary?.recommendation) {
+        siteConsiderationsParts.push(lineSummary.recommendation);
+    }
+    const siteConsiderations = siteConsiderationsParts.length ? siteConsiderationsParts.join('\n') : 'No disponible';
+
+    const specialConfigurations = kitNode?.recommendation?.description || 'Comercial no indica';
+
+    const deliveryTime = 'Dedicado: 3 días hábiles\nMype: 7 días hábiles';
+
+    const commercialConditions = [
+        'En enlace dedicado se entrega sin excepción con IPv6 en las plazas previamente liberas por operación de red, en caso de requerir modo puente se aplicaría configuración DMZ.',
+        'En servicio Mype se tiene una sobreasignación de 1:5.',
+        'Factible bajo escritorio, al estar en sitio se validará que se cuente con línea de vista directa, en caso de presentar obstrucciones y/o algún caso en especial en el cual no se pueda realizar la instalación, se realizará levantamiento para validar soluciones que estén al alcance de nuestras posibilidades.'
+    ].join('\n');
+
+    return {
+        title: 'Reporte Técnico de Enlace',
+        fields: [
+            { label: '1. Factibilidad', value: feasibility },
+            { label: '2. Coordenada cliente', value: clientCoordinates },
+            { label: '3. Tecnología', value: technology },
+            { label: '4. Altura requerida en sitio', value: requiredHeight },
+            { label: '5. Trayectoria del Enlace', value: trajectory },
+            { label: '6. Consideraciones de red para entrega de enlace', value: networkConsiderations },
+            { label: '7. Consideraciones en sitio', value: siteConsiderations },
+            { label: '8. Configuraciones especiales', value: specialConfigurations || 'No indica' },
+            { label: '9. Tiempo de entrega', value: deliveryTime },
+            { label: '10. Condiciones Comerciales', value: commercialConditions }
+        ]
+    };
+}
+
+function buildTechnicalReportElement(data) {
+    const container = document.createElement('div');
+    container.style.cssText = '
+        background: #fff;
+        color: #212121;
+        font-family: Arial, sans-serif;
+        padding: 32px;
+        max-width: 800px;
+        margin: 0 auto;
+        box-sizing: border-box;
+    ';
+
+    const heading = document.createElement('h2');
+    heading.textContent = data.title;
+    heading.style.cssText = 'text-align:center;margin-bottom:24px;font-size:24px;color:#2c5aa0;';
+    container.appendChild(heading);
+
+    const table = document.createElement('table');
+    table.style.cssText = 'width:100%;border-collapse:collapse;font-size:14px;';
+
+    data.fields.forEach((field) => {
+        const row = document.createElement('tr');
+        const labelCell = document.createElement('td');
+        labelCell.textContent = field.label;
+        labelCell.style.cssText = 'width:35%;font-weight:bold;padding:10px;border:1px solid #bfae7a;background:#f7f1df;';
+
+        const valueCell = document.createElement('td');
+        valueCell.innerHTML = formatTechnicalValue(field.value);
+        valueCell.style.cssText = 'padding:10px;border:1px solid #bfae7a;background:#fbf7e9;';
+
+        row.appendChild(labelCell);
+        row.appendChild(valueCell);
+        table.appendChild(row);
+    });
+
+    container.appendChild(table);
+    return container;
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatTechnicalValue(value) {
+    if (value === null || value === undefined || value === '') {
+        return 'No disponible';
+    }
+    if (Array.isArray(value)) {
+        return value.map((item) => escapeHtml(item)).join('<br>');
+    }
+    return escapeHtml(value).replace(/\n/g, '<br>');
+}
+
+async function downloadTechnicalReportPDF() {
+    const button = document.getElementById('download-technical-report-button');
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<span class="download-icon">⏳</span> Generando...';
+    }
+
+    let wrapper = null;
+
+    try {
+        const data = collectTechnicalReportData();
+        wrapper = document.createElement('div');
+        wrapper.style.position = 'fixed';
+        wrapper.style.top = '-10000px';
+        wrapper.style.left = '-10000px';
+        wrapper.style.width = '794px';
+        wrapper.style.background = '#ffffff';
+        wrapper.style.zIndex = '-1';
+
+        const reportElement = buildTechnicalReportElement(data);
+        wrapper.appendChild(reportElement);
+        document.body.appendChild(wrapper);
+
+        await new Promise((resolve) => setTimeout(resolve, 200));
+
+        const opt = {
+            margin: [20, 20, 20, 20],
+            filename: 'technical_report.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }
+        };
+
+        await html2pdf().set(opt).from(wrapper).save();
+        showStatusMessage('Reporte técnico generado y descargado exitosamente', 'success', 'report');
+    } catch (error) {
+        console.error('Error generating technical report:', error);
+        showStatusMessage('Error al generar el reporte técnico: ' + error.message, 'error', 'report');
+    } finally {
+        if (wrapper && wrapper.parentNode) {
+            wrapper.parentNode.removeChild(wrapper);
+        }
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '<span class="download-icon">🛠️</span> Descargar Reporte Técnico';
+        }
+    }
+}
+
 // Force scroll to top on page load
 window.scrollTo(0, 0);
 
@@ -56,6 +282,7 @@ let inputCoordinates = '';
 let inputBandwidth = '';
 let confirmedSOP = null;
 let confirmedKit = null;
+let latestKitRecommendationData = null;
 
 // Time tracking variables
 let workflowStartTime = null;
@@ -835,6 +1062,12 @@ async function handleConfirmSelection() {
 // Function to display kit recommendations
 function displayKitRecommendations(recommendationData) {
     console.log('Displaying kit recommendations:', recommendationData);
+    try {
+        latestKitRecommendationData = JSON.parse(JSON.stringify(recommendationData));
+    } catch (cloneError) {
+        latestKitRecommendationData = recommendationData;
+        console.warn('Unable to clone recommendation data, storing reference instead.', cloneError);
+    }
     
     // Keep the first results block visible but show recommendation block
     if (firstResultsBlock) {
@@ -1121,6 +1354,8 @@ function showFinalReport() {
     // Enable the export button after report is populated
     const exportBtn = document.getElementById('download-pdf-button');
     if (exportBtn) exportBtn.disabled = false;
+    const technicalBtn = document.getElementById('download-technical-report-button');
+    if (technicalBtn) technicalBtn.disabled = false;
     // Scroll to final report
     setTimeout(() => {
         if (finalReportBlock) {
@@ -3344,3 +3579,4 @@ async function addCanvasAsMultipagePDF(pdf, canvas, marginMm) {
 
 // Expose unified exporter globally for HTML onclick
 window.downloadFinalReportPDF = downloadFinalReportPDF;
+window.downloadTechnicalReportPDF = downloadTechnicalReportPDF;
