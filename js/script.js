@@ -1729,24 +1729,17 @@ if (confirmAddressButton) {
                 scrollToSection('analysis');
             }, 100);
             
-            let response;
-            if (TEST_MODE) {
-                response = await fetch(TEST_SAMPLE_PATH);
-            } else {
-                response = await fetchWithTimeout(n8nWebhookUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestData)
-                }, 60000); // 60 second timeout
-            }
+            const response = await fetchWithTimeout(n8nWebhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData)
+            }, 60000); // 60 second timeout
             if (!response.ok) {
                 throw new Error('El servidor respondió con un error (' + response.status + ')');
             }
             showStatusMessage('Procesando respuesta del servidor...', 'info');
             const responseData = await response.json();
-            // In TEST_MODE, normalize the sample structure to match production
-            const normalizedData = TEST_MODE && Array.isArray(responseData) ? responseData[0].response?.body?.[0] || responseData : responseData;
-            const validatedData = validateAndExtractResponseData(normalizedData);
+            const validatedData = validateAndExtractResponseData(responseData);
             if (!validatedData) {
                 throw new Error('La respuesta del servidor no tiene el formato esperado.');
             }
