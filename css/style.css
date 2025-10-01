@@ -1234,6 +1234,83 @@ section {
     transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
+/* KPI cards below primary recommendation */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0 2rem 0;
+}
+.kpi-card {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    padding: 1rem;
+}
+.kpi-label {
+    color: #a0a0a0;
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+.kpi-value {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* Expandable analysis cards */
+.expandable-card {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    margin: 1rem 0;
+    overflow: hidden;
+}
+.expandable-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+}
+.expandable-header h3 {
+    margin: 0;
+    color: #ffffff;
+}
+.expand-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+.expandable-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+    padding: 0 1.25rem;
+}
+.expandable-content.expanded {
+    padding-bottom: 1.25rem;
+}
+.analysis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+}
+.analysis-box {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+}
+.equipment-card { margin-bottom: 1rem; }
+.equipment-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.5rem 1rem;
+}
+.multi-radio-item { margin: 0.5rem 0; }
+
 #recommendation-content.visible {
     opacity: 1;
     transform: translateY(0);

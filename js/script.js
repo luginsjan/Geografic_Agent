@@ -1648,126 +1648,161 @@ async function handleKitConfirmation() {
 // Function to populate the recommendation block with data
 function populateRecommendationBlock(data) {
     console.log('Populating recommendation block with data:', data);
-    
-    const kitDropdown = document.getElementById('kit-dropdown');
-    const kitsGrid = document.querySelector('.kits-grid');
-    const highReliabilityContent = document.querySelector('.recommendation-card.high-reliability .recommendation-content');
-    const bestValueContent = document.querySelector('.recommendation-card.best-value .recommendation-content');
-    
-    // Clear existing content
-    if (kitDropdown) {
-        kitDropdown.innerHTML = '<option value="">Seleccione un kit...</option>';
-    }
-    if (kitsGrid) {
-        kitsGrid.innerHTML = '';
-    }
-    if (highReliabilityContent) {
-        highReliabilityContent.innerHTML = '';
-    }
-    if (bestValueContent) {
-        bestValueContent.innerHTML = '';
-    }
-    
-    // Validate data structure
-    if (!data) {
-        console.error('No data provided to populateRecommendationBlock');
-        return;
-    }
-    
-    // Update AigentID if present in the new format
+    if (!data) return;
+
     if (data.aigent_id && data.aigent_id !== currentAigentID) {
         currentAigentID = data.aigent_id;
         updateAigentIDDisplay(currentAigentID);
     }
-    
-    // Populate dropdown with kits (prefer new schema recommendedKits)
-    const kitsForDisplay = Array.isArray(data.recommendedKits) ? data.recommendedKits : (Array.isArray(data.viable_kits) ? data.viable_kits : []);
-    if (kitsForDisplay.length > 0) {
-        console.log(`Found ${kitsForDisplay.length} kits for display`);
-        kitsForDisplay.forEach((kit, index) => {
-            if (kitDropdown) {
-                const option = document.createElement('option');
-                const kitName = kit.KIT || kit.name;
-                option.value = kitName || `Kit-${index + 1}`;
-                option.textContent = kitName || `Kit ${index + 1}`;
-                kitDropdown.appendChild(option);
-            }
+
+    const kits = Array.isArray(data.recommendedKits)
+        ? data.recommendedKits
+        : (Array.isArray(data.viable_kits) ? data.viable_kits : []);
+
+    const topName = data.summary?.topRecommendation?.kit || data.summary?.bestTechnicalPerformance?.KIT || null;
+    const topKit = kits.find(k => (k.KIT || k.name) === topName) || kits[0] || null;
+
+    const recommendationContent = document.getElementById('recommendation-content');
+    if (!recommendationContent) return;
+
+    recommendationContent.innerHTML = `
+        <div id="primary-recommended"></div>
+        <div class="kpi-grid" id="kpi-grid"></div>
+        <div class="viable-kits-section">
+            <h3>Kits Alternativos</h3>
+            <div class="kits-grid" id="alternatives-grid"></div>
+        </div>
+        <div id="analysis-sections"></div>
+        <div class="kit-confirmation-section">
+            <button id="confirm-kit-selection-button" class="confirm-kit-button" disabled>Confirmar Selección de Kit</button>
+        </div>
+    `;
+
+    const safe = (fn, fb = null) => { try { const v = fn(); return v == null ? fb : v; } catch(_) { return fb; } };
+
+    if (topKit) {
+        const primary = document.getElementById('primary-recommended');
+        primary.innerHTML = '';
+        const card = createKitCard(topKit);
+        card.classList.add('selected');
+        primary.appendChild(card);
+        setTimeout(() => selectKit((topKit.KIT || topKit.name), card), 0);
+    }
+
+    const kpiGrid = document.getElementById('kpi-grid');
+    if (kpiGrid && topKit) {
+        const radio = safe(() => topKit.radios[0], null);
+        const receivedPower = safe(() => radio.ReceivedPower_dBm, null);
+        const fsplAvg = safe(() => topKit.rfCalculationSummary.averageFSPL, null);
+        const totalRadios = safe(() => topKit.rfCalculationSummary.totalRadios, Array.isArray(topKit.radios) ? topKit.radios.length : null);
+        const equipmentType = totalRadios > 1 ? 'Dual Radio System' : 'Single Radio System';
+        const reliability = safe(() => radio.linkAnalysis.quality, '—');
+        const coverageKm = safe(() => topKit.requirements.providedDistanceKm, null);
+
+        const kpis = [
+            { label: 'Received Power', value: receivedPower != null ? `${receivedPower} dBm` : 'N/A' },
+            { label: 'FSPL Average', value: fsplAvg != null ? `${fsplAvg} dB` : 'N/A' },
+            { label: 'Equipment Type', value: equipmentType },
+            { label: 'Reliability', value: reliability },
+            { label: 'Coverage Distance', value: coverageKm != null ? `${coverageKm} km ✓` : 'N/A' }
+        ];
+        kpiGrid.innerHTML = kpis.map(k => `
+            <div class="kpi-card"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.value}</div></div>
+        `).join('');
+    }
+
+    const altGrid = document.getElementById('alternatives-grid');
+    if (altGrid && kits.length > 0) {
+        kits.filter(k => (k.KIT || k.name) !== (topKit && (topKit.KIT || topKit.name)))
+            .forEach(k => altGrid.appendChild(createKitCard(k)));
+    }
+
+    const analysis = document.getElementById('analysis-sections');
+    const fspl = safe(() => topKit.radios[0].detailedCalculations.fspl, null);
+    const link = safe(() => topKit.radios[0].detailedCalculations.linkMargin, null);
+    const hasEngineering = (fspl || link);
+    const hasEquipment = Array.isArray(safe(() => topKit.radios, [])) && topKit.radios.length > 0;
+    const hasMultiRadio = Array.isArray(safe(() => topKit.radios, [])) && topKit.radios.length > 1;
+
+    const sections = [];
+    if (hasEngineering) {
+        sections.push({
+            id: 'eng-analysis',
+            title: 'Engineering Analysis',
+            content: `
+                <div class="analysis-grid">
+                    <div>
+                        <h4>FSPL Calculations</h4>
+                        <div class="analysis-box">
+                            <div>Formula: ${safe(() => fspl.formula, 'FSPL (dB) = 20×log₁₀(d_km) + 20×log₁₀(f_MHz) + 32.45')}</div>
+                            <div>Distance Component: ${safe(() => fspl.distanceComponent, 'N/A')} dB</div>
+                            <div>Frequency Component: ${safe(() => fspl.frequencyComponent, 'N/A')} dB</div>
+                            <div>FSPL: ${safe(() => (topKit.radios[0].FSPL_dB), 'N/A')} dB</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4>Link Budget Breakdown</h4>
+                        <div class="analysis-box">
+                            <div>TX Power: ${safe(() => link.txPower, 'N/A')} dBm</div>
+                            <div>TX Gain: ${safe(() => link.txAntennaGain, 'N/A')} dBi</div>
+                            <div>RX Gain: ${safe(() => link.rxAntennaGain, 'N/A')} dBi</div>
+                            <div>FSPL: ${safe(() => link.fspl, safe(() => topKit.radios[0].FSPL_dB, 'N/A'))} dB</div>
+                            <div>Received Power: ${safe(() => topKit.radios[0].ReceivedPower_dBm, 'N/A')} dBm</div>
+                            <div>Link Margin: ${safe(() => topKit.radios[0].LinkMargin_dB, 'N/A')} dB</div>
+                        </div>
+                    </div>
+                </div>
+            `
         });
-    } else {
-        console.warn('No kits found in data or invalid format');
     }
-    
-    // Create kit cards (prefer new schema recommendedKits)
-    if (kitsForDisplay.length > 0) {
-        kitsForDisplay.forEach((kit, index) => {
-            if (kitsGrid) {
-                const kitCard = createKitCard(kit);
-                kitsGrid.appendChild(kitCard);
-            }
-        });
+    if (hasEquipment) {
+        const specRows = safe(() => topKit.radios, []).map((r, idx) => `
+            <div class="equipment-card">
+                <h4>${idx === 0 ? 'Primary Radio' : 'Secondary Radio'}: ${safe(() => r.Radio, '—')} (${safe(() => r['FrequencyBand (GHz)'], '—')} GHz)</h4>
+                <div class="equipment-grid">
+                    <div>Model: ${safe(() => r['Modelo Radio'], '—')}</div>
+                    <div>Frequency: ${safe(() => r['FrequencyBand (GHz)'], '—')} GHz</div>
+                    <div>Max Throughput: ${safe(() => r['MaxThroughput (Mbps)'], '—')} Mbps</div>
+                    <div>TX Power: ${safe(() => r['TransmitPower (dBm)'], '—')} dBm</div>
+                    <div>Antenna Gain: ${safe(() => r['AntennaGain (dBi)'], '—')} dBi</div>
+                    <div>Receiver Sensitivity: ${safe(() => r['SelectedReceiverSensitivity (dBm)'], '—')} dBm</div>
+                    <div>Link Margin: ${safe(() => r.LinkMargin_dB, '—')} dB</div>
+                </div>
+            </div>
+        `).join('');
+        sections.push({ id: 'equipment-specs', title: 'Equipment Specifications', content: specRows });
     }
-    
-    // Populate recommendation cards using new summary fields (with legacy fallbacks)
-    const bestValueName = data.summary?.bestValue?.KIT || data.best_value_recommendation || null;
-    const bestTechName = data.summary?.bestTechnicalPerformance?.KIT || data.high_reliability_recommendation || null;
-    const bestMarginName = data.summary?.bestLinkMargin?.KIT || data.best_link_margin_recommendation || null;
-
-    // High reliability (Best Technical Performance)
-    if (bestTechName && highReliabilityContent) {
-        let text = '';
-        const lookupArray = Array.isArray(data.recommendedKits) ? data.recommendedKits : (Array.isArray(data.viable_kits) ? data.viable_kits : []);
-        if (lookupArray.length > 0) {
-            const kit = lookupArray.find(k => (k.KIT || k.name) === bestTechName);
-            if (kit) {
-                const kitName = kit.KIT || kit.name || 'Kit';
-                const linkMargin = (kit.radios && kit.radios[0] && (kit.radios[0].LinkMargin_dB ?? kit.radios[0].LinkMargin)) ?? kit.link_margin;
-                const antennaGain = (kit.radios && kit.radios[0] && kit.radios[0].AntennaGain) ?? kit.antenna_gain;
-                text = `<strong>${kitName}</strong> is recommended for high reliability with a link margin of <strong>${linkMargin ?? 'N/A'}</strong> and antenna gain of <strong>${antennaGain ?? 'N/A'}</strong>.`;
-            }
-        }
-        if (!text) text = typeof bestTechName === 'string' ? bestTechName : 'No recommendation.';
-        highReliabilityContent.innerHTML = text;
-    } else if (highReliabilityContent) {
-        highReliabilityContent.textContent = 'No high reliability recommendation.';
+    if (hasMultiRadio) {
+        const radios = safe(() => topKit.radios, []);
+        const summaries = radios.map(r => {
+            const ghz = Number(safe(() => r['FrequencyBand (GHz)'], NaN));
+            const bandLabel = !isNaN(ghz) && ghz >= 30 ? '60 GHz Radio Performance' : '5 GHz Radio Performance';
+            const lb = safe(() => r.LinkMargin_dB, '—');
+            return `<div class="multi-radio-item"><h4>${bandLabel}</h4><div class="analysis-box">Link Budget: ${lb} dB total system gain</div></div>`;
+        }).join('');
+        sections.push({ id: 'multi-radio', title: 'Multi-Radio Analysis', content: summaries });
     }
 
-    // Best value
-    if (bestValueName && bestValueContent) {
-        let text = '';
-        const lookupArray = Array.isArray(data.recommendedKits) ? data.recommendedKits : (Array.isArray(data.viable_kits) ? data.viable_kits : []);
-        if (lookupArray.length > 0) {
-            const kit = lookupArray.find(k => (k.KIT || k.name) === bestValueName);
-            if (kit) {
-                const kitName = kit.KIT || kit.name || 'Kit';
-                const linkMargin = (kit.radios && kit.radios[0] && (kit.radios[0].LinkMargin_dB ?? kit.radios[0].LinkMargin)) ?? kit.link_margin;
-                const cost = kit["Cost (USD)"] ?? kit.cost;
-                text = `<strong>${kitName}</strong> is recommended as the best value option with a link margin of <strong>${linkMargin ?? 'N/A'}</strong> and cost of <strong>${cost ?? 'N/A'}</strong>.`;
-            }
-        }
-        if (!text) text = typeof bestValueName === 'string' ? bestValueName : 'No recommendation.';
-        bestValueContent.innerHTML = text;
-    } else if (bestValueContent) {
-        bestValueContent.textContent = 'No best value recommendation.';
-    }
+    const analysisHtml = sections.map(sec => `
+        <div class="expandable-card">
+            <div class="expandable-header">
+                <h3>${sec.title}</h3>
+                <button class="expand-btn" data-target="${sec.id}-content" aria-expanded="false">▼</button>
+            </div>
+            <div id="${sec.id}-content" class="expandable-content"></div>
+        </div>
+    `).join('');
+    analysis.innerHTML = analysisHtml;
 
-    // Best link margin (new)
-    const bestMarginContainer = document.querySelector('.recommendation-card.best-margin .recommendation-content');
-    if (bestMarginName && bestMarginContainer) {
-        let text = '';
-        const lookupArray = Array.isArray(data.recommendedKits) ? data.recommendedKits : (Array.isArray(data.viable_kits) ? data.viable_kits : []);
-        if (lookupArray.length > 0) {
-            const kit = lookupArray.find(k => (k.KIT || k.name) === bestMarginName);
-            if (kit) {
-                const kitName = kit.KIT || kit.name || 'Kit';
-                const linkMargin = (kit.radios && kit.radios[0] && (kit.radios[0].LinkMargin_dB ?? kit.radios[0].LinkMargin)) ?? kit.link_margin;
-                text = `<strong>${kitName}</strong> has the best link margin at <strong>${linkMargin ?? 'N/A'}</strong>.`;
-            }
+    sections.forEach(sec => {
+        const el = document.getElementById(`${sec.id}-content`);
+        if (el) {
+            el.innerHTML = sec.content;
+            el.style.maxHeight = '0px';
         }
-        if (!text) text = typeof bestMarginName === 'string' ? bestMarginName : 'No recommendation.';
-        bestMarginContainer.innerHTML = text;
-    } else if (bestMarginContainer) {
-        bestMarginContainer.textContent = 'No best link margin recommendation.';
-    }
+    });
+
+    initExpandableSections();
 }
 
 // Function to create a kit card
