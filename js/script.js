@@ -5,7 +5,7 @@
 // This is useful for UI testing and development without calling the real webhook.
 // Set TEST_MODE = false to use the real webhook endpoints in production.
 // ----------------------------------------------------------------------------
-const TEST_MODE = true; // true = use sample-response.json, false = call real webhooks
+const TEST_MODE = false; // true = use sample-response.json, false = call real webhooks
 const TEST_SAMPLE_PATH = './rf-kit-selector-clean.zip/sample-response.json';
 // ============================================================================
 
@@ -1654,7 +1654,7 @@ function populateRecommendationBlock(data) {
         currentAigentID = data.aigent_id;
         updateAigentIDDisplay(currentAigentID);
     }
-
+    
     const kits = Array.isArray(data.recommendedKits)
         ? data.recommendedKits
         : (Array.isArray(data.viable_kits) ? data.viable_kits : []);
@@ -1787,7 +1787,7 @@ function populateRecommendationBlock(data) {
         <div class="expandable-card">
             <div class="expandable-header">
                 <h3>${sec.title}</h3>
-                <button class="expand-btn" data-target="${sec.id}-content" aria-expanded="false">▼</button>
+                <button class="expand-btn" data-target="${sec.id}-content" aria-expanded="false" title="Expand/Collapse">▼</button>
             </div>
             <div id="${sec.id}-content" class="expandable-content"></div>
         </div>
@@ -1802,7 +1802,24 @@ function populateRecommendationBlock(data) {
         }
     });
 
-    initExpandableSections();
+    // Simple expand/collapse behavior for dynamically inserted sections
+    document.querySelectorAll('.expand-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('data-target');
+            const content = document.getElementById(targetId);
+            const expanded = btn.getAttribute('aria-expanded') === 'true';
+            if (!content) return;
+            if (expanded) {
+                btn.setAttribute('aria-expanded', 'false');
+                content.classList.remove('expanded');
+                content.style.maxHeight = '0px';
+            } else {
+                btn.setAttribute('aria-expanded', 'true');
+                content.classList.add('expanded');
+                content.style.maxHeight = content.scrollHeight + 'px';
+            }
+        });
+    });
 }
 
 // Function to create a kit card
@@ -1904,6 +1921,7 @@ function createKitCard(kit) {
             <div class="badges" style="display:flex; gap:8px; flex-wrap: wrap; margin-top: 4px;">
                 ${recommendationCategory ? `<span class="rec-badge ${categoryClass}">${recommendationCategory}</span>` : ''}
                 ${linkQuality ? `<div class="link-quality ${linkQualityClass}" style="background:${linkQualityColor}">${linkQuality}</div>` : ''}
+                ${getNested(() => kit.recommendation.confidence, null) ? `<span class="rec-badge">Confidence: ${getNested(() => kit.recommendation.confidence, '')}</span>` : ''}
             </div>
         </div>
     `;
