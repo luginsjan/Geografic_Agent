@@ -1734,13 +1734,25 @@ function populateRecommendationBlock(data) {
                         <h4>Cálculos FSPL</h4>
                         <div class="analysis-box">
                             <div>Fórmula: ${safe(() => fspl.formula, 'FSPL (dB) = 20×log₁₀(d_km) + 20×log₁₀(f_MHz) + 32.45')}</div>
-                            <div>Componentes: Distancia ${safe(() => fspl.distanceComponent, 'N/D')} dB + Frecuencia ${safe(() => fspl.frequencyComponent, 'N/D')} dB + 32.45</div>
-                            <div>Cálculo: ${safe(() => fspl.calculation, () => {
-                                const d = safe(() => topKit.radios[0].detailedCalculations.fspl.distanceComponent, null);
-                                const f = safe(() => topKit.radios[0].detailedCalculations.fspl.frequencyComponent, null);
-                                return (d!=null && f!=null) ? `${d} + ${f} + 32.45 = ${safe(() => topKit.radios[0].FSPL_dB, 'N/D')} dB` : 'N/D';
-                            })}</div>
-                            <div>FSPL: ${safe(() => (topKit.radios[0].FSPL_dB), 'N/D')} dB</div>
+                            <div>Fórmula con valores: ${(() => {
+                                const dk = safe(() => topKit.radios[0].detailedCalculations.fspl.distanceKm, safe(() => topKit.requirements.providedDistanceKm, null));
+                                const fmhz = safe(() => topKit.radios[0].detailedCalculations.fspl.frequencyMHz, (() => {
+                                    const ghz = safe(() => topKit.radios[0]['FrequencyBand (GHz)'], null);
+                                    return (ghz!=null && !isNaN(Number(ghz))) ? Number(ghz) * 1000 : null;
+                                })());
+                                if (dk==null || fmhz==null) return 'N/D';
+                                const dkStr = Number(dk).toFixed(3);
+                                const fStr = Number(fmhz).toFixed(0);
+                                return `20×log₁₀(${dkStr}) + 20×log₁₀(${fStr}) + 32.45`;
+                            })()}</div>
+                            <div>Cálculo: ${(() => {
+                                const dComp = safe(() => topKit.radios[0].detailedCalculations.fspl.distanceComponent, null);
+                                const fComp = safe(() => topKit.radios[0].detailedCalculations.fspl.frequencyComponent, null);
+                                const fsplDb = safe(() => topKit.radios[0].FSPL_dB, null);
+                                if (dComp==null || fComp==null || fsplDb==null) return 'N/D';
+                                return `${Number(dComp).toFixed(2)} + ${Number(fComp).toFixed(2)} + 32.45 = ${Number(fsplDb).toFixed(2)} dB`;
+                            })()}</div>
+                            <div>FSPL: ${safe(() => (topKit.radios[0].FSPL_dB!=null ? Number(topKit.radios[0].FSPL_dB).toFixed(2) : 'N/D'), 'N/D')} dB</div>
                         </div>
                     </div>
                     <div>
