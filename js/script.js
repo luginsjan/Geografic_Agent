@@ -257,8 +257,7 @@ async function downloadTechnicalReportPDF() {
     }
 }
 
-// Force scroll to top on page load
-window.scrollTo(0, 0);
+// Removed forced scroll-to-top on load
 
 // DOM Elements
 const hamburger = document.querySelector('.hamburger');
@@ -1820,6 +1819,29 @@ function populateRecommendationBlock(data) {
             }
         });
     });
+
+    // Also toggle when clicking the card, header, or title
+    document.querySelectorAll('.expandable-card').forEach((card) => {
+        card.addEventListener('click', (e) => {
+            // If the click originated from the button, its handler already ran
+            if (e.target && e.target.classList && e.target.classList.contains('expand-btn')) return;
+            const btn = card.querySelector('.expand-btn');
+            if (!btn) return;
+            const targetId = btn.getAttribute('data-target');
+            const content = document.getElementById(targetId);
+            const expanded = btn.getAttribute('aria-expanded') === 'true';
+            if (!content) return;
+            if (expanded) {
+                btn.setAttribute('aria-expanded', 'false');
+                content.classList.remove('expanded');
+                content.style.maxHeight = '0px';
+            } else {
+                btn.setAttribute('aria-expanded', 'true');
+                content.classList.add('expanded');
+                content.style.maxHeight = content.scrollHeight + 'px';
+            }
+        });
+    });
 }
 
 // Function to create a kit card
@@ -1882,19 +1904,19 @@ function createKitCard(kit) {
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Banda de Frecuencia</span>
-                <span class="kit-detail-value">${getValue(kit, 'frequency_band')}</span>
+                <span class="kit-detail-value">${(kit.radios && kit.radios[0] && getValue(kit.radios[0], 'FrequencyBand (GHz)')) || getValue(kit, 'frequency_band')}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Throughput Máximo</span>
-                <span class="kit-detail-value">${(kit.radios && kit.radios[0] && getValue(kit.radios[0], 'MaxThroughput')) || getValue(kit, 'max_throughput')}</span>
+                <span class="kit-detail-value">${(kit.radios && kit.radios[0] && getValue(kit.radios[0], 'MaxThroughput (Mbps)')) || getValue(kit, 'max_throughput')}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Potencia de Transmisión</span>
-                <span class="kit-detail-value">${getValue(kit, 'transmit_power')}</span>
+                <span class="kit-detail-value">${(kit.radios && kit.radios[0] && getValue(kit.radios[0], 'TransmitPower (dBm)')) || getValue(kit, 'transmit_power')}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Ganancia de Antena</span>
-                <span class="kit-detail-value">${getValue(kit, 'antenna_gain')}</span>
+                <span class="kit-detail-value">${(kit.radios && kit.radios[0] && getValue(kit.radios[0], 'AntennaGain (dBi)')) || getValue(kit, 'antenna_gain')}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Margen de Enlace</span>
@@ -3219,8 +3241,7 @@ function initializePageState() {
         history.replaceState(null, null, window.location.pathname);
     }
     
-    // Force scroll to top immediately
-    window.scrollTo(0, 0);
+    // Removed forced scroll-to-top
     
     // Ensure home section is visible and at the top
     const homeSection = document.getElementById('home');
@@ -3239,7 +3260,6 @@ function initializePageState() {
 // Auto-scroll to home section on page load
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded - Initializing page state');
-    window.scrollTo(0, 0);
     initializeAuthentication();
     if (isAuthenticated()) {
         initializePageState();
@@ -3249,7 +3269,6 @@ document.addEventListener('DOMContentLoaded', function() {
 // Also handle page refresh and direct navigation
 window.addEventListener('load', function() {
     console.log('Window load - Double-checking page state');
-    window.scrollTo(0, 0);
     if (isAuthenticated()) {
         setTimeout(() => {
             initializePageState();
@@ -3262,7 +3281,6 @@ window.addEventListener('load', function() {
 // Handle browser back/forward buttons
 window.addEventListener('popstate', function() {
     console.log('Popstate - Resetting to home');
-    window.scrollTo(0, 0);
     if (isAuthenticated()) {
         setTimeout(() => {
             initializePageState();
@@ -3276,7 +3294,6 @@ window.addEventListener('popstate', function() {
 document.addEventListener('visibilitychange', function() {
     if (!document.hidden) {
         console.log('Page visible - Ensuring home section');
-        window.scrollTo(0, 0);
         if (isAuthenticated()) {
             setTimeout(() => {
                 initializePageState();
@@ -3289,8 +3306,7 @@ document.addEventListener('visibilitychange', function() {
 
 // Additional event listener for beforeunload to ensure clean state
 window.addEventListener('beforeunload', function() {
-    // Force scroll to top before page unloads
-    window.scrollTo(0, 0);
+    // Removed scroll-to-top before unload
 });
 
 // Make test functions available globally
