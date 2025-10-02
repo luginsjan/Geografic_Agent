@@ -1295,14 +1295,20 @@ section {
 .analysis-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1rem;
+    gap: 1.25rem;
 }
 .analysis-box {
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 8px;
-    padding: 0.75rem 1rem;
+    padding: 1rem 1.25rem;
+    line-height: 1.6;
 }
+.expandable-card h4 { margin: 0 0 0.5rem 0; color: #fff; }
+.expandable-content .analysis-box + .analysis-box { margin-top: 0.75rem; }
+.equipment-specs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; }
+.equipment-box { background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px; padding: 1rem 1.25rem; }
+.equipment-box h4 { margin: 0 0 0.5rem 0; }
 .equipment-card { margin-bottom: 1rem; }
 .equipment-grid {
     display: grid;

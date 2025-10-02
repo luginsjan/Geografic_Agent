@@ -1727,27 +1727,31 @@ function populateRecommendationBlock(data) {
     if (hasEngineering) {
         sections.push({
             id: 'eng-analysis',
-            title: 'Engineering Analysis',
+            title: 'Análisis de Ingeniería',
             content: `
                 <div class="analysis-grid">
                     <div>
-                        <h4>FSPL Calculations</h4>
+                        <h4>Cálculos FSPL</h4>
                         <div class="analysis-box">
-                            <div>Formula: ${safe(() => fspl.formula, 'FSPL (dB) = 20×log₁₀(d_km) + 20×log₁₀(f_MHz) + 32.45')}</div>
-                            <div>Distance Component: ${safe(() => fspl.distanceComponent, 'N/A')} dB</div>
-                            <div>Frequency Component: ${safe(() => fspl.frequencyComponent, 'N/A')} dB</div>
-                            <div>FSPL: ${safe(() => (topKit.radios[0].FSPL_dB), 'N/A')} dB</div>
+                            <div>Fórmula: ${safe(() => fspl.formula, 'FSPL (dB) = 20×log₁₀(d_km) + 20×log₁₀(f_MHz) + 32.45')}</div>
+                            <div>Componentes: Distancia ${safe(() => fspl.distanceComponent, 'N/D')} dB + Frecuencia ${safe(() => fspl.frequencyComponent, 'N/D')} dB + 32.45</div>
+                            <div>Cálculo: ${safe(() => fspl.calculation, () => {
+                                const d = safe(() => topKit.radios[0].detailedCalculations.fspl.distanceComponent, null);
+                                const f = safe(() => topKit.radios[0].detailedCalculations.fspl.frequencyComponent, null);
+                                return (d!=null && f!=null) ? `${d} + ${f} + 32.45 = ${safe(() => topKit.radios[0].FSPL_dB, 'N/D')} dB` : 'N/D';
+                            })}</div>
+                            <div>FSPL: ${safe(() => (topKit.radios[0].FSPL_dB), 'N/D')} dB</div>
                         </div>
                     </div>
                     <div>
-                        <h4>Link Budget Breakdown</h4>
+                        <h4>Desglose de Presupuesto de Enlace</h4>
                         <div class="analysis-box">
-                            <div>TX Power: ${safe(() => link.txPower, 'N/A')} dBm</div>
-                            <div>TX Gain: ${safe(() => link.txAntennaGain, 'N/A')} dBi</div>
-                            <div>RX Gain: ${safe(() => link.rxAntennaGain, 'N/A')} dBi</div>
-                            <div>FSPL: ${safe(() => link.fspl, safe(() => topKit.radios[0].FSPL_dB, 'N/A'))} dB</div>
-                            <div>Received Power: ${safe(() => topKit.radios[0].ReceivedPower_dBm, 'N/A')} dBm</div>
-                            <div>Link Margin: ${safe(() => topKit.radios[0].LinkMargin_dB, 'N/A')} dB</div>
+                            <div>Potencia TX: ${safe(() => link.txPower, 'N/D')} dBm</div>
+                            <div>Ganancia TX: ${safe(() => link.txAntennaGain, 'N/D')} dBi</div>
+                            <div>Ganancia RX: ${safe(() => link.rxAntennaGain, 'N/D')} dBi</div>
+                            <div>FSPL: ${safe(() => link.fspl, safe(() => topKit.radios[0].FSPL_dB, 'N/D'))} dB</div>
+                            <div>Potencia Recibida: ${safe(() => topKit.radios[0].ReceivedPower_dBm, 'N/D')} dBm</div>
+                            <div>Margen de Enlace: ${safe(() => topKit.radios[0].LinkMargin_dB, 'N/D')} dB</div>
                         </div>
                     </div>
                 </div>
@@ -1755,31 +1759,34 @@ function populateRecommendationBlock(data) {
         });
     }
     if (hasEquipment) {
-        const specRows = safe(() => topKit.radios, []).map((r, idx) => `
-            <div class="equipment-card">
-                <h4>${idx === 0 ? 'Primary Radio' : 'Secondary Radio'}: ${safe(() => r.Radio, '—')} (${safe(() => r['FrequencyBand (GHz)'], '—')} GHz)</h4>
-                <div class="equipment-grid">
-                    <div>Model: ${safe(() => r['Modelo Radio'], '—')}</div>
-                    <div>Frequency: ${safe(() => r['FrequencyBand (GHz)'], '—')} GHz</div>
-                    <div>Max Throughput: ${safe(() => r['MaxThroughput (Mbps)'], '—')} Mbps</div>
-                    <div>TX Power: ${safe(() => r['TransmitPower (dBm)'], '—')} dBm</div>
-                    <div>Antenna Gain: ${safe(() => r['AntennaGain (dBi)'], '—')} dBi</div>
-                    <div>Receiver Sensitivity: ${safe(() => r['SelectedReceiverSensitivity (dBm)'], '—')} dBm</div>
-                    <div>Link Margin: ${safe(() => r.LinkMargin_dB, '—')} dB</div>
-                </div>
-            </div>
-        `).join('');
-        sections.push({ id: 'equipment-specs', title: 'Equipment Specifications', content: specRows });
+        const specRows = `
+            <div class="equipment-specs-grid">
+                ${safe(() => topKit.radios, []).map((r, idx) => `
+                    <div class="equipment-box">
+                        <h4>${idx === 0 ? 'Radio Primario' : 'Radio Secundario'}: ${safe(() => r.Radio, '—')} (${safe(() => r['FrequencyBand (GHz)'], '—')} GHz)</h4>
+                        <div class="equipment-grid">
+                            <div>Modelo: ${safe(() => r['Modelo Radio'], '—')}</div>
+                            <div>Frecuencia: ${safe(() => r['FrequencyBand (GHz)'], '—')} GHz</div>
+                            <div>Throughput Máximo: ${safe(() => r['MaxThroughput (Mbps)'], '—')} Mbps</div>
+                            <div>Potencia TX: ${safe(() => r['TransmitPower (dBm)'], '—')} dBm</div>
+                            <div>Ganancia Antena: ${safe(() => r['AntennaGain (dBi)'], '—')} dBi</div>
+                            <div>Sensibilidad RX: ${safe(() => r['SelectedReceiverSensitivity (dBm)'], '—')} dBm</div>
+                            <div>Margen Enlace: ${safe(() => r.LinkMargin_dB, '—')} dB</div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>`;
+        sections.push({ id: 'equipment-specs', title: 'Especificaciones del Equipo', content: specRows });
     }
     if (hasMultiRadio) {
         const radios = safe(() => topKit.radios, []);
-        const summaries = radios.map(r => {
+        const summaries = radios.map((r, idx) => {
             const ghz = Number(safe(() => r['FrequencyBand (GHz)'], NaN));
-            const bandLabel = !isNaN(ghz) && ghz >= 30 ? '60 GHz Radio Performance' : '5 GHz Radio Performance';
+            const bandLabel = !isNaN(ghz) && ghz >= 30 ? 'Rendimiento Radio 60 GHz' : 'Rendimiento Radio 5 GHz';
             const lb = safe(() => r.LinkMargin_dB, '—');
-            return `<div class="multi-radio-item"><h4>${bandLabel}</h4><div class="analysis-box">Link Budget: ${lb} dB total system gain</div></div>`;
+            return `<div class="multi-radio-item"><h4>${bandLabel}</h4><div class="analysis-box">Presupuesto de Enlace: ${lb} dB ganancia total del sistema</div></div>`;
         }).join('');
-        sections.push({ id: 'multi-radio', title: 'Multi-Radio Analysis', content: summaries });
+        sections.push({ id: 'multi-radio', title: 'Análisis Multi-Radio', content: summaries });
     }
 
     const analysisHtml = sections.map(sec => `
@@ -1892,7 +1899,7 @@ function createKitCard(kit) {
     const categoryClass = (recommendationCategory ? String(recommendationCategory).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '') : '');
     
     card.innerHTML = `
-        <h4>${getValue(kit, 'KIT', getValue(kit, 'name', 'Kit Sin Nombre'))}</h4>
+        <h4>${getValue(kit, 'KIT', getValue(kit, 'name', 'Kit sin nombre'))}</h4>
         <div class="kit-details">
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Radio</span>
@@ -1929,13 +1936,13 @@ function createKitCard(kit) {
         </div>
         <div class="kit-metrics" style="margin-top: 12px; display: grid; gap: 8px;">
             <div class="technical-score" style="display: grid; gap: 6px;">
-                <div class="metric-label" style="font-size: 0.9rem; color: #888;">Technical Rating: ${technicalScore !== null ? `${technicalScore}/10` : 'N/A'}</div>
+                <div class="metric-label" style="font-size: 0.9rem; color: #888;">Puntaje Técnico: ${technicalScore !== null ? `${technicalScore}/10` : 'N/D'}</div>
                 <div class="metric-bar" style="background:#1f2937; border-radius: 6px; height: 8px; overflow: hidden;">
                     <div class="score-bar" data-score="${technicalPercent !== null ? (technicalPercent * 10) : 0}" style="height:100%; width:${technicalWidth}; background:#06b6d4; transition: width 0.6s ease;"></div>
                 </div>
             </div>
             <div class="value-rating" style="display: grid; gap: 6px;">
-                <div class="metric-label" style="font-size: 0.9rem; color: #888;">Value Rating: ${valueScore !== null ? `${valueScore}/10` : 'N/A'}</div>
+                <div class="metric-label" style="font-size: 0.9rem; color: #888;">Puntaje de Valor: ${valueScore !== null ? `${valueScore}/10` : 'N/D'}</div>
                 <div class="metric-bar" style="background:#1f2937; border-radius: 6px; height: 8px; overflow: hidden;">
                     <div class="score-bar" data-score="${valuePercent !== null ? (valuePercent * 10) : 0}" style="height:100%; width:${valueWidth}; background:#84cc16; transition: width 0.6s ease;"></div>
                 </div>
@@ -1943,7 +1950,7 @@ function createKitCard(kit) {
             <div class="badges" style="display:flex; gap:8px; flex-wrap: wrap; margin-top: 4px;">
                 ${recommendationCategory ? `<span class="rec-badge ${categoryClass}">${recommendationCategory}</span>` : ''}
                 ${linkQuality ? `<div class="link-quality ${linkQualityClass}" style="background:${linkQualityColor}">${linkQuality}</div>` : ''}
-                ${getNested(() => kit.recommendation.confidence, null) ? `<span class="rec-badge">Confidence: ${getNested(() => kit.recommendation.confidence, '')}</span>` : ''}
+                ${getNested(() => kit.recommendation.confidence, null) ? `<span class="rec-badge">Confianza: ${getNested(() => kit.recommendation.confidence, '')}</span>` : ''}
             </div>
         </div>
     `;
