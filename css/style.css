@@ -2195,3 +2195,386 @@ body.auth-locked footer {
 body.auth-locked #auth-overlay {
     pointer-events: auto;
 }
+
+/* ------------------------------------------------------------- */
+/* Dashboard Section                                             */
+/* ------------------------------------------------------------- */
+.dashboard {
+    width: 100%;
+}
+
+.dashboard .container {
+    width: 100%;
+    max-width: 1200px;
+}
+
+.dashboard-overview {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+@media (min-width: 992px) {
+    .dashboard-overview {
+        grid-template-columns: 1.1fr 0.9fr;
+        align-items: stretch;
+    }
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.2rem;
+}
+
+.metric-card {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.45);
+}
+
+.metric-card.secondary {
+    background: rgba(76, 175, 80, 0.12);
+    border-color: rgba(76, 175, 80, 0.28);
+}
+
+.metric-label {
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.2;
+}
+
+.metric-caption {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.dashboard-visuals {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.chart-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    height: 100%;
+}
+
+.chart-card canvas {
+    width: 100%;
+    min-height: 260px;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1rem;
+}
+
+.chart-subtitle {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.secondary-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.2rem;
+}
+
+.dashboard-management {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 2.5rem;
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(16px);
+}
+
+.management-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.management-header p {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.95rem;
+}
+
+.secondary-button {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    padding: 0.65rem 1.6rem;
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(12px);
+}
+
+.secondary-button:hover {
+    background: rgba(255, 255, 255, 0.14);
+    transform: translateY(-2px);
+}
+
+.secondary-button:active {
+    transform: translateY(1px);
+}
+
+.management-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+}
+
+.management-panel {
+    flex: 2;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.management-tabs {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.management-tab {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    padding: 0.6rem 1.4rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.management-tab:hover,
+.management-tab:focus {
+    border-color: rgba(255, 255, 255, 0.25);
+    outline: none;
+}
+
+.management-tab.active {
+    background: linear-gradient(135deg, rgba(41, 121, 255, 0.72), rgba(118, 255, 3, 0.4));
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+}
+
+.management-table-wrapper {
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 1.5rem;
+    overflow-x: auto;
+    min-height: 260px;
+}
+
+.dashboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #ffffff;
+    font-size: 0.95rem;
+}
+
+.dashboard-table thead {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.dashboard-table th,
+.dashboard-table td {
+    padding: 0.75rem 0.9rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dashboard-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.table-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.table-action {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 0.35rem 0.75rem;
+    color: #ffffff;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.table-action:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.empty-state {
+    margin-top: 1rem;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.95rem;
+}
+
+.management-form-wrapper {
+    flex: 1.1;
+    min-width: 260px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    padding: 1.8rem;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+#dashboard-data-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.form-fields {
+    display: grid;
+    gap: 1rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.form-field label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.form-field input,
+.form-field textarea,
+.form-field select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-field input:focus,
+.form-field textarea:focus,
+.form-field select:focus {
+    outline: none;
+    border-color: rgba(76, 175, 80, 0.6);
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.form-field textarea {
+    min-height: 110px;
+    resize: vertical;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+#dashboard-save-button {
+    background: linear-gradient(135deg, #2e7d32, #66bb6a);
+    color: #ffffff;
+    border: none;
+    border-radius: 999px;
+    padding: 0.7rem 1.8rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+#dashboard-save-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(46, 125, 50, 0.35);
+}
+
+#dashboard-save-button:active {
+    transform: translateY(1px);
+}
+
+#dashboard-reset-button {
+    font-weight: 500;
+}
+
+.form-feedback {
+    min-height: 1.2rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.form-feedback.success {
+    color: #81c784;
+}
+
+.form-feedback.error {
+    color: #ff8a80;
+}
+
+@media (max-width: 768px) {
+    .dashboard-management {
+        padding: 1.6rem;
+    }
+
+    .management-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .management-body {
+        flex-direction: column;
+    }
+
+    .management-panel,
+    .management-form-wrapper {
+        width: 100%;
+    }
+}

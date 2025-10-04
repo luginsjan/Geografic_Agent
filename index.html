@@ -43,6 +43,9 @@
                 <li class="nav-item">
                     <a href="#report" class="nav-link">Report</a>
                 </li>
+                <li class="nav-item">
+                    <a href="#dashboard" class="nav-link">Dashboard</a>
+                </li>
             </ul>
             <div class="hamburger">
                 <span class="bar"></span>
@@ -234,6 +237,96 @@
                                     Descargar Reporte Técnico
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="dashboard" class="dashboard">
+            <div class="container">
+                <h2 class="section-title">Dashboard Operativo</h2>
+
+                <div class="dashboard-overview">
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <p class="metric-label">Ejecuciones (Hoy)</p>
+                            <p class="metric-value" id="metric-executions-day">0</p>
+                        </div>
+                        <div class="metric-card">
+                            <p class="metric-label">Ejecuciones (Semana)</p>
+                            <p class="metric-value" id="metric-executions-week">0</p>
+                        </div>
+                        <div class="metric-card">
+                            <p class="metric-label">Ejecuciones (Mes)</p>
+                            <p class="metric-value" id="metric-executions-month">0</p>
+                        </div>
+                        <div class="metric-card">
+                            <p class="metric-label">Ejecuciones (Año)</p>
+                            <p class="metric-value" id="metric-executions-year">0</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-visuals">
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3>Tendencia de Ejecuciones</h3>
+                                <p class="chart-subtitle" id="executions-chart-period">Últimos 7 días</p>
+                            </div>
+                            <canvas id="executions-trend-chart" aria-label="Tendencia de ejecuciones" role="img"></canvas>
+                        </div>
+                        <div class="secondary-metrics">
+                            <div class="metric-card secondary">
+                                <p class="metric-label">Tiempo por ejecución</p>
+                                <p class="metric-value" id="metric-time-per-execution">0</p>
+                                <span class="metric-caption">Promedio</span>
+                            </div>
+                            <div class="metric-card secondary">
+                                <p class="metric-label">Tiempo ahorrado</p>
+                                <p class="metric-value" id="metric-time-saved">0</p>
+                                <span class="metric-caption">Comparado con flujo manual</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-management">
+                    <div class="management-header">
+                        <div>
+                            <h3>Gestión de Valores</h3>
+                            <p>Actualiza y registra nuevos datos para kits, precios y antenas SOP.</p>
+                        </div>
+                        <button type="button" id="dashboard-add-new" class="secondary-button">Nuevo registro</button>
+                    </div>
+
+                    <div class="management-body">
+                        <div class="management-panel">
+                            <div class="management-tabs" role="tablist">
+                                <button type="button" class="management-tab active" data-type="kits" role="tab" aria-selected="true">Kits</button>
+                                <button type="button" class="management-tab" data-type="prices" role="tab" aria-selected="false">Precios</button>
+                                <button type="button" class="management-tab" data-type="antennas" role="tab" aria-selected="false">Antenas (SOP)</button>
+                            </div>
+
+                            <div class="management-table-wrapper">
+                                <table class="dashboard-table">
+                                    <thead id="dashboard-table-head"></thead>
+                                    <tbody id="dashboard-table-body"></tbody>
+                                </table>
+                                <p id="dashboard-empty-state" class="empty-state" hidden>No hay registros para mostrar.</p>
+                            </div>
+                        </div>
+
+                        <div class="management-form-wrapper">
+                            <form id="dashboard-data-form">
+                                <h4 id="dashboard-form-title">Nuevo registro</h4>
+                                <input type="hidden" id="dashboard-entry-id" value="">
+                                <div id="dashboard-form-fields" class="form-fields"></div>
+                                <div class="form-actions">
+                                    <button type="submit" id="dashboard-save-button">Guardar</button>
+                                    <button type="button" id="dashboard-reset-button" class="secondary-button">Limpiar</button>
+                                </div>
+                                <p id="dashboard-form-feedback" class="form-feedback" role="status" aria-live="polite"></p>
+                            </form>
                         </div>
                     </div>
                 </div>
