@@ -6,6 +6,22 @@ import { extractAigentID, isValidAigentID, generateAigentID } from './utils.js';
 
 const N8N_WEBHOOK_URL = 'https://aigentinc.app.n8n.cloud/webhook/get-KIT-selection';
 
+// Function to calculate time duration (matches frontend logic)
+function calculateTimeDuration(startTime, endTime) {
+  if (!startTime || !endTime) return 'N/A';
+  
+  const duration = endTime - startTime;
+  const seconds = Math.floor(duration / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  
+  if (minutes > 0) {
+    return `${minutes}m ${remainingSeconds}s`;
+  } else {
+    return `${remainingSeconds}s`;
+  }
+}
+
 // CORS headers configuration
 const corsHeaders = {
   'Access-Control-Allow-Origin': 'https://geografic-agent.vercel.app',
@@ -33,6 +49,9 @@ export default async function handler(req, res) {
       message: 'Only POST requests are supported'
     });
   }
+
+  // Start timing for duration calculation
+  const requestStartTime = new Date();
 
   try {
     // Extract or generate AigentID
@@ -93,20 +112,29 @@ export default async function handler(req, res) {
       return res.status(n8nResponse.status).send(responseData);
     }
     
-    // Add AigentID to the response
+    // Calculate duration
+    const requestEndTime = new Date();
+    const duration = calculateTimeDuration(requestStartTime, requestEndTime);
+    
+    // Add AigentID and duration to the response
     const responseWithID = {
       ...parsedData,
-      AigentID: aigentID
+      AigentID: aigentID,
+      'Tiempo Requerido': duration
     };
     
     // Set AigentID in response headers as well
     res.setHeader('X-Aigent-ID', aigentID);
     
-    // Return the response with AigentID
+    // Return the response with AigentID and duration
     return res.status(n8nResponse.status).json(responseWithID);
     
   } catch (error) {
     console.error('Proxy error:', error);
+    
+    // Calculate duration even for errors
+    const requestEndTime = new Date();
+    const duration = calculateTimeDuration(requestStartTime, requestEndTime);
     
     // Handle timeout specifically
     if (error.name === 'AbortError') {
@@ -114,7 +142,8 @@ export default async function handler(req, res) {
         error: 'Gateway timeout',
         message: 'Request to n8n webhook timed out',
         timestamp: new Date().toISOString(),
-        AigentID: aigentID || 'UNKNOWN'
+        AigentID: aigentID || 'UNKNOWN',
+        'Tiempo Requerido': duration
       });
     }
     
@@ -122,7 +151,8 @@ export default async function handler(req, res) {
       error: 'Proxy request failed',
       message: error.message,
       timestamp: new Date().toISOString(),
-      AigentID: aigentID || 'UNKNOWN'
+      AigentID: aigentID || 'UNKNOWN',
+      'Tiempo Requerido': duration
     });
   }
 } 
