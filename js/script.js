@@ -309,7 +309,6 @@ const AUTH_SESSION_KEY = 'agenteGeograficoAuth';
 const AUTH_USERNAME = 'admin';
 const AUTH_PASSWORD = 'admin';
 
-
 function isAuthenticated() {
     try {
         return localStorage.getItem(AUTH_SESSION_KEY) === 'true';
@@ -1585,14 +1584,20 @@ async function handleKitConfirmation() {
         showLoadingBlock('report');
         showStatusMessage('Sending kit selection to server...', 'info', 'report');
         
+        // Calculate tiempo requerido from workflow start to now
+        const currentTime = new Date();
+        const tiempoRequerido = calculateTimeDuration(workflowStartTime, currentTime);
+        
         // Prepare the request data
         const requestData = {
             selectedKit: window.selectedKitData,
             AigentID: currentAigentID,
-            bandwidth: storedBandwidth // Include the stored bandwidth value
+            bandwidth: storedBandwidth, // Include the stored bandwidth value
+            tiempoRequerido: tiempoRequerido // Include calculated duration
         };
         console.log('KIT Selection request data being sent:', requestData);
         console.log('Bandwidth being sent to KIT selection endpoint:', storedBandwidth);
+        console.log('Tiempo Requerido being sent:', tiempoRequerido);
         
         // Send POST request to kit selection webhook with timeout
         const response = await fetchWithTimeout(n8nKitSelectionWebhookUrl, {
@@ -1649,7 +1654,6 @@ async function handleKitConfirmation() {
 function populateRecommendationBlock(data) {
     console.log('Populating recommendation block with data:', data);
     if (!data) return;
-
     if (data.aigent_id && data.aigent_id !== currentAigentID) {
         currentAigentID = data.aigent_id;
         updateAigentIDDisplay(currentAigentID);
@@ -1735,25 +1739,13 @@ function populateRecommendationBlock(data) {
                         <h4>Cálculos FSPL</h4>
                         <div class="analysis-box">
                             <div>Fórmula: ${safe(() => fspl.formula, 'FSPL (dB) = 20×log₁₀(d_km) + 20×log₁₀(f_MHz) + 32.45')}</div>
-                            <div>Fórmula con valores: ${(() => {
-                                const dk = safe(() => topKit.radios[0].detailedCalculations.fspl.distanceKm, safe(() => topKit.requirements.providedDistanceKm, null));
-                                const fmhz = safe(() => topKit.radios[0].detailedCalculations.fspl.frequencyMHz, (() => {
-                                    const ghz = safe(() => topKit.radios[0]['FrequencyBand (GHz)'], null);
-                                    return (ghz!=null && !isNaN(Number(ghz))) ? Number(ghz) * 1000 : null;
-                                })());
-                                if (dk==null || fmhz==null) return 'N/D';
-                                const dkStr = Number(dk).toFixed(3);
-                                const fStr = Number(fmhz).toFixed(0);
-                                return `20×log₁₀(${dkStr}) + 20×log₁₀(${fStr}) + 32.45`;
-                            })()}</div>
-                            <div>Cálculo: ${(() => {
-                                const dComp = safe(() => topKit.radios[0].detailedCalculations.fspl.distanceComponent, null);
-                                const fComp = safe(() => topKit.radios[0].detailedCalculations.fspl.frequencyComponent, null);
-                                const fsplDb = safe(() => topKit.radios[0].FSPL_dB, null);
-                                if (dComp==null || fComp==null || fsplDb==null) return 'N/D';
-                                return `${Number(dComp).toFixed(2)} + ${Number(fComp).toFixed(2)} + 32.45 = ${Number(fsplDb).toFixed(2)} dB`;
-                            })()}</div>
-                            <div>FSPL: ${safe(() => (topKit.radios[0].FSPL_dB!=null ? Number(topKit.radios[0].FSPL_dB).toFixed(2) : 'N/D'), 'N/D')} dB</div>
+                            <div>Componentes: Distancia ${safe(() => fspl.distanceComponent, 'N/D')} dB + Frecuencia ${safe(() => fspl.frequencyComponent, 'N/D')} dB + 32.45</div>
+                            <div>Cálculo: ${safe(() => fspl.calculation, () => {
+                                const d = safe(() => topKit.radios[0].detailedCalculations.fspl.distanceComponent, null);
+                                const f = safe(() => topKit.radios[0].detailedCalculations.fspl.frequencyComponent, null);
+                                return (d!=null && f!=null) ? `${d} + ${f} + 32.45 = ${safe(() => topKit.radios[0].FSPL_dB, 'N/D')} dB` : 'N/D';
+                            })}</div>
+                            <div>FSPL: ${safe(() => (topKit.radios[0].FSPL_dB), 'N/D')} dB</div>
                         </div>
                     </div>
                     <div>
@@ -2451,12 +2443,10 @@ navLinks.forEach(link => {
 // Smooth scrolling for navigation links
 navLinks.forEach(link => {
     link.addEventListener('click', (e) => {
-        const targetHref = link.getAttribute('href') || '';
-        if (!targetHref.startsWith('#')) {
-            return;
-        }
         e.preventDefault();
-        const targetSection = document.querySelector(targetHref);
+        const targetId = link.getAttribute('href');
+        const targetSection = document.querySelector(targetId);
+        
         if (targetSection) {
             const offsetTop = targetSection.offsetTop - 80; // Account for fixed navbar
             window.scrollTo({
@@ -3272,7 +3262,7 @@ function initializePageState() {
         homeSection.style.visibility = 'visible';
         homeSection.style.opacity = '1';
     }
-
+    
     // Scroll to home section with a slight delay to ensure DOM is ready
     setTimeout(() => {
         scrollToSection('home');
