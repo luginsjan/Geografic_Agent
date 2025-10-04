@@ -28,14 +28,42 @@
             label: 'Antenas (SOP)',
             singular: 'antena',
             fields: [
-                { key: 'location', label: 'Ubicación', type: 'text', required: true, placeholder: 'Ciudad / Sitio' },
-                { key: 'sopCode', label: 'SOP', type: 'text', placeholder: 'Código SOP' },
-                { key: 'heightMeters', label: 'Altura requerida (m)', type: 'number', step: '0.1', min: 0 },
-                { key: 'status', label: 'Estado', type: 'text', placeholder: 'Operativa, Requiere inspección, etc.' },
-                { key: 'notes', label: 'Notas', type: 'textarea', placeholder: 'Observaciones adicionales' }
+                { key: 'sopCode', label: 'SOP', type: 'text', required: true, placeholder: 'Código SOP' },
+                { key: 'plaza', label: 'Plaza', type: 'text', required: true, placeholder: 'Ciudad / Plaza' },
+                { key: 'coordinates', label: 'Coordenadas', type: 'text', placeholder: 'Lat, Long' },
+                { key: 'terrain', label: 'Terreno', type: 'text', placeholder: 'Urbano, Plano, etc.' },
+                { key: 'heightMeters', label: 'Altura (mts)', type: 'number', step: '0.1', min: 0 }
             ]
         }
     };
+
+    function normalizeAntennaEntry(entry) {
+        if (!entry || typeof entry !== 'object') {
+            return entry;
+        }
+        const normalized = { ...entry };
+        if (!normalized.plaza && normalized.location) {
+            normalized.plaza = normalized.location;
+        }
+        if (normalized.status && !normalized.terrain) {
+            normalized.terrain = normalized.status;
+        }
+        if (normalized.notes && !normalized.coordinates) {
+            normalized.coordinates = normalized.notes;
+        }
+        if (normalized.height !== undefined && normalized.heightMeters === undefined) {
+            normalized.heightMeters = normalized.height;
+        }
+        if (!normalized.coordinates && Array.isArray(normalized.coords)) {
+            normalized.coordinates = normalized.coords.join(', ');
+        }
+        delete normalized.location;
+        delete normalized.status;
+        delete normalized.notes;
+        delete normalized.height;
+        delete normalized.coords;
+        return normalized;
+    }
 
     const defaultDashboardState = {
         activeType: 'kits',
@@ -96,19 +124,19 @@
             antennas: [
                 {
                     id: 'antena-1',
-                    location: 'CDMX - Reforma',
                     sopCode: 'SOP-MX-014',
-                    heightMeters: 25,
-                    status: 'Operativa',
-                    notes: 'Sin obstrucciones a 3 km.'
+                    plaza: 'CDMX - Reforma',
+                    coordinates: '19.4326, -99.1332',
+                    terrain: 'Urbano',
+                    heightMeters: 25
                 },
                 {
                     id: 'antena-2',
-                    location: 'Guadalajara - Zona Norte',
                     sopCode: 'SOP-MX-097',
-                    heightMeters: 18,
-                    status: 'Calibración pendiente',
-                    notes: 'Requiere revisión de línea de vista a 5 km.'
+                    plaza: 'Guadalajara - Zona Norte',
+                    coordinates: '20.6597, -103.3496',
+                    terrain: 'Semiurbano',
+                    heightMeters: 18
                 }
             ]
         }
@@ -177,9 +205,12 @@
             base.data = {
                 kits: Array.isArray(partial.data.kits) ? partial.data.kits : base.data.kits,
                 prices: Array.isArray(partial.data.prices) ? partial.data.prices : base.data.prices,
-                antennas: Array.isArray(partial.data.antennas) ? partial.data.antennas : base.data.antennas
+                antennas: Array.isArray(partial.data.antennas)
+                    ? partial.data.antennas.map(normalizeAntennaEntry)
+                    : base.data.antennas
             };
         }
+        base.data.antennas = base.data.antennas.map(normalizeAntennaEntry);
         return base;
     }
 
@@ -193,7 +224,9 @@
         } catch (error) {
             console.warn('No fue posible cargar los datos del dashboard desde almacenamiento local', error);
         }
-        return cloneDashboardState(defaultDashboardState);
+        const state = cloneDashboardState(defaultDashboardState);
+        state.data.antennas = state.data.antennas.map(normalizeAntennaEntry);
+        return state;
     }
 
     function saveDashboardState() {
