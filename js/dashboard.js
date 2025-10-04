@@ -458,7 +458,8 @@
 
         const chartOptions = {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
+            aspectRatio: 1.8,
             interaction: {
                 mode: 'index',
                 intersect: false
