@@ -1,6 +1,7 @@
 (function () {
     const DASHBOARD_STORAGE_KEY = 'agDashboardData';
     const DASHBOARD_TREND_PERIOD_LABEL = 'Últimos 7 días';
+    const DASHBOARD_MANUAL_FLOW_MINUTES = 30;
 
     const dashboardDatasetConfig = {
         kits: {
@@ -78,29 +79,23 @@
 
     const defaultDashboardState = {
         activeType: 'kits',
+        manualFlowMinutes: DASHBOARD_MANUAL_FLOW_MINUTES,
         metrics: {
             executions: {
-                day: 14,
-                week: 86,
-                month: 342,
-                year: 3610
+                day: 0,
+                week: 0,
+                month: 0,
+                year: 0
             },
-            avgExecutionMinutes: 6.8,
-            timeSavedMinutes: 210
+            avgExecutionMinutes: 0,
+            timeSavedMinutes: 0
         },
-        trend: [
-            { label: 'Lun', executions: 12, avgExecutionMinutes: 7.2, timeSavedMinutes: 36 },
-            { label: 'Mar', executions: 14, avgExecutionMinutes: 6.9, timeSavedMinutes: 39 },
-            { label: 'Mié', executions: 13, avgExecutionMinutes: 6.6, timeSavedMinutes: 42 },
-            { label: 'Jue', executions: 15, avgExecutionMinutes: 6.7, timeSavedMinutes: 45 },
-            { label: 'Vie', executions: 17, avgExecutionMinutes: 6.5, timeSavedMinutes: 48 },
-            { label: 'Sáb', executions: 11, avgExecutionMinutes: 7.0, timeSavedMinutes: 34 },
-            { label: 'Dom', executions: 9, avgExecutionMinutes: 6.4, timeSavedMinutes: 32 }
-        ],
+        trend: [],
         data: {
             kits: [],
             antennas: []
-        }
+        },
+        analyticsTotals: null
     };
 
     let dashboardState = null;
@@ -150,6 +145,12 @@
         if (typeof partial.activeType === 'string' && dashboardDatasetConfig[partial.activeType]) {
             base.activeType = partial.activeType;
         }
+        if (typeof partial.manualFlowMinutes === 'number' && Number.isFinite(partial.manualFlowMinutes)) {
+            base.manualFlowMinutes = partial.manualFlowMinutes;
+        }
+        if (partial.analyticsTotals && typeof partial.analyticsTotals === 'object') {
+            base.analyticsTotals = partial.analyticsTotals;
+        }
         if (partial.metrics) {
             const incomingMetrics = partial.metrics;
             base.metrics = {
@@ -198,9 +199,11 @@
             }
             const serializable = {
                 activeType: dashboardState.activeType,
+                manualFlowMinutes: dashboardState.manualFlowMinutes,
                 metrics: dashboardState.metrics,
                 trend: dashboardState.trend,
-                data: dashboardState.data
+                data: dashboardState.data,
+                analyticsTotals: dashboardState.analyticsTotals
             };
             localStorage.setItem(DASHBOARD_STORAGE_KEY, JSON.stringify(serializable));
         } catch (error) {
@@ -501,6 +504,49 @@
         }
     }
 
+    async function fetchDashboardAnalyticsFromApi() {
+        if (typeof fetch !== 'function') {
+            console.warn('Fetch API no disponible para cargar métricas del dashboard.');
+            return;
+        }
+        try {
+            const response = await fetch('/api/dashboard-analytics', { method: 'GET' });
+            if (!response.ok) {
+                throw new Error(`Error HTTP ${response.status}`);
+            }
+            const payload = await response.json();
+            const state = ensureDashboardState();
+
+            if (payload.metrics && typeof payload.metrics === 'object') {
+                state.metrics = {
+                    ...state.metrics,
+                    ...payload.metrics,
+                    executions: {
+                        ...state.metrics.executions,
+                        ...(payload.metrics.executions || {})
+                    }
+                };
+            }
+
+            if (Array.isArray(payload.trend)) {
+                state.trend = payload.trend;
+            }
+
+            if (typeof payload.manualFlowMinutes === 'number' && Number.isFinite(payload.manualFlowMinutes)) {
+                state.manualFlowMinutes = payload.manualFlowMinutes;
+            }
+
+            if (payload.totals && typeof payload.totals === 'object') {
+                state.analyticsTotals = payload.totals;
+            }
+
+            saveDashboardState();
+            refreshDashboard();
+        } catch (error) {
+            console.error('Error al cargar métricas del dashboard desde la API', error);
+        }
+    }
+
     function initializeDashboardPage() {
         const dashboardSection = document.getElementById('dashboard');
         if (!dashboardSection) {
@@ -567,6 +613,7 @@
         dashboardInitialized = true;
         refreshDashboard();
         fetchDashboardDataFromApi();
+        fetchDashboardAnalyticsFromApi();
     }
 
     function refreshDashboard() {
