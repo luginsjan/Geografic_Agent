@@ -11,7 +11,7 @@ A modern, minimalistic black website built with HTML, CSS, and JavaScript. Featu
 - **Contact Form**: Functional contact form with validation and notifications
 - **Performance Optimized**: Efficient code with throttled scroll events and optimized animations
 
-## File Structure
+## File Structure 
 
 ```
 Geografic_Agent/
