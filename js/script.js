@@ -777,13 +777,17 @@ function createElevationChart(result, canvasId) {
     // Prepare obstruction data for chart annotations
     const obstructions = result.lineOfSight?.obstructions || [];
     const obstructionPoints = obstructions.map(obs => {
-        const distanceIndex = Math.round((obs.distanceFromStart / (totalDistance * 1000)) * (result.results.length - 1));
+        // Calculate the exact index based on distance from start
+        const totalDistanceMeters = totalDistance * 1000;
+        const exactIndex = (obs.distanceFromStart / totalDistanceMeters) * (result.results.length - 1);
+        
         return {
-            x: distanceIndex,
+            x: exactIndex,
             y: obs.totalObstructionHeight,
             type: obs.obstructionType,
             obstruction: obs.obstruction,
-            distance: obs.distanceFromStart / 1000 // Convert to km
+            distance: obs.distanceFromStart / 1000, // Convert to km
+            index: obs.index // Use the actual obstruction index from the data
         };
     });
 
@@ -854,6 +858,7 @@ function createElevationChart(result, canvasId) {
                         annotations: obstructionPoints.reduce((annotations, point, index) => {
                             const color = point.type === 'building' ? '#ff9800' : '#9c27b0';
                             const icon = point.type === 'building' ? '🏢' : '🏔️';
+                            const typeLabel = point.type === 'building' ? 'Edificio' : 'Terreno';
                             
                             annotations[`obstruction-${index}`] = {
                                 type: 'point',
@@ -861,19 +866,21 @@ function createElevationChart(result, canvasId) {
                                 yValue: point.y,
                                 backgroundColor: color,
                                 borderColor: color,
-                                borderWidth: 2,
-                                radius: 6,
+                                borderWidth: 3,
+                                radius: 8,
                                 label: {
-                                    content: `${icon} ${point.obstruction.toFixed(1)}m`,
+                                    content: `${icon} ${typeLabel}\n${point.obstruction.toFixed(1)}m bloqueo\n${point.distance.toFixed(2)}km`,
                                     enabled: true,
                                     position: 'top',
                                     backgroundColor: color,
                                     color: 'white',
                                     font: {
-                                        size: 10,
+                                        size: 11,
                                         weight: 'bold'
                                     },
-                                    padding: 4
+                                    padding: 6,
+                                    borderRadius: 4,
+                                    display: true
                                 }
                             };
                             return annotations;
