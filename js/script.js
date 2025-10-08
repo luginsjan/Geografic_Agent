@@ -457,7 +457,7 @@ function createElevationChart(result, canvasId) {
     
     if (!result.results || result.results.length === 0) {
         console.warn('No results data available for chart:', result);
-        canvas.parentElement.innerHTML += '<p class="no-data" style="color:#666;text-align:center;">No elevation data available.</p>';
+        canvas.parentElement.innerHTML += '<p class="no-data" style="color:#666;text-align:center;">No hay datos de elevación disponibles.</p>';
         return;
     }
 
@@ -469,7 +469,7 @@ function createElevationChart(result, canvasId) {
 
     const ctx = canvas.getContext('2d');
     const hasObstructions = !result.lineOfSight?.hasLineOfSight;
-    const totalDistance = result.lineOfSight.totalDistanceKm;
+    const totalDistance = result.lineOfSight?.totalDistanceKm || result.distance_km;
 
     // Use real elevation data from the webhook response
     const labels = result.results.map((_, index) => {
@@ -479,10 +479,25 @@ function createElevationChart(result, canvasId) {
     const elevationData = result.results.map(p => p.elevation);
 
     // Generate the straight line of sight using adjusted start and end points
-    const startElevation = result.lineOfSight.firstPoint.adjustedElevation;
-    const endElevation = result.lineOfSight.lastPoint.adjustedElevation;
+    const startElevation = result.lineOfSight?.firstPoint?.adjustedElevation || 
+                          (result.results[0]?.elevation || 0);
+    const endElevation = result.lineOfSight?.lastPoint?.adjustedElevation || 
+                        (result.results[result.results.length - 1]?.elevation || 0);
     const sightLineData = result.results.map((_, index) => {
          return startElevation - ((startElevation - endElevation) * index / (result.results.length - 1));
+    });
+
+    // Prepare obstruction data for chart annotations
+    const obstructions = result.lineOfSight?.obstructions || [];
+    const obstructionPoints = obstructions.map(obs => {
+        const distanceIndex = Math.round((obs.distanceFromStart / (totalDistance * 1000)) * (result.results.length - 1));
+        return {
+            x: distanceIndex,
+            y: obs.totalObstructionHeight,
+            type: obs.obstructionType,
+            obstruction: obs.obstruction,
+            distance: obs.distanceFromStart / 1000 // Convert to km
+        };
     });
 
     console.log('Chart data prepared:', {
@@ -491,7 +506,8 @@ function createElevationChart(result, canvasId) {
         sightLineDataCount: sightLineData.length,
         startElevation,
         endElevation,
-        hasObstructions
+        hasObstructions,
+        obstructionPointsCount: obstructionPoints.length
     });
 
     // Destroy existing chart to prevent rendering issues on updates
@@ -502,12 +518,12 @@ function createElevationChart(result, canvasId) {
     }
 
     try {
-        new Chart(ctx, {
+        const chart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Terrain Elevation',
+                    label: 'Elevación del Terreno',
                     data: elevationData,
                     borderColor: hasObstructions ? '#f44336' : '#4CAF50',
                     backgroundColor: hasObstructions ? 'rgba(244, 67, 54, 0.1)' : 'rgba(76, 175, 80, 0.1)',
@@ -515,7 +531,7 @@ function createElevationChart(result, canvasId) {
                     tension: 0.4,
                     pointRadius: 1
                 }, {
-                    label: 'Line of Sight',
+                    label: 'Línea de Vista',
                     data: sightLineData,
                     borderColor: '#2196F3',
                     backgroundColor: 'transparent',
@@ -528,16 +544,61 @@ function createElevationChart(result, canvasId) {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    x: { title: { display: true, text: 'Distance (km)' } },
-                    y: { title: { display: true, text: 'Elevation (m)' } }
+                    x: { 
+                        title: { display: true, text: 'Distancia (km)' },
+                        ticks: {
+                            callback: function(value) {
+                                return value.toFixed(1) + ' km';
+                            }
+                        }
+                    },
+                    y: { 
+                        title: { display: true, text: 'Elevación (m)' },
+                        ticks: {
+                            callback: function(value) {
+                                return value.toFixed(0) + ' m';
+                            }
+                        }
+                    }
                 },
-                plugins: { legend: { position: 'top' } }
+                plugins: { 
+                    legend: { position: 'top' },
+                    annotation: obstructionPoints.length > 0 ? {
+                        annotations: obstructionPoints.reduce((annotations, point, index) => {
+                            const color = point.type === 'building' ? '#ff9800' : '#9c27b0';
+                            const icon = point.type === 'building' ? '🏢' : '🏔️';
+                            
+                            annotations[`obstruction-${index}`] = {
+                                type: 'point',
+                                xValue: point.x,
+                                yValue: point.y,
+                                backgroundColor: color,
+                                borderColor: color,
+                                borderWidth: 2,
+                                radius: 6,
+                                label: {
+                                    content: `${icon} ${point.obstruction.toFixed(1)}m`,
+                                    enabled: true,
+                                    position: 'top',
+                                    backgroundColor: color,
+                                    color: 'white',
+                                    font: {
+                                        size: 10,
+                                        weight: 'bold'
+                                    },
+                                    padding: 4
+                                }
+                            };
+                            return annotations;
+                        }, {})
+                    } : {}
+                }
             }
         });
         console.log('Chart created successfully for ID:', canvasId);
     } catch (error) {
         console.error('Error creating chart:', error);
-        canvas.parentElement.innerHTML += '<p class="no-data" style="color:#c00;text-align:center;">Error creating chart: ' + error.message + '</p>';
+        canvas.parentElement.innerHTML += '<p class="no-data" style="color:#c00;text-align:center;">Error al crear el gráfico: ' + error.message + '</p>';
     }
 }
 
@@ -2300,50 +2361,97 @@ function populateResultsBlock(responseData) {
         card.dataset.sop = result.SOP;
 
         const statusClass = isSuccess ? 'status-success' : 'status-blocked';
-        const statusText = isSuccess ? 'Clear' : 'Blocked';
+        const statusText = isSuccess ? 'Despejado' : 'Bloqueado';
         const statusIcon = isSuccess ? '✓' : '✗';
+
+        // Helper function to safely get nested values
+        const safeGet = (obj, path, defaultValue = 'N/A') => {
+            try {
+                return path.split('.').reduce((current, key) => current?.[key], obj) ?? defaultValue;
+            } catch {
+                return defaultValue;
+            }
+        };
+
+        // Get LoS data with fallbacks
+        const losData = result.lineOfSight || {};
+        const obstructionCount = safeGet(losData, 'obstructionCount', 0);
+        const obstructionBreakdown = safeGet(losData, 'obstructionBreakdown', {});
+        const terrainObstructions = safeGet(obstructionBreakdown, 'terrain', 0);
+        const buildingObstructions = safeGet(obstructionBreakdown, 'building', 0);
+        const maxObstruction = safeGet(losData, 'maxObstruction', 0);
+        const summary = safeGet(losData, 'summary', {});
+        const minimumHeights = safeGet(summary, 'minimumHeights', {});
+        const userMinHeight = safeGet(minimumHeights, 'user.antenna', 0);
+        const sopMinHeight = safeGet(minimumHeights, 'sop.antenna', 0);
+        const quickSolution = safeGet(summary, 'quickSolution', 'Análisis completado');
 
         // Card header
         card.innerHTML = `
-            <button class="card-select-button">Select</button>
+            <button class="card-select-button">Seleccionar</button>
             <div class="card-header">
                 <div class="card-title">${result.SOP} - ${result.Plaza}</div>
                 <div class="status-badge ${statusClass}">${statusIcon} ${statusText}</div>
             </div>
             <div class="info-grid">
                 <div class="info-item">
-                    <div class="info-label">Distance</div>
+                    <div class="info-label">Distancia</div>
                     <div class="info-value">${result.distance_km} km</div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">Obstructions</div>
-                    <div class="info-value">${result.lineOfSight?.obstructionCount || 0}</div>
+                    <div class="info-label">Obstrucciones</div>
+                    <div class="info-value">${obstructionCount}</div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">Target Coords</div>
+                    <div class="info-label">Coordenadas Objetivo</div>
                     <div class="info-value coordinates">${result.Coordenadas}</div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">Antenna Height</div>
+                    <div class="info-label">Altura Antena Actual</div>
                     <div class="info-value">${result['Altura (mts)']} m</div>
                 </div>
             </div>
-            ${!isSuccess && result.lineOfSight?.visualizationData ? `
-                <div class="obstruction-details">
-                    <strong>Obstruction Details:</strong>
-                    ${result.lineOfSight.visualizationData.obstructionPercentages.map(obs => `
-                        <div class="obstruction-item">
-                            <span>At ${obs.atDistance} (${obs.percentOfPath})</span>
-                            <span><strong>${obs.blockage}</strong></span>
+            
+            ${obstructionCount > 0 ? `
+                <div class="obstruction-breakdown">
+                    <div class="obstruction-type">
+                        <span class="obstruction-icon">🏔️</span>
+                        <span class="obstruction-label">Terreno:</span>
+                        <span class="obstruction-count">${terrainObstructions}</span>
+                    </div>
+                    <div class="obstruction-type">
+                        <span class="obstruction-icon">🏢</span>
+                        <span class="obstruction-label">Edificios:</span>
+                        <span class="obstruction-count">${buildingObstructions}</span>
+                    </div>
+                    ${maxObstruction > 0 ? `
+                        <div class="obstruction-type">
+                            <span class="obstruction-icon">⚠️</span>
+                            <span class="obstruction-label">Mayor Obstáculo:</span>
+                            <span class="obstruction-count">${maxObstruction.toFixed(1)}m</span>
                         </div>
-                    `).join('')}
+                    ` : ''}
                 </div>
             ` : ''}
+            
+            ${(userMinHeight > 0 || sopMinHeight > 0) ? `
+                <div class="minimum-heights">
+                    <div class="height-requirement">
+                        <span class="height-label">📡 Altura Mínima Usuario:</span>
+                        <span class="height-value">${userMinHeight.toFixed(1)}m</span>
+                    </div>
+                    <div class="height-requirement">
+                        <span class="height-label">📡 Altura Mínima SOP:</span>
+                        <span class="height-value">${sopMinHeight.toFixed(1)}m</span>
+                    </div>
+                </div>
+            ` : ''}
+            
             <div class="recommendation">
-                <strong>Recommendation:</strong> ${result.lineOfSight?.summary?.recommendation || 'Analysis completed'}
+                <strong>Recomendación:</strong> ${quickSolution}
             </div>
             <div class="chart-container">
-                <div class="chart-title">Elevation Profile</div>
+                <div class="chart-title">Perfil de Elevación</div>
                 <canvas id="chart-${result.SOP.replace('-', '')}"></canvas>
             </div>
         `;
@@ -2402,7 +2510,7 @@ function populateResultsBlock(responseData) {
     // Success section
     if (responseData.trueResults && responseData.trueResults.length > 0) {
         const successSection = document.createElement('div');
-        successSection.innerHTML = '<h2 class="section-title">✅ Successful Connections</h2>';
+        successSection.innerHTML = '<h2 class="section-title">✅ Conexiones Exitosas</h2>';
         const successGrid = document.createElement('div');
         successGrid.className = 'results-container';
         responseData.trueResults.forEach(result => {
@@ -2415,7 +2523,7 @@ function populateResultsBlock(responseData) {
     // Blocked section
     if (responseData.falseResults && responseData.falseResults.length > 0) {
         const blockedSection = document.createElement('div');
-        blockedSection.innerHTML = '<h2 class="section-title">❌ Blocked Connections</h2>';
+        blockedSection.innerHTML = '<h2 class="section-title">❌ Conexiones Bloqueadas</h2>';
         const blockedGrid = document.createElement('div');
         blockedGrid.className = 'results-container';
         responseData.falseResults.forEach(result => {

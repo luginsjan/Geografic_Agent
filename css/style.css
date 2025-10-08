@@ -426,6 +426,68 @@ section {
     color: #666;
 }
 
+.obstruction-breakdown {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    border-left: 3px solid #ff9800;
+}
+
+.obstruction-type {
+    display: flex;
+    align-items: center;
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+.obstruction-icon {
+    margin-right: 0.5rem;
+    font-size: 1rem;
+}
+
+.obstruction-label {
+    flex: 1;
+    color: #e0e0e0;
+}
+
+.obstruction-count {
+    font-weight: bold;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+.minimum-heights {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: rgba(76, 175, 80, 0.1);
+    border-radius: 6px;
+    border-left: 3px solid #4CAF50;
+}
+
+.height-requirement {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+.height-label {
+    color: #e0e0e0;
+    font-weight: 500;
+}
+
+.height-value {
+    font-weight: bold;
+    color: #4CAF50;
+    background: rgba(76, 175, 80, 0.2);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
 .recommendation {
     margin-top: 15px;
     padding: 15px;
