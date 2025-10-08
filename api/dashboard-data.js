@@ -1,12 +1,12 @@
 const { connectToDatabase } = require('./mongodb.js');
 
-const ALLOWED_METHODS = ['GET', 'OPTIONS'];
+const ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'OPTIONS'];
 const DEFAULT_ORIGIN = process.env.CORS_ALLOW_ORIGIN || 'https://geografic-agent.vercel.app';
 
 function toCorsHeaders(origin = DEFAULT_ORIGIN) {
   return {
     'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
     'Access-Control-Max-Age': '86400',
     'Content-Type': 'application/json'
@@ -16,13 +16,15 @@ function toCorsHeaders(origin = DEFAULT_ORIGIN) {
 function formatBandwidth(bandwidth = {}) {
   const min = bandwidth.min_mbps;
   const max = bandwidth.max_mbps;
-  if (min && max) {
+  const hasMin = min !== undefined && min !== null;
+  const hasMax = max !== undefined && max !== null;
+  if (hasMin && hasMax) {
     return `${min}-${max} Mbps`;
   }
-  if (min) {
+  if (hasMin) {
     return `${min}+ Mbps`;
   }
-  if (max) {
+  if (hasMax) {
     return `≤ ${max} Mbps`;
   }
   return 'No especificado';
@@ -34,9 +36,9 @@ function mapKit(document) {
     .map((radio) => radio.model || radio.name || radio.radio)
     .filter(Boolean);
 
-  const antennaBrand = document.antenna?.brand;
-  const antennaModel = document.antenna?.model;
-  const antennaDescription = [antennaBrand, antennaModel].filter(Boolean).join(' ');
+  const antennaBrand = document.antenna?.brand || null;
+  const antennaModel = document.antenna?.model || null;
+  const antennaDescription = document.antenna?.description || [antennaBrand, antennaModel].filter(Boolean).join(' ') || null;
 
   let coordinates = null;
   if (document.antenna?.coordinates && Array.isArray(document.antenna.coordinates)) {
@@ -54,11 +56,13 @@ function mapKit(document) {
     bandwidthMinMbps: document.bandwidth?.min_mbps ?? null,
     bandwidthMaxMbps: document.bandwidth?.max_mbps ?? null,
     distanceKm: document.distance_km ?? null,
-    antenna: antennaDescription || null,
-    antennaGainDbi: document.antenna?.gain_dbi ?? null,
-    radiosSummary: radioModels.join(', ') || null,
     costUsd: document.cost_usd ?? null,
     linkBudgetDb: document.link_budget_db ?? null,
+    antennaBrand,
+    antennaModel,
+    antenna: antennaDescription,
+    antennaGainDbi: document.antenna?.gain_dbi ?? null,
+    radiosSummary: document.radios_summary || (radioModels.join(', ') || null),
     coordinates
   };
 }
@@ -91,46 +95,359 @@ function mapAntenna(document) {
   };
 }
 
+function safeParseJson(raw) {
+  if (raw == null) {
+    return {};
+  }
+  if (typeof raw === 'object') {
+    return raw;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    throw new Error('Invalid JSON payload');
+  }
+}
+
+function sanitizeString(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const trimmed = String(value).trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function sanitizeId(value) {
+  const sanitized = sanitizeString(value);
+  return sanitized || null;
+}
+
+function toNullableNumber(value) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function parseCoordinatesString(value) {
+  if (!value || typeof value !== 'string') {
+    return null;
+  }
+  const parts = value.split(',').map((part) => part.trim());
+  if (parts.length !== 2) {
+    return null;
+  }
+  const latitude = Number(parts[0]);
+  const longitude = Number(parts[1]);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+  return { latitude, longitude };
+}
+
+function buildBandwidth(min, max) {
+  if (min === null && max === null) {
+    return null;
+  }
+  return {
+    min_mbps: min,
+    max_mbps: max
+  };
+}
+
+function sanitizeKitPayload(data = {}) {
+  const kitId = sanitizeId(data.kitId || data.id);
+  const kitName = sanitizeString(data.kitName) || kitId;
+  const distanceKm = toNullableNumber(data.distanceKm);
+  const costUsd = toNullableNumber(data.costUsd);
+  const linkBudgetDb = toNullableNumber(data.linkBudgetDb);
+  const minBandwidth = toNullableNumber(data.bandwidthMinMbps);
+  const maxBandwidth = toNullableNumber(data.bandwidthMaxMbps);
+
+  const antennaBrand = sanitizeString(data.antennaBrand);
+  const antennaModel = sanitizeString(data.antennaModel);
+  const antennaGainDbi = toNullableNumber(data.antennaGainDbi);
+  const antennaDescription = sanitizeString(data.antenna) || [antennaBrand, antennaModel].filter(Boolean).join(' ') || null;
+
+  const antenna = {};
+  if (antennaBrand) {
+    antenna.brand = antennaBrand;
+  }
+  if (antennaModel) {
+    antenna.model = antennaModel;
+  }
+  if (antennaGainDbi !== null) {
+    antenna.gain_dbi = antennaGainDbi;
+  }
+  if (antennaDescription) {
+    antenna.description = antennaDescription;
+  }
+  const antennaValue = Object.keys(antenna).length > 0 ? antenna : null;
+
+  const radiosSummary = sanitizeString(data.radiosSummary);
+
+  return {
+    kitId,
+    kitName,
+    distanceKm,
+    costUsd,
+    linkBudgetDb,
+    bandwidth: buildBandwidth(minBandwidth, maxBandwidth),
+    antenna: antennaValue,
+    radiosSummary
+  };
+}
+
+function sanitizeAntennaPayload(data = {}) {
+  const sopCode = sanitizeId(data.sopCode || data.id);
+  const plaza = sanitizeString(data.plaza);
+  const status = sanitizeString(data.status) || 'active';
+  const terrain = toNullableNumber(data.terrain);
+  const heightMeters = toNullableNumber(data.heightMeters);
+  const latitude = toNullableNumber(data.latitude);
+  const longitude = toNullableNumber(data.longitude);
+
+  let coordinates = null;
+  if (latitude !== null && longitude !== null) {
+    coordinates = { type: 'Point', coordinates: [longitude, latitude] };
+  } else {
+    const parsed = parseCoordinatesString(data.coordinates);
+    if (parsed) {
+      coordinates = { type: 'Point', coordinates: [parsed.longitude, parsed.latitude] };
+    }
+  }
+
+  return {
+    sopCode,
+    plaza,
+    status,
+    terrain,
+    heightMeters,
+    coordinates
+  };
+}
+
+function buildKitUpdateFields(sanitized, timestamp) {
+  return {
+    kit_name: sanitized.kitName || '',
+    distance_km: sanitized.distanceKm,
+    cost_usd: sanitized.costUsd,
+    link_budget_db: sanitized.linkBudgetDb,
+    bandwidth: sanitized.bandwidth,
+    antenna: sanitized.antenna,
+    radios_summary: sanitized.radiosSummary,
+    updatedAt: timestamp
+  };
+}
+
+function buildKitInsertDocument(sanitized, timestamp) {
+  return {
+    _id: sanitized.kitId,
+    ...buildKitUpdateFields(sanitized, timestamp),
+    createdAt: timestamp
+  };
+}
+
+function buildAntennaUpdateFields(sanitized, timestamp) {
+  const update = {
+    Location: sanitized.plaza || '',
+    Terrain: sanitized.terrain,
+    Height: sanitized.heightMeters,
+    Status: sanitized.status || 'active',
+    updatedAt: timestamp
+  };
+  update.Coordinates = sanitized.coordinates || null;
+  return update;
+}
+
+function buildAntennaInsertDocument(sanitized, timestamp) {
+  return {
+    _id: sanitized.sopCode,
+    ...buildAntennaUpdateFields(sanitized, timestamp),
+    createdAt: timestamp
+  };
+}
+
+async function handleGetRequest(res, db) {
+  const equipmentCollection = db.collection('equipment');
+  const antennasCollection = db.collection('antenas');
+
+  const [kitsRaw, antennasRaw] = await Promise.all([
+    equipmentCollection.find({}).toArray(),
+    antennasCollection.find({}).toArray()
+  ]);
+
+  const kits = kitsRaw.map(mapKit);
+  const antennas = antennasRaw.map(mapAntenna);
+
+  return res.status(200).json({
+    kits,
+    antennas,
+    updatedAt: new Date().toISOString()
+  });
+}
+
+async function handleKitWrite(method, payload, db, res) {
+  const sanitized = sanitizeKitPayload(payload);
+  if (!sanitized.kitId) {
+    return res.status(400).json({
+      error: 'Missing kit identifier',
+      message: 'El campo kitId es obligatorio.'
+    });
+  }
+
+  const equipmentCollection = db.collection('equipment');
+  const now = new Date();
+
+  if (method === 'POST') {
+    const existing = await equipmentCollection.findOne({ _id: sanitized.kitId });
+    if (existing) {
+      return res.status(409).json({
+        error: 'Kit already exists',
+        message: `Ya existe un kit con ID ${sanitized.kitId}.`
+      });
+    }
+    const insertDoc = buildKitInsertDocument(sanitized, now);
+    await equipmentCollection.insertOne(insertDoc);
+    const inserted = await equipmentCollection.findOne({ _id: sanitized.kitId });
+    return res.status(201).json({
+      item: mapKit(inserted)
+    });
+  }
+
+  const updateResult = await equipmentCollection.updateOne(
+    { _id: sanitized.kitId },
+    { $set: buildKitUpdateFields(sanitized, now) }
+  );
+
+  if (updateResult.matchedCount === 0) {
+    return res.status(404).json({
+      error: 'Kit not found',
+      message: `No se encontró un kit con ID ${sanitized.kitId}.`
+    });
+  }
+
+  const updated = await equipmentCollection.findOne({ _id: sanitized.kitId });
+  return res.status(200).json({
+    item: mapKit(updated)
+  });
+}
+
+async function handleAntennaWrite(method, payload, db, res) {
+  const sanitized = sanitizeAntennaPayload(payload);
+  if (!sanitized.sopCode) {
+    return res.status(400).json({
+      error: 'Missing SOP identifier',
+      message: 'El campo sopCode es obligatorio.'
+    });
+  }
+
+  const antennasCollection = db.collection('antenas');
+  const now = new Date();
+
+  if (method === 'POST') {
+    const existing = await antennasCollection.findOne({ _id: sanitized.sopCode });
+    if (existing) {
+      return res.status(409).json({
+        error: 'Antenna already exists',
+        message: `Ya existe una antena con SOP ${sanitized.sopCode}.`
+      });
+    }
+    const insertDoc = buildAntennaInsertDocument(sanitized, now);
+    await antennasCollection.insertOne(insertDoc);
+    const inserted = await antennasCollection.findOne({ _id: sanitized.sopCode });
+    return res.status(201).json({
+      item: mapAntenna(inserted)
+    });
+  }
+
+  const updateResult = await antennasCollection.updateOne(
+    { _id: sanitized.sopCode },
+    { $set: buildAntennaUpdateFields(sanitized, now) }
+  );
+
+  if (updateResult.matchedCount === 0) {
+    return res.status(404).json({
+      error: 'Antenna not found',
+      message: `No se encontró una antena con SOP ${sanitized.sopCode}.`
+    });
+  }
+
+  const updated = await antennasCollection.findOne({ _id: sanitized.sopCode });
+  return res.status(200).json({
+    item: mapAntenna(updated)
+  });
+}
+
+async function handleWriteRequest(req, res, db) {
+  let body;
+  try {
+    body = safeParseJson(req.body);
+  } catch (error) {
+    return res.status(400).json({
+      error: 'Invalid JSON',
+      message: error.message
+    });
+  }
+
+  const type = body?.type;
+  const data = body?.data;
+
+  if (!type || !data) {
+    return res.status(400).json({
+      error: 'Invalid payload',
+      message: 'Debe proporcionar el tipo de dataset y los datos a registrar.'
+    });
+  }
+
+  if (type === 'kits') {
+    return handleKitWrite(req.method, data, db, res);
+  }
+
+  if (type === 'antennas') {
+    return handleAntennaWrite(req.method, data, db, res);
+  }
+
+  return res.status(400).json({
+    error: 'Unsupported dataset type',
+    message: `El tipo de dataset "${type}" no es válido.`
+  });
+}
+
 module.exports = async function handler(req, res) {
   const corsHeaders = toCorsHeaders(req.headers.origin || DEFAULT_ORIGIN);
   Object.entries(corsHeaders).forEach(([key, value]) => {
     res.setHeader(key, value);
   });
 
-  if (!ALLOWED_METHODS.includes(req.method)) {
-    return res.status(405).json({
-      error: 'Method not allowed',
-      message: 'Only GET requests are supported for this endpoint'
-    });
-  }
-
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
+  if (!ALLOWED_METHODS.includes(req.method)) {
+    return res.status(405).json({
+      error: 'Method not allowed',
+      message: 'Método HTTP no soportado.'
+    });
+  }
+
   try {
     const { db } = await connectToDatabase();
-
-    const equipmentCollection = db.collection('equipment');
-    const antennasCollection = db.collection('antenas');
-
-    const [kitsRaw, antennasRaw] = await Promise.all([
-      equipmentCollection.find({}).toArray(),
-      antennasCollection.find({}).toArray()
-    ]);
-
-    const kits = kitsRaw.map(mapKit);
-    const antennas = antennasRaw.map(mapAntenna);
-
-    return res.status(200).json({
-      kits,
-      antennas,
-      updatedAt: new Date().toISOString()
+    if (req.method === 'GET') {
+      return handleGetRequest(res, db);
+    }
+    if (req.method === 'POST' || req.method === 'PUT') {
+      return handleWriteRequest(req, res, db);
+    }
+    return res.status(405).json({
+      error: 'Method not allowed',
+      message: 'Método HTTP no soportado.'
     });
   } catch (error) {
-    console.error('Failed to load dashboard data:', error);
+    console.error('Dashboard data handler failed:', error);
     return res.status(500).json({
-      error: 'Failed to load dashboard data',
+      error: 'Internal server error',
       message: error.message
     });
   }

@@ -9,10 +9,15 @@
             fields: [
                 { key: 'kitId', label: 'ID del kit', type: 'text', required: true, placeholder: 'Ej. KIT-001' },
                 { key: 'kitName', label: 'Nombre del kit', type: 'text', required: true, placeholder: 'Ej. Kit Urbano 5G' },
-                { key: 'bandwidthRange', label: 'Ancho de banda (Mbps)', type: 'text', placeholder: 'Ej. 100-200 Mbps' },
+                { key: 'bandwidthMinMbps', label: 'Ancho de banda mínimo (Mbps)', type: 'number', step: '1', min: 0, format: 'decimal', minimumFractionDigits: 0 },
+                { key: 'bandwidthMaxMbps', label: 'Ancho de banda máximo (Mbps)', type: 'number', step: '1', min: 0, format: 'decimal', minimumFractionDigits: 0 },
+                { key: 'bandwidthRange', label: 'Rango de banda (texto)', type: 'text', readOnly: true, placeholder: 'Ej. 100-200 Mbps' },
                 { key: 'distanceKm', label: 'Distancia (km)', type: 'number', step: '0.1', min: 0, format: 'decimal', minimumFractionDigits: 1 },
-                { key: 'antenna', label: 'Antena', type: 'text', placeholder: 'Marca y modelo' },
-                { key: 'radiosSummary', label: 'Radios', type: 'text', placeholder: 'Modelos asociados' }
+                { key: 'costUsd', label: 'Costo (USD)', type: 'number', step: '0.01', min: 0, format: 'currency' },
+                { key: 'antennaBrand', label: 'Marca de antena', type: 'text', placeholder: 'Ej. Mimosa' },
+                { key: 'antennaModel', label: 'Modelo de antena', type: 'text', placeholder: 'Ej. N5X25' },
+                { key: 'antennaGainDbi', label: 'Ganancia antena (dBi)', type: 'number', step: '0.1', min: 0, format: 'decimal', minimumFractionDigits: 1 },
+                { key: 'radiosSummary', label: 'Radios / Notas', type: 'textarea', placeholder: 'Modelos de radio, comentarios u observaciones' }
             ]
         },
         antennas: {
@@ -22,7 +27,7 @@
                 { key: 'sopCode', label: 'SOP', type: 'text', required: true, placeholder: 'Código SOP' },
                 { key: 'plaza', label: 'Plaza', type: 'text', required: true, placeholder: 'Ciudad / Plaza' },
                 { key: 'coordinates', label: 'Coordenadas', type: 'text', placeholder: 'Lat, Long' },
-                { key: 'terrain', label: 'Terreno', type: 'number', step: '1', min: 0 },
+                { key: 'terrain', label: 'Terreno', type: 'number', step: '1', min: 0, format: 'decimal', minimumFractionDigits: 0 },
                 { key: 'heightMeters', label: 'Altura (mts)', type: 'number', step: '0.1', min: 0, format: 'decimal', minimumFractionDigits: 1 },
                 { key: 'status', label: 'Estado', type: 'text', placeholder: 'Ej. active' }
             ]
@@ -113,6 +118,8 @@
         formFeedback: null,
         entryIdInput: null,
         resetButton: null,
+        saveButton: null,
+        saveButtonDefaultText: 'Guardar',
         addNewButton: null,
         tableHead: null,
         tableBody: null,
@@ -286,6 +293,155 @@
         return parts.join(' ');
     }
 
+    function formatKitBandwidthRange(min, max) {
+        const minValue = Number(min);
+        const maxValue = Number(max);
+        const hasMin = Number.isFinite(minValue);
+        const hasMax = Number.isFinite(maxValue);
+        if (hasMin && hasMax) {
+            return `${formatDashboardInteger(minValue)}-${formatDashboardInteger(maxValue)} Mbps`;
+        }
+        if (hasMin) {
+            return `${formatDashboardInteger(minValue)}+ Mbps`;
+        }
+        if (hasMax) {
+            return `≤ ${formatDashboardInteger(maxValue)} Mbps`;
+        }
+        return 'No especificado';
+    }
+
+    function updateKitEntryDerivedFields(entry) {
+        if (!entry || typeof entry !== 'object') {
+            return;
+        }
+        const hasMin = entry.bandwidthMinMbps !== null && entry.bandwidthMinMbps !== undefined && entry.bandwidthMinMbps !== '';
+        const hasMax = entry.bandwidthMaxMbps !== null && entry.bandwidthMaxMbps !== undefined && entry.bandwidthMaxMbps !== '';
+        const min = hasMin ? Number(entry.bandwidthMinMbps) : null;
+        const max = hasMax ? Number(entry.bandwidthMaxMbps) : null;
+        entry.bandwidthMinMbps = Number.isFinite(min) ? min : null;
+        entry.bandwidthMaxMbps = Number.isFinite(max) ? max : null;
+        entry.bandwidthRange = formatKitBandwidthRange(entry.bandwidthMinMbps, entry.bandwidthMaxMbps);
+        entry.antennaBrand = entry.antennaBrand ? String(entry.antennaBrand).trim() : null;
+        if (entry.antennaBrand === '') {
+            entry.antennaBrand = null;
+        }
+        entry.antennaModel = entry.antennaModel ? String(entry.antennaModel).trim() : null;
+        if (entry.antennaModel === '') {
+            entry.antennaModel = null;
+        }
+        const antennaParts = [entry.antennaBrand || '', entry.antennaModel || ''].filter(Boolean);
+        if (antennaParts.length > 0) {
+            entry.antenna = antennaParts.join(' ');
+        } else if (!entry.antenna) {
+            entry.antenna = null;
+        }
+        if (entry.radiosSummary) {
+            entry.radiosSummary = String(entry.radiosSummary).trim();
+        }
+        entry.costUsd =
+            entry.costUsd === null || entry.costUsd === undefined || entry.costUsd === ''
+                ? null
+                : Number(entry.costUsd);
+        if (!Number.isFinite(entry.costUsd)) {
+            entry.costUsd = null;
+        }
+        entry.antennaGainDbi =
+            entry.antennaGainDbi === null || entry.antennaGainDbi === undefined || entry.antennaGainDbi === ''
+                ? null
+                : Number(entry.antennaGainDbi);
+        if (!Number.isFinite(entry.antennaGainDbi)) {
+            entry.antennaGainDbi = null;
+        }
+    }
+
+    function parseCoordinateString(value) {
+        if (!value || typeof value !== 'string') {
+            return null;
+        }
+        const parts = value.split(',').map((part) => part.trim());
+        if (parts.length !== 2) {
+            return null;
+        }
+        const lat = Number(parts[0]);
+        const lng = Number(parts[1]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return null;
+        }
+        return { latitude: lat, longitude: lng };
+    }
+
+    function updateAntennaEntryDerivedFields(entry) {
+        if (!entry || typeof entry !== 'object') {
+            return;
+        }
+        let latitude = Number(entry.latitude);
+        let longitude = Number(entry.longitude);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            const parsed = parseCoordinateString(entry.coordinates);
+            if (parsed) {
+                latitude = parsed.latitude;
+                longitude = parsed.longitude;
+            } else {
+                latitude = null;
+                longitude = null;
+            }
+        }
+        entry.latitude = Number.isFinite(latitude) ? latitude : null;
+        entry.longitude = Number.isFinite(longitude) ? longitude : null;
+        if (entry.latitude !== null && entry.longitude !== null) {
+            entry.coordinates = `${entry.latitude}, ${entry.longitude}`;
+        } else if (!entry.coordinates) {
+            entry.coordinates = null;
+        }
+        if (entry.terrain !== null && entry.terrain !== undefined) {
+            const terrainNumber = Number(entry.terrain);
+            entry.terrain = Number.isFinite(terrainNumber) ? terrainNumber : null;
+        }
+        if (entry.heightMeters !== null && entry.heightMeters !== undefined) {
+            const heightNumber = Number(entry.heightMeters);
+            entry.heightMeters = Number.isFinite(heightNumber) ? heightNumber : null;
+        }
+        if (entry.status) {
+            entry.status = String(entry.status).trim();
+        }
+    }
+
+    async function persistDashboardEntry(type, entry, mode) {
+        if (typeof fetch !== 'function') {
+            throw new Error('Fetch API no disponible para persistir datos.');
+        }
+        const method = mode === 'update' ? 'PUT' : 'POST';
+        const response = await fetch('/api/dashboard-data', {
+            method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ type, data: entry })
+        });
+        if (!response.ok) {
+            const errorPayload = await response.json().catch(() => ({}));
+            const message = errorPayload?.message || `Error HTTP ${response.status}`;
+            const error = new Error(message);
+            error.details = errorPayload;
+            error.status = response.status;
+            throw error;
+        }
+        return response.json();
+    }
+
+    function setDashboardSavingState(isSaving) {
+        if (dashboardUI.saveButton) {
+            dashboardUI.saveButton.disabled = Boolean(isSaving);
+            dashboardUI.saveButton.textContent = isSaving ? 'Guardando…' : dashboardUI.saveButtonDefaultText || 'Guardar';
+        }
+        if (dashboardUI.resetButton) {
+            dashboardUI.resetButton.disabled = Boolean(isSaving);
+        }
+        if (dashboardUI.addNewButton) {
+            dashboardUI.addNewButton.disabled = Boolean(isSaving);
+        }
+    }
+
     async function fetchDashboardDataFromApi() {
         if (typeof fetch !== 'function') {
             console.warn('Fetch API no disponible en este entorno.');
@@ -381,6 +537,10 @@
         dashboardUI.formFeedback = document.getElementById('dashboard-form-feedback');
         dashboardUI.entryIdInput = document.getElementById('dashboard-entry-id');
         dashboardUI.resetButton = document.getElementById('dashboard-reset-button');
+        dashboardUI.saveButton = document.getElementById('dashboard-save-button');
+        if (dashboardUI.saveButton) {
+            dashboardUI.saveButtonDefaultText = dashboardUI.saveButton.textContent || 'Guardar';
+        }
         dashboardUI.addNewButton = document.getElementById('dashboard-add-new');
         dashboardUI.tabButtons = Array.from(document.querySelectorAll('.management-tab'));
 
@@ -667,6 +827,9 @@
         setDashboardFeedback('');
 
         config.fields.forEach((field) => {
+            if (field.readOnly) {
+                return;
+            }
             const wrapper = document.createElement('div');
             wrapper.className = 'form-field';
 
@@ -718,7 +881,7 @@
         }
     }
 
-    function handleDashboardFormSubmit(event) {
+    async function handleDashboardFormSubmit(event) {
         event.preventDefault();
         if (!dashboardUI.form || !dashboardUI.entryIdInput) {
             return;
@@ -734,11 +897,17 @@
         }
 
         const formData = new FormData(dashboardUI.form);
-        const currentDataset = getCurrentDashboardDataset();
         const entryId = dashboardUI.entryIdInput.value;
-        const payload = entryId ? currentDataset.find((item) => item.id === entryId) || { id: entryId } : { id: generateDashboardId(dashboardActiveType) };
+        const dataset = getCurrentDashboardDataset();
+        const existingIndex = entryId ? dataset.findIndex((item) => item.id === entryId) : -1;
+        const existingEntry = existingIndex >= 0 ? dataset[existingIndex] : null;
+        const payloadBaseId = entryId || generateDashboardId(dashboardActiveType);
+        const payload = existingEntry ? { ...existingEntry } : { id: payloadBaseId };
 
         config.fields.forEach((field) => {
+            if (field.readOnly) {
+                return;
+            }
             const raw = formData.get(field.key);
             let value = raw != null ? String(raw).trim() : '';
             if (field.type === 'number') {
@@ -753,24 +922,50 @@
             }
         });
 
-        const dataset = getCurrentDashboardDataset();
-        const index = entryId ? dataset.findIndex((item) => item.id === entryId) : -1;
-
-        if (index >= 0) {
-            dataset[index] = { ...dataset[index], ...payload };
-            setDashboardFeedback('Registro actualizado correctamente.', 'success');
-        } else {
-            dataset.push(payload);
-            setDashboardFeedback('Nuevo registro agregado correctamente.', 'success');
+        if (dashboardActiveType === 'kits') {
+            payload.id = payload.kitId || payload.id;
+            updateKitEntryDerivedFields(payload);
+        } else if (dashboardActiveType === 'antennas') {
+            payload.id = payload.sopCode || payload.id;
+            updateAntennaEntryDerivedFields(payload);
         }
 
-        const state = ensureDashboardState();
-        state.data[dashboardActiveType] = dataset;
-        state.activeType = dashboardActiveType;
-        dashboardEditingId = null;
-        saveDashboardState();
-        renderDashboardTable();
-        renderDashboardForm();
+        const mode = existingEntry ? 'update' : 'create';
+        setDashboardSavingState(true);
+
+        try {
+            const response = await persistDashboardEntry(dashboardActiveType, payload, mode);
+            const itemFromServer = response?.item;
+            let normalizedItem = itemFromServer || payload;
+            if (dashboardActiveType === 'antennas') {
+                normalizedItem = normalizeAntennaEntry(normalizedItem);
+            }
+            if (!normalizedItem.id) {
+                normalizedItem.id = normalizedItem.kitId || normalizedItem.sopCode || payload.id;
+            }
+
+            if (existingEntry) {
+                dataset[existingIndex] = { ...normalizedItem };
+                setDashboardFeedback('Registro actualizado correctamente en la base de datos.', 'success');
+            } else {
+                dataset.push({ ...normalizedItem });
+                setDashboardFeedback('Nuevo registro agregado correctamente en la base de datos.', 'success');
+            }
+
+            const state = ensureDashboardState();
+            state.data[dashboardActiveType] = dataset;
+            state.activeType = dashboardActiveType;
+            dashboardEditingId = null;
+            saveDashboardState();
+            renderDashboardTable();
+            renderDashboardForm();
+        } catch (error) {
+            console.error('No se pudo guardar el registro en la base de datos:', error);
+            const message = error?.message || 'No se pudo guardar el registro en la base de datos.';
+            setDashboardFeedback(message, 'error');
+        } finally {
+            setDashboardSavingState(false);
+        }
     }
 
     function handleDashboardReset() {
