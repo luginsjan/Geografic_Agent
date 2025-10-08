@@ -1,0 +1,13 @@
+{
+  "name": "geografic-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agente Geográfico dashboard and API utilities",
+  "main": "index.js",
+  "scripts": {
+    "lint": "echo \"No lint command specified\""
+  },
+  "dependencies": {
+    "mongodb": "^5.8.0"
+  }
+}

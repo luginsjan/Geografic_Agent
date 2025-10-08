@@ -7,21 +7,12 @@
             label: 'Kits',
             singular: 'kit',
             fields: [
-                { key: 'name', label: 'Nombre del kit', type: 'text', required: true, placeholder: 'Ej. Kit Urbano 5G' },
-                { key: 'technology', label: 'Tecnología', type: 'text', required: true, placeholder: 'Ej. mmWave 28GHz' },
-                { key: 'priceUsd', label: 'Precio (USD)', type: 'number', step: '0.01', min: 0, format: 'currency' },
-                { key: 'leadTimeDays', label: 'Lead time (días)', type: 'number', step: '1', min: 0 },
-                { key: 'notes', label: 'Notas', type: 'textarea', placeholder: 'Uso recomendado, consideraciones u observaciones' }
-            ]
-        },
-        prices: {
-            label: 'Precios',
-            singular: 'precio',
-            fields: [
-                { key: 'concept', label: 'Concepto', type: 'text', required: true, placeholder: 'Ej. Enlace dedicado 200 Mbps' },
-                { key: 'amountUsd', label: 'Monto (USD)', type: 'number', step: '0.01', min: 0, required: true, format: 'currency' },
-                { key: 'billingCycle', label: 'Ciclo de facturación', type: 'text', placeholder: 'Ej. Mensual, Único' },
-                { key: 'notes', label: 'Notas', type: 'textarea', placeholder: 'Condiciones o descuentos aplicables' }
+                { key: 'kitId', label: 'ID del kit', type: 'text', required: true, placeholder: 'Ej. KIT-001' },
+                { key: 'kitName', label: 'Nombre del kit', type: 'text', required: true, placeholder: 'Ej. Kit Urbano 5G' },
+                { key: 'bandwidthRange', label: 'Ancho de banda (Mbps)', type: 'text', placeholder: 'Ej. 100-200 Mbps' },
+                { key: 'distanceKm', label: 'Distancia (km)', type: 'number', step: '0.1', min: 0, format: 'decimal', minimumFractionDigits: 1 },
+                { key: 'antenna', label: 'Antena', type: 'text', placeholder: 'Marca y modelo' },
+                { key: 'radiosSummary', label: 'Radios', type: 'text', placeholder: 'Modelos asociados' }
             ]
         },
         antennas: {
@@ -31,8 +22,9 @@
                 { key: 'sopCode', label: 'SOP', type: 'text', required: true, placeholder: 'Código SOP' },
                 { key: 'plaza', label: 'Plaza', type: 'text', required: true, placeholder: 'Ciudad / Plaza' },
                 { key: 'coordinates', label: 'Coordenadas', type: 'text', placeholder: 'Lat, Long' },
-                { key: 'terrain', label: 'Terreno', type: 'text', placeholder: 'Urbano, Plano, etc.' },
-                { key: 'heightMeters', label: 'Altura (mts)', type: 'number', step: '0.1', min: 0 }
+                { key: 'terrain', label: 'Terreno', type: 'number', step: '1', min: 0 },
+                { key: 'heightMeters', label: 'Altura (mts)', type: 'number', step: '0.1', min: 0, format: 'decimal', minimumFractionDigits: 1 },
+                { key: 'status', label: 'Estado', type: 'text', placeholder: 'Ej. active' }
             ]
         }
     };
@@ -42,14 +34,11 @@
             return entry;
         }
         const normalized = { ...entry };
+        if (!normalized.sopCode && normalized.id) {
+            normalized.sopCode = normalized.id;
+        }
         if (!normalized.plaza && normalized.location) {
             normalized.plaza = normalized.location;
-        }
-        if (normalized.status && !normalized.terrain) {
-            normalized.terrain = normalized.status;
-        }
-        if (normalized.notes && !normalized.coordinates) {
-            normalized.coordinates = normalized.notes;
         }
         if (normalized.height !== undefined && normalized.heightMeters === undefined) {
             normalized.heightMeters = normalized.height;
@@ -57,11 +46,28 @@
         if (!normalized.coordinates && Array.isArray(normalized.coords)) {
             normalized.coordinates = normalized.coords.join(', ');
         }
+        if (!normalized.coordinates && normalized.latitude != null && normalized.longitude != null) {
+            normalized.coordinates = `${normalized.latitude}, ${normalized.longitude}`;
+        }
+        if (normalized.Status && !normalized.status) {
+            normalized.status = normalized.Status;
+        }
+        if (normalized.terrain !== undefined) {
+            const parsedTerrain = Number(normalized.terrain);
+            if (!Number.isNaN(parsedTerrain)) {
+                normalized.terrain = parsedTerrain;
+            }
+        }
+        if (normalized.heightMeters !== undefined) {
+            const parsedHeight = Number(normalized.heightMeters);
+            if (!Number.isNaN(parsedHeight)) {
+                normalized.heightMeters = parsedHeight;
+            }
+        }
         delete normalized.location;
-        delete normalized.status;
-        delete normalized.notes;
         delete normalized.height;
         delete normalized.coords;
+        delete normalized.Status;
         return normalized;
     }
 
@@ -87,58 +93,8 @@
             { label: 'Dom', executions: 9, avgExecutionMinutes: 6.4, timeSavedMinutes: 32 }
         ],
         data: {
-            kits: [
-                {
-                    id: 'kit-1',
-                    name: 'Kit Urbano 5G',
-                    technology: '5G mmWave 28GHz',
-                    priceUsd: 1420,
-                    leadTimeDays: 7,
-                    notes: 'Optimizado para densidad urbana con línea de vista clara.'
-                },
-                {
-                    id: 'kit-2',
-                    name: 'Kit Rural LTE',
-                    technology: 'LTE 3.5GHz',
-                    priceUsd: 980,
-                    leadTimeDays: 12,
-                    notes: 'Cobertura extendida para enlaces rurales de media distancia.'
-                }
-            ],
-            prices: [
-                {
-                    id: 'price-1',
-                    concept: 'Enlace dedicado 200 Mbps',
-                    amountUsd: 450,
-                    billingCycle: 'Mensual',
-                    notes: 'Incluye soporte 24/7 y monitoreo proactivo.'
-                },
-                {
-                    id: 'price-2',
-                    concept: 'Instalación antena premium',
-                    amountUsd: 320,
-                    billingCycle: 'Único',
-                    notes: 'Incluye alineación y certificación SOP.'
-                }
-            ],
-            antennas: [
-                {
-                    id: 'antena-1',
-                    sopCode: 'SOP-MX-014',
-                    plaza: 'CDMX - Reforma',
-                    coordinates: '19.4326, -99.1332',
-                    terrain: 'Urbano',
-                    heightMeters: 25
-                },
-                {
-                    id: 'antena-2',
-                    sopCode: 'SOP-MX-097',
-                    plaza: 'Guadalajara - Zona Norte',
-                    coordinates: '20.6597, -103.3496',
-                    terrain: 'Semiurbano',
-                    heightMeters: 18
-                }
-            ]
+            kits: [],
+            antennas: []
         }
     };
 
@@ -204,7 +160,6 @@
         if (partial.data && typeof partial.data === 'object') {
             base.data = {
                 kits: Array.isArray(partial.data.kits) ? partial.data.kits : base.data.kits,
-                prices: Array.isArray(partial.data.prices) ? partial.data.prices : base.data.prices,
                 antennas: Array.isArray(partial.data.antennas)
                     ? partial.data.antennas.map(normalizeAntennaEntry)
                     : base.data.antennas
@@ -331,6 +286,65 @@
         return parts.join(' ');
     }
 
+    async function fetchDashboardDataFromApi() {
+        if (typeof fetch !== 'function') {
+            console.warn('Fetch API no disponible en este entorno.');
+            return;
+        }
+        try {
+            const response = await fetch('/api/dashboard-data', { method: 'GET' });
+            if (!response.ok) {
+                throw new Error(`Error HTTP ${response.status}`);
+            }
+            const payload = await response.json();
+            const state = ensureDashboardState();
+
+            if (Array.isArray(payload.kits)) {
+                state.data.kits = payload.kits.map((kit) => {
+                    const normalizedKit = { ...kit };
+                    if (!normalizedKit.id) {
+                        normalizedKit.id = normalizedKit.kitId || generateDashboardId('kit');
+                    }
+                    if (!normalizedKit.kitId) {
+                        normalizedKit.kitId = normalizedKit.id;
+                    }
+                    return normalizedKit;
+                });
+            }
+
+            if (Array.isArray(payload.antennas)) {
+                state.data.antennas = payload.antennas.map((antenna) => {
+                    const normalized = normalizeAntennaEntry({
+                        ...antenna,
+                        id: antenna.id || antenna.sopCode || generateDashboardId('antena')
+                    });
+                    if (!normalized.id) {
+                        normalized.id = normalized.sopCode || generateDashboardId('antena');
+                    }
+                    if (!normalized.sopCode) {
+                        normalized.sopCode = normalized.id;
+                    }
+                    return normalized;
+                });
+            }
+
+            const hasData =
+                (Array.isArray(payload.kits) && payload.kits.length > 0) ||
+                (Array.isArray(payload.antennas) && payload.antennas.length > 0);
+
+            saveDashboardState();
+            refreshDashboard();
+            if (dashboardUI.formFeedback && hasData) {
+                setDashboardFeedback('Datos cargados desde la base de datos.', 'success');
+            }
+        } catch (error) {
+            console.error('Error al cargar datos del dashboard desde la API', error);
+            if (dashboardUI.formFeedback) {
+                setDashboardFeedback('No se pudo cargar datos desde la base de datos.', 'error');
+            }
+        }
+    }
+
     function initializeDashboardPage() {
         const dashboardSection = document.getElementById('dashboard');
         if (!dashboardSection) {
@@ -392,6 +406,7 @@
 
         dashboardInitialized = true;
         refreshDashboard();
+        fetchDashboardDataFromApi();
     }
 
     function refreshDashboard() {
@@ -627,6 +642,10 @@
         if (field.type === 'number') {
             if (field.format === 'currency') {
                 return formatDashboardCurrency(value);
+            }
+            if (field.format === 'decimal') {
+                const minDigits = typeof field.minimumFractionDigits === 'number' ? field.minimumFractionDigits : 1;
+                return formatDashboardDecimal(value, minDigits);
             }
             return formatDashboardDecimal(value, 0);
         }
