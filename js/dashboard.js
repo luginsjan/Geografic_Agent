@@ -22,6 +22,17 @@
                 { key: 'radiosSummary', label: 'Radios / Notas', type: 'textarea', placeholder: 'Modelos de radio, comentarios u observaciones' }
             ]
         },
+        prices: {
+            label: 'Precios',
+            singular: 'precio',
+            fields: [
+                { key: 'type', label: 'Tipo', type: 'text', required: true, placeholder: 'Ej. dedicado, mype' },
+                { key: 'termMonths', label: 'Plazo (meses)', type: 'number', step: '1', min: 0, format: 'decimal', minimumFractionDigits: 0 },
+                { key: 'speedMbps', label: 'Velocidad (Mbps)', type: 'number', step: '1', min: 0, format: 'decimal', minimumFractionDigits: 0 },
+                { key: 'serviceCost', label: 'Costo servicio (USD)', type: 'number', step: '0.01', min: 0, format: 'currency' },
+                { key: 'installationCost', label: 'Costo instalación (USD)', type: 'number', step: '0.01', min: 0, format: 'currency' }
+            ]
+        },
         antennas: {
             label: 'Antenas (SOP)',
             singular: 'antena',
@@ -78,6 +89,42 @@
         return normalized;
     }
 
+    function normalizePriceEntry(entry) {
+        if (!entry || typeof entry !== 'object') {
+            return entry;
+        }
+        const normalized = { ...entry };
+        normalized.id = normalized.id || normalized.priceId || normalized._id || generateDashboardId('price');
+        normalized.priceId = normalized.id;
+        normalized.type = normalized.type ? String(normalized.type).trim() : '';
+        if (normalized.termMonths !== undefined && normalized.termMonths !== null) {
+            const term = Number(normalized.termMonths);
+            normalized.termMonths = Number.isFinite(term) ? term : null;
+        } else {
+            normalized.termMonths = null;
+        }
+        if (normalized.speedMbps !== undefined && normalized.speedMbps !== null) {
+            const speed = Number(normalized.speedMbps);
+            normalized.speedMbps = Number.isFinite(speed) ? speed : null;
+        } else {
+            normalized.speedMbps = null;
+        }
+        if (normalized.serviceCost !== undefined && normalized.serviceCost !== null) {
+            const service = Number(normalized.serviceCost);
+            normalized.serviceCost = Number.isFinite(service) ? service : null;
+        } else {
+            normalized.serviceCost = null;
+        }
+        if (normalized.installationCost !== undefined && normalized.installationCost !== null) {
+            const installation = Number(normalized.installationCost);
+            normalized.installationCost = Number.isFinite(installation) ? installation : null;
+        } else {
+            normalized.installationCost = null;
+        }
+        delete normalized._id;
+        return normalized;
+    }
+
     const defaultDashboardState = {
         stateVersion: DASHBOARD_STATE_VERSION,
         activeType: 'kits',
@@ -95,6 +142,7 @@
         trend: [],
         data: {
             kits: [],
+            prices: [],
             antennas: []
         },
         analyticsTotals: null
@@ -149,11 +197,15 @@
             if (partial.data && typeof partial.data === 'object') {
                 base.data = {
                     kits: Array.isArray(partial.data.kits) ? partial.data.kits : base.data.kits,
+                    prices: Array.isArray(partial.data.prices)
+                        ? partial.data.prices.map(normalizePriceEntry)
+                        : base.data.prices,
                     antennas: Array.isArray(partial.data.antennas)
                         ? partial.data.antennas.map(normalizeAntennaEntry)
                         : base.data.antennas
                 };
             }
+            base.data.prices = base.data.prices.map(normalizePriceEntry);
             base.data.antennas = base.data.antennas.map(normalizeAntennaEntry);
             base.stateVersion = DASHBOARD_STATE_VERSION;
             return base;
@@ -184,11 +236,15 @@
         if (partial.data && typeof partial.data === 'object') {
             base.data = {
                 kits: Array.isArray(partial.data.kits) ? partial.data.kits : base.data.kits,
+                prices: Array.isArray(partial.data.prices)
+                    ? partial.data.prices.map(normalizePriceEntry)
+                    : base.data.prices,
                 antennas: Array.isArray(partial.data.antennas)
                     ? partial.data.antennas.map(normalizeAntennaEntry)
                     : base.data.antennas
             };
         }
+        base.data.prices = base.data.prices.map(normalizePriceEntry);
         base.data.antennas = base.data.antennas.map(normalizeAntennaEntry);
         base.stateVersion = DASHBOARD_STATE_VERSION;
         return base;
@@ -205,6 +261,7 @@
             console.warn('No fue posible cargar los datos del dashboard desde almacenamiento local', error);
         }
         const state = cloneDashboardState(defaultDashboardState);
+        state.data.prices = state.data.prices.map(normalizePriceEntry);
         state.data.antennas = state.data.antennas.map(normalizeAntennaEntry);
         return state;
     }
@@ -427,6 +484,43 @@
         }
     }
 
+    function updatePriceEntryFields(entry) {
+        if (!entry || typeof entry !== 'object') {
+            return;
+        }
+        entry.type = entry.type ? String(entry.type).trim() : '';
+        entry.termMonths =
+            entry.termMonths === null || entry.termMonths === undefined || entry.termMonths === ''
+                ? null
+                : Number(entry.termMonths);
+        if (!Number.isFinite(entry.termMonths)) {
+            entry.termMonths = null;
+        }
+        entry.speedMbps =
+            entry.speedMbps === null || entry.speedMbps === undefined || entry.speedMbps === ''
+                ? null
+                : Number(entry.speedMbps);
+        if (!Number.isFinite(entry.speedMbps)) {
+            entry.speedMbps = null;
+        }
+        entry.serviceCost =
+            entry.serviceCost === null || entry.serviceCost === undefined || entry.serviceCost === ''
+                ? null
+                : Number(entry.serviceCost);
+        if (!Number.isFinite(entry.serviceCost)) {
+            entry.serviceCost = null;
+        }
+        entry.installationCost =
+            entry.installationCost === null ||
+            entry.installationCost === undefined ||
+            entry.installationCost === ''
+                ? null
+                : Number(entry.installationCost);
+        if (!Number.isFinite(entry.installationCost)) {
+            entry.installationCost = null;
+        }
+    }
+
     async function persistDashboardEntry(type, entry, mode) {
         if (typeof fetch !== 'function') {
             throw new Error('Fetch API no disponible para persistir datos.');
@@ -489,6 +583,19 @@
                 });
             }
 
+            if (Array.isArray(payload.prices)) {
+                state.data.prices = payload.prices.map((price) => {
+                    const normalized = normalizePriceEntry({
+                        ...price,
+                        id: price.id || generateDashboardId('price')
+                    });
+                    if (!normalized.priceId) {
+                        normalized.priceId = normalized.id;
+                    }
+                    return normalized;
+                });
+            }
+
             if (Array.isArray(payload.antennas)) {
                 state.data.antennas = payload.antennas.map((antenna) => {
                     const normalized = normalizeAntennaEntry({
@@ -507,6 +614,7 @@
 
             const hasData =
                 (Array.isArray(payload.kits) && payload.kits.length > 0) ||
+                (Array.isArray(payload.prices) && payload.prices.length > 0) ||
                 (Array.isArray(payload.antennas) && payload.antennas.length > 0);
 
             saveDashboardState();
@@ -993,6 +1101,14 @@
         } else if (dashboardActiveType === 'antennas') {
             payload.id = payload.sopCode || payload.id;
             updateAntennaEntryDerivedFields(payload);
+        } else if (dashboardActiveType === 'prices') {
+            if (existingEntry) {
+                payload.priceId = payload.id;
+            } else {
+                payload.priceId = null;
+                delete payload.id;
+            }
+            updatePriceEntryFields(payload);
         }
 
         const mode = existingEntry ? 'update' : 'create';
@@ -1004,9 +1120,18 @@
             let normalizedItem = itemFromServer || payload;
             if (dashboardActiveType === 'antennas') {
                 normalizedItem = normalizeAntennaEntry(normalizedItem);
+            } else if (dashboardActiveType === 'prices') {
+                normalizedItem = normalizePriceEntry(normalizedItem);
             }
             if (!normalizedItem.id) {
-                normalizedItem.id = normalizedItem.kitId || normalizedItem.sopCode || payload.id;
+                normalizedItem.id =
+                    normalizedItem.kitId ||
+                    normalizedItem.sopCode ||
+                    normalizedItem.priceId ||
+                    payload.id;
+            }
+            if (dashboardActiveType === 'prices' && !normalizedItem.priceId) {
+                normalizedItem.priceId = normalizedItem.id;
             }
 
             if (existingEntry) {

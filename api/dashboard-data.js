@@ -1,3 +1,4 @@
+const { ObjectId } = require('mongodb');
 const { connectToDatabase } = require('./mongodb.js');
 
 const ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'OPTIONS'];
@@ -92,6 +93,18 @@ function mapAntenna(document) {
     terrain: document.Terrain ?? null,
     heightMeters: document.Height ?? null,
     status: document.Status || ''
+  };
+}
+
+function mapPrice(document) {
+  return {
+    id: String(document._id),
+    priceId: String(document._id),
+    type: document.type || '',
+    termMonths: document.term_months ?? null,
+    speedMbps: document.speed_mbps ?? null,
+    serviceCost: document.service_cost ?? null,
+    installationCost: document.installation_cost ?? null
   };
 }
 
@@ -249,6 +262,59 @@ function buildKitInsertDocument(sanitized, timestamp) {
   };
 }
 
+function sanitizePricePayload(data = {}) {
+  const priceId = sanitizeId(data.priceId || data.id);
+  const type = sanitizeString(data.type);
+  const termMonths = toNullableNumber(data.termMonths);
+  const speedMbps = toNullableNumber(data.speedMbps);
+  const serviceCost = toNullableNumber(data.serviceCost);
+  const installationCost = toNullableNumber(data.installationCost);
+
+  return {
+    priceId,
+    type,
+    termMonths,
+    speedMbps,
+    serviceCost,
+    installationCost
+  };
+}
+
+function buildPriceUpdateFields(sanitized, timestamp) {
+  return {
+    type: sanitized.type || '',
+    term_months: sanitized.termMonths,
+    speed_mbps: sanitized.speedMbps,
+    service_cost: sanitized.serviceCost,
+    installation_cost: sanitized.installationCost,
+    updatedAt: timestamp
+  };
+}
+
+function buildPriceInsertDocument(sanitized, timestamp) {
+  const base = buildPriceUpdateFields(sanitized, timestamp);
+  const doc = {
+    ...base,
+    createdAt: timestamp
+  };
+  if (sanitized.priceId) {
+    doc._id = ObjectId.isValid(sanitized.priceId)
+      ? new ObjectId(sanitized.priceId)
+      : sanitized.priceId;
+  }
+  return doc;
+}
+
+function buildPriceIdFilter(priceId) {
+  if (!priceId) {
+    return null;
+  }
+  if (ObjectId.isValid(priceId)) {
+    return { _id: new ObjectId(priceId) };
+  }
+  return { _id: priceId };
+}
+
 function buildAntennaUpdateFields(sanitized, timestamp) {
   const update = {
     Location: sanitized.plaza || '',
@@ -271,18 +337,22 @@ function buildAntennaInsertDocument(sanitized, timestamp) {
 
 async function handleGetRequest(res, db) {
   const equipmentCollection = db.collection('equipment');
+  const pricesCollection = db.collection('prices');
   const antennasCollection = db.collection('antenas');
 
-  const [kitsRaw, antennasRaw] = await Promise.all([
+  const [kitsRaw, pricesRaw, antennasRaw] = await Promise.all([
     equipmentCollection.find({}).toArray(),
+    pricesCollection.find({}).toArray(),
     antennasCollection.find({}).toArray()
   ]);
 
   const kits = kitsRaw.map(mapKit);
+  const prices = pricesRaw.map(mapPrice);
   const antennas = antennasRaw.map(mapAntenna);
 
   return res.status(200).json({
     kits,
+    prices,
     antennas,
     updatedAt: new Date().toISOString()
   });
@@ -380,6 +450,66 @@ async function handleAntennaWrite(method, payload, db, res) {
   });
 }
 
+async function handlePriceWrite(method, payload, db, res) {
+  const sanitized = sanitizePricePayload(payload);
+  if (!sanitized.type) {
+    return res.status(400).json({
+      error: 'Missing price type',
+      message: 'El campo tipo es obligatorio.'
+    });
+  }
+
+  const pricesCollection = db.collection('prices');
+  const now = new Date();
+
+  if (method === 'POST') {
+    if (sanitized.priceId) {
+      const potentialFilter = buildPriceIdFilter(sanitized.priceId);
+      if (potentialFilter) {
+        const existing = await pricesCollection.findOne(potentialFilter);
+        if (existing) {
+          return res.status(409).json({
+            error: 'Price already exists',
+            message: `Ya existe un precio con identificador ${sanitized.priceId}.`
+          });
+        }
+      }
+    }
+    const insertDoc = buildPriceInsertDocument(sanitized, now);
+    const insertResult = await pricesCollection.insertOne(insertDoc);
+    const lookupId = insertDoc._id ?? insertResult.insertedId;
+    const inserted = await pricesCollection.findOne({ _id: lookupId });
+    return res.status(201).json({
+      item: mapPrice(inserted)
+    });
+  }
+
+  const filter = buildPriceIdFilter(sanitized.priceId);
+  if (!filter) {
+    return res.status(400).json({
+      error: 'Missing price identifier',
+      message: 'Para actualizar es necesario especificar el identificador del precio.'
+    });
+  }
+
+  const updateResult = await pricesCollection.updateOne(
+    filter,
+    { $set: buildPriceUpdateFields(sanitized, now) }
+  );
+
+  if (updateResult.matchedCount === 0) {
+    return res.status(404).json({
+      error: 'Price not found',
+      message: 'No se encontró el precio solicitado.'
+    });
+  }
+
+  const updated = await pricesCollection.findOne(filter);
+  return res.status(200).json({
+    item: mapPrice(updated)
+  });
+}
+
 async function handleWriteRequest(req, res, db) {
   let body;
   try {
@@ -403,6 +533,10 @@ async function handleWriteRequest(req, res, db) {
 
   if (type === 'kits') {
     return handleKitWrite(req.method, data, db, res);
+  }
+
+  if (type === 'prices') {
+    return handlePriceWrite(req.method, data, db, res);
   }
 
   if (type === 'antennas') {
