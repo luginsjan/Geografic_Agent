@@ -368,6 +368,11 @@ async function fetchLogEntries() {
       signal: controller.signal
     });
 
+    if (response.status === 404) {
+      console.warn('XCIEN log datatable not found (HTTP 404). Returning empty analytics dataset.');
+      return [];
+    }
+
     if (!response.ok) {
       const error = new Error(`Failed to fetch XCIEN Log data: HTTP ${response.status}`);
       error.status = response.status;
