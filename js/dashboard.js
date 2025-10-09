@@ -2,6 +2,7 @@
     const DASHBOARD_STORAGE_KEY = 'agDashboardData';
     const DASHBOARD_TREND_PERIOD_LABEL = 'Últimos 7 días';
     const DASHBOARD_MANUAL_FLOW_MINUTES = 30;
+    const DASHBOARD_STATE_VERSION = 2;
 
     const dashboardDatasetConfig = {
         kits: {
@@ -78,6 +79,7 @@
     }
 
     const defaultDashboardState = {
+        stateVersion: DASHBOARD_STATE_VERSION,
         activeType: 'kits',
         manualFlowMinutes: DASHBOARD_MANUAL_FLOW_MINUTES,
         metrics: {
@@ -142,6 +144,20 @@
         if (!partial || typeof partial !== 'object') {
             return base;
         }
+        const isCompatibleVersion = partial.stateVersion === DASHBOARD_STATE_VERSION;
+        if (!isCompatibleVersion) {
+            if (partial.data && typeof partial.data === 'object') {
+                base.data = {
+                    kits: Array.isArray(partial.data.kits) ? partial.data.kits : base.data.kits,
+                    antennas: Array.isArray(partial.data.antennas)
+                        ? partial.data.antennas.map(normalizeAntennaEntry)
+                        : base.data.antennas
+                };
+            }
+            base.data.antennas = base.data.antennas.map(normalizeAntennaEntry);
+            base.stateVersion = DASHBOARD_STATE_VERSION;
+            return base;
+        }
         if (typeof partial.activeType === 'string' && dashboardDatasetConfig[partial.activeType]) {
             base.activeType = partial.activeType;
         }
@@ -174,6 +190,7 @@
             };
         }
         base.data.antennas = base.data.antennas.map(normalizeAntennaEntry);
+        base.stateVersion = DASHBOARD_STATE_VERSION;
         return base;
     }
 
@@ -198,6 +215,7 @@
                 return;
             }
             const serializable = {
+                stateVersion: DASHBOARD_STATE_VERSION,
                 activeType: dashboardState.activeType,
                 manualFlowMinutes: dashboardState.manualFlowMinutes,
                 metrics: dashboardState.metrics,
