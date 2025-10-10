@@ -171,7 +171,11 @@
         tableBody: null,
         emptyState: null,
         chartCanvas: null,
-        chartLabel: null
+        chartLabel: null,
+        popularKitsCard: null,
+        popularKitsList: null,
+        popularKitsEmpty: null,
+        popularKitsPeriod: null
     };
 
     function cloneDashboardState(source) {
@@ -678,6 +682,15 @@
 
             state.popularKits = Array.isArray(payload.popularKits) ? payload.popularKits : [];
 
+            if (dashboardUI.popularKitsPeriod) {
+                if (typeof payload.trendDays === 'number' && Number.isFinite(payload.trendDays) && payload.trendDays > 0) {
+                    dashboardUI.popularKitsPeriod.textContent =
+                        payload.trendDays === 1 ? 'Último día' : `Últimos ${payload.trendDays} días`;
+                } else {
+                    dashboardUI.popularKitsPeriod.textContent = DASHBOARD_TREND_PERIOD_LABEL;
+                }
+            }
+
             saveDashboardState();
             refreshDashboard();
         } catch (error) {
@@ -726,6 +739,10 @@
             dashboardUI.saveButtonDefaultText = dashboardUI.saveButton.textContent || 'Guardar';
         }
         dashboardUI.addNewButton = document.getElementById('dashboard-add-new');
+        dashboardUI.popularKitsCard = document.getElementById('popular-kits-card');
+        dashboardUI.popularKitsList = document.getElementById('dashboard-popular-kits');
+        dashboardUI.popularKitsEmpty = document.getElementById('dashboard-popular-kits-empty');
+        dashboardUI.popularKitsPeriod = document.getElementById('dashboard-popular-kits-period');
         dashboardUI.tabButtons = Array.from(document.querySelectorAll('.management-tab'));
 
         dashboardUI.tabButtons.forEach((button) => {
@@ -763,6 +780,7 @@
         renderDashboardTable();
         renderDashboardForm();
         renderDashboardChart();
+        renderDashboardPopularKits();
     }
 
     function updateDashboardTabState() {
@@ -912,6 +930,90 @@
             });
             dashboardTrendChart.update();
         }
+    }
+
+    function renderDashboardPopularKits() {
+        if (!dashboardUI.popularKitsList) {
+            return;
+        }
+        const state = ensureDashboardState();
+        const kits = Array.isArray(state.popularKits) ? state.popularKits.slice(0, 5) : [];
+        dashboardUI.popularKitsList.innerHTML = '';
+
+        if (!kits.length) {
+            if (dashboardUI.popularKitsEmpty) {
+                dashboardUI.popularKitsEmpty.hidden = false;
+            }
+            if (dashboardUI.popularKitsCard) {
+                dashboardUI.popularKitsCard.classList.add('is-empty');
+            }
+            return;
+        }
+
+        if (dashboardUI.popularKitsEmpty) {
+            dashboardUI.popularKitsEmpty.hidden = true;
+        }
+        if (dashboardUI.popularKitsCard) {
+            dashboardUI.popularKitsCard.classList.remove('is-empty');
+        }
+
+        const totalExecutions = state.analyticsTotals?.executions || 0;
+        const maxExecutions = kits.reduce((max, item) => {
+            const count = Number(item.executions) || 0;
+            return count > max ? count : max;
+        }, 0) || 1;
+
+        kits.forEach((item, index) => {
+            const executions = Number(item.executions) || 0;
+            const ratio =
+                typeof item.ratio === 'number' && Number.isFinite(item.ratio)
+                    ? item.ratio
+                    : totalExecutions > 0
+                        ? executions / totalExecutions
+                        : 0;
+            const ratioPercent = Math.round(Math.min(Math.max(ratio * 100, 0), 100));
+            const widthPercent = Math.max(8, Math.min((executions / maxExecutions) * 100, 100));
+
+            const li = document.createElement('li');
+            li.className = 'popular-kits-item';
+
+            const topRow = document.createElement('div');
+            topRow.className = 'popular-kits-item-top';
+
+            const leftGroup = document.createElement('div');
+            leftGroup.className = 'popular-kits-item-left';
+
+            const rankSpan = document.createElement('span');
+            rankSpan.className = 'popular-kits-rank';
+            rankSpan.textContent = `#${index + 1}`;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'popular-kits-name';
+            nameSpan.textContent = item.kit || 'Sin identificar';
+
+            leftGroup.appendChild(rankSpan);
+            leftGroup.appendChild(nameSpan);
+
+            const countSpan = document.createElement('span');
+            countSpan.className = 'popular-kits-count';
+            countSpan.textContent = executions > 0 ? `${executions} ejecuciones · ${ratioPercent}%` : 'Sin ejecuciones';
+
+            topRow.appendChild(leftGroup);
+            topRow.appendChild(countSpan);
+
+            const bar = document.createElement('div');
+            bar.className = 'popular-kits-bar';
+
+            const fill = document.createElement('div');
+            fill.className = 'popular-kits-bar-fill';
+            fill.style.width = `${widthPercent}%`;
+
+            bar.appendChild(fill);
+
+            li.appendChild(topRow);
+            li.appendChild(bar);
+            dashboardUI.popularKitsList.appendChild(li);
+        });
     }
 
     function getCurrentDashboardDataset() {
