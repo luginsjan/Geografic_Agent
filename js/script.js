@@ -1851,9 +1851,9 @@ function populateSOPDetails() {
         { label: 'Minimum client height', value: minClientHeightText },
         { label: 'Obstruction count', value: obstructionCountText },
         { label: 'Has line of sight', value: hasLineOfSightText },
-        { label: 'recomValueScore', value: valueScoreText },
-        { label: 'recomTechScore', value: techScoreText },
-        { label: 'recomLinkBudget', value: linkBudgetText }
+        { label: 'Recom Value Score', value: valueScoreText },
+        { label: 'Recom Tech Score', value: techScoreText },
+        { label: 'Recom link budget', value: linkBudgetText }
     ];
 
     const infoGridHtml = infoItems.map((item) => `
@@ -1920,30 +1920,6 @@ function populateKitDetails() {
 
     const baseDetails = `
         <div class="kit-details-grid">
-            <div class="kit-detail-item">
-                <span class="kit-detail-label">Radio</span>
-                <span class="kit-detail-value">${safeText(confirmedKit.radio)}</span>
-            </div>
-            <div class="kit-detail-item">
-                <span class="kit-detail-label">Antena</span>
-                <span class="kit-detail-value">${safeText(confirmedKit.antenna)}</span>
-            </div>
-            <div class="kit-detail-item">
-                <span class="kit-detail-label">Banda de Frecuencia</span>
-                <span class="kit-detail-value">${safeText(confirmedKit.frequency_band)}</span>
-            </div>
-            <div class="kit-detail-item">
-                <span class="kit-detail-label">Throughput Máximo</span>
-                <span class="kit-detail-value">${safeText(confirmedKit.max_throughput)}</span>
-            </div>
-            <div class="kit-detail-item">
-                <span class="kit-detail-label">Potencia de Transmisión</span>
-                <span class="kit-detail-value">${safeText(confirmedKit.transmit_power)}</span>
-            </div>
-            <div class="kit-detail-item">
-                <span class="kit-detail-label">Ganancia de Antena</span>
-                <span class="kit-detail-value">${safeText(confirmedKit.antenna_gain)}</span>
-            </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Margen de Enlace</span>
                 <span class="kit-detail-value highlight">${safeText(confirmedKit.link_margin)}</span>
