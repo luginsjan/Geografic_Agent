@@ -187,6 +187,124 @@ function formatTechnicalValue(value) {
     return escapeHtml(value).replace(/\n/g, '<br>');
 }
 
+function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseNumeric(raw) {
+    if (raw === null || raw === undefined) {
+        return null;
+    }
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+        return raw;
+    }
+    if (typeof raw === 'boolean') {
+        return raw ? 1 : 0;
+    }
+    const text = String(raw).trim();
+    if (text === '') {
+        return null;
+    }
+    const direct = Number(text);
+    if (Number.isFinite(direct)) {
+        return direct;
+    }
+    const sanitized = Number(text.replace(/[^0-9.\-]+/g, ''));
+    return Number.isFinite(sanitized) ? sanitized : null;
+}
+
+function normalizeBoolean(raw) {
+    if (typeof raw === 'boolean') {
+        return raw;
+    }
+    if (raw === null || raw === undefined) {
+        return null;
+    }
+    const text = String(raw).trim().toLowerCase();
+    if (['true', '1', 'yes', 'y', 'si', 'sí'].includes(text)) {
+        return true;
+    }
+    if (['false', '0', 'no', 'n'].includes(text)) {
+        return false;
+    }
+    return null;
+}
+
+function formatKeyLabel(key) {
+    if (!key && key !== 0) {
+        return '';
+    }
+    return String(key)
+        .replace(/_/g, ' ')
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .split(' ')
+        .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+        .join(' ');
+}
+
+function formatRadioValue(value) {
+    if (value === null || value === undefined) {
+        return 'N/D';
+    }
+    if (typeof value === 'object') {
+        try {
+            return JSON.stringify(value);
+        } catch (error) {
+            console.warn('Unable to stringify radio value', error);
+            return '[object]';
+        }
+    }
+    return String(value);
+}
+
+function formatScoreValue(value) {
+    if (value === null || value === undefined || value === '') {
+        return 'N/A';
+    }
+    const numeric = parseNumeric(value);
+    if (numeric === null) {
+        return String(value);
+    }
+    if (Number.isInteger(numeric)) {
+        return numeric.toString();
+    }
+    return numeric.toFixed(2);
+}
+
+function combineMetricSources(primary = null, fallback = null) {
+    const base = {
+        antennaHeight: null,
+        minClientHeight: 0,
+        obstructionCount: null,
+        hasLineOfSight: null
+    };
+    const apply = (source) => {
+        if (!source || typeof source !== 'object') {
+            return;
+        }
+        if (source.antennaHeight !== null && source.antennaHeight !== undefined) {
+            base.antennaHeight = source.antennaHeight;
+        }
+        if (source.minClientHeight !== null && source.minClientHeight !== undefined) {
+            base.minClientHeight = source.minClientHeight;
+        }
+        if (source.obstructionCount !== null && source.obstructionCount !== undefined) {
+            base.obstructionCount = source.obstructionCount;
+        }
+        if (source.hasLineOfSight !== null && source.hasLineOfSight !== undefined) {
+            base.hasLineOfSight = source.hasLineOfSight;
+        }
+    };
+    apply(fallback);
+    apply(primary);
+    if (base.minClientHeight === null || base.minClientHeight === undefined) {
+        base.minClientHeight = 0;
+    }
+    return base;
+}
+
 async function downloadTechnicalReportPDF() {
     const button = document.getElementById('download-technical-report-button');
     if (button) {
@@ -299,6 +417,9 @@ let inputBandwidth = '';
 let confirmedSOP = null;
 let confirmedKit = null;
 let latestKitRecommendationData = null;
+let latestLogEntry = null;
+const reportLogCache = new Map();
+const equipmentDetailsCache = new Map();
 
 // Time tracking variables
 let workflowStartTime = null;
@@ -443,6 +564,172 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 60000) {
         }
         throw error;
     }
+}
+
+async function fetchReportLogEntry(aigentId, options = {}) {
+    if (!aigentId) {
+        return null;
+    }
+    const cacheKey = String(aigentId).trim().toLowerCase();
+    if (reportLogCache.has(cacheKey)) {
+        return reportLogCache.get(cacheKey);
+    }
+    const { retries = 2, delayMs = 800 } = options;
+    let attempt = 0;
+    let lastError = null;
+    while (attempt <= retries) {
+        try {
+            const response = await fetch(`/api/report-log?aigentId=${encodeURIComponent(aigentId)}`);
+            if (response.status === 404) {
+                if (attempt < retries) {
+                    attempt += 1;
+                    await wait(delayMs);
+                    continue;
+                }
+                reportLogCache.set(cacheKey, null);
+                return null;
+            }
+            if (!response.ok) {
+                throw new Error(`Request failed with status ${response.status}`);
+            }
+            const payload = await response.json();
+            const data = payload?.data || null;
+            reportLogCache.set(cacheKey, data);
+            return data;
+        } catch (error) {
+            lastError = error;
+            if (attempt >= retries) {
+                break;
+            }
+            attempt += 1;
+            await wait(delayMs);
+        }
+    }
+    if (lastError) {
+        throw lastError;
+    }
+    return null;
+}
+
+async function fetchEquipmentKitDetails(kitName) {
+    if (!kitName) {
+        return null;
+    }
+    const cacheKey = String(kitName).trim().toLowerCase();
+    if (equipmentDetailsCache.has(cacheKey)) {
+        return equipmentDetailsCache.get(cacheKey);
+    }
+    const response = await fetch(`/api/equipment?kitName=${encodeURIComponent(kitName)}`);
+    if (response.status === 404) {
+        equipmentDetailsCache.set(cacheKey, null);
+        return null;
+    }
+    if (!response.ok) {
+        throw new Error(`Equipment request failed with status ${response.status}`);
+    }
+    const payload = await response.json();
+    const data = payload?.data || null;
+    equipmentDetailsCache.set(cacheKey, data);
+    return data;
+}
+
+function extractSopMetricsFromLog(logDoc, selectedSopId) {
+    if (!logDoc) {
+        return null;
+    }
+    const desiredSop = selectedSopId ? String(selectedSopId).trim().toLowerCase() : null;
+    let prefix = null;
+    for (let index = 1; index <= 4; index += 1) {
+        const sopKey = `sop${index}`;
+        const sopValue = logDoc[sopKey];
+        if (desiredSop && sopValue && String(sopValue).trim().toLowerCase() === desiredSop) {
+            prefix = sopKey;
+            break;
+        }
+        if (!desiredSop && logDoc.selectedSOP && sopValue && String(sopValue).trim() === String(logDoc.selectedSOP).trim()) {
+            prefix = sopKey;
+            break;
+        }
+    }
+    if (!prefix) {
+        return null;
+    }
+    const antennaHeight = parseNumeric(logDoc[`${prefix}_sop_height`]);
+    const minClientHeightRaw = parseNumeric(logDoc[`${prefix}_min_client_height`]);
+    const obstructionCount = parseNumeric(logDoc[`${prefix}_obstruction_count`]);
+    const hasLineOfSight = normalizeBoolean(logDoc[`${prefix}_has_line_of_sight`]);
+
+    return {
+        antennaHeight: antennaHeight !== null ? antennaHeight : null,
+        minClientHeight: minClientHeightRaw !== null ? minClientHeightRaw : 0,
+        obstructionCount: obstructionCount !== null ? obstructionCount : null,
+        hasLineOfSight
+    };
+}
+
+function computeSopMetricsFromData(sopData) {
+    if (!sopData || typeof sopData !== 'object') {
+        return null;
+    }
+    const antennaHeight = parseNumeric(
+        sopData.sop_height ??
+        sopData['Altura (mts)'] ??
+        sopData.altura ??
+        sopData.height ??
+        sopData.elevation
+    );
+    const minimumUserHeight = parseNumeric(
+        sopData.lineOfSight?.summary?.minimumHeights?.user?.antenna ??
+        sopData.lineOfSight?.summary?.minimumAntennaHeight
+    );
+    const obstructionCount = parseNumeric(sopData.lineOfSight?.obstructionCount);
+    const hasLineOfSight = normalizeBoolean(sopData.lineOfSight?.hasLineOfSight);
+
+    return {
+        antennaHeight: antennaHeight !== null ? antennaHeight : null,
+        minClientHeight: minimumUserHeight !== null ? minimumUserHeight : 0,
+        obstructionCount: obstructionCount !== null ? obstructionCount : null,
+        hasLineOfSight
+    };
+}
+
+function extractKitScoresFromLog(logDoc) {
+    if (!logDoc || typeof logDoc !== 'object') {
+        return null;
+    }
+    const valueScore = parseNumeric(logDoc.recomValueScore);
+    const techScore = parseNumeric(logDoc.recomTechScore);
+    const linkBudget = parseNumeric(logDoc.recomLinkBudget);
+    if (valueScore === null && techScore === null && linkBudget === null) {
+        return null;
+    }
+    return {
+        valueScore,
+        techScore,
+        linkBudget
+    };
+}
+
+function getSopMetrics() {
+    const fallback = computeSopMetricsFromData(confirmedSOP?.data);
+    const primary = confirmedSOP?.metrics || null;
+    return combineMetricSources(primary, fallback);
+}
+
+function getKitScores() {
+    const primary = confirmedKit?.scores;
+    if (!primary) {
+        return {
+            valueScore: null,
+            techScore: null,
+            linkBudget: null
+        };
+    }
+    return {
+        valueScore: primary.valueScore ?? null,
+        techScore: primary.techScore ?? null,
+        linkBudget: primary.linkBudget ?? null
+    };
 }
 
 // Global function to create elevation charts (moved from populateResultsBlock)
@@ -1523,7 +1810,59 @@ function populateSOPDetails() {
     console.log('SOP data results array:', sopData.results);
     console.log('SOP data lineOfSight:', sopData.lineOfSight);
     
-    // Defensive: fallback for status
+    const metrics = getSopMetrics();
+    const kitScores = getKitScores();
+
+    const distanceRaw = sopData.distance_km || sopData.distance || null;
+    const distanceText = distanceRaw !== null && distanceRaw !== undefined && distanceRaw !== ''
+        ? `${distanceRaw} km`
+        : 'N/A';
+    const coordinatesText = sopData.Coordenadas || sopData.coordinates || 'N/A';
+    const elevationRaw = sopData.elevation || sopData['Altura (mts)'] || sopData.altura || sopData.height || null;
+    const elevationText = elevationRaw !== null && elevationRaw !== undefined && elevationRaw !== ''
+        ? `${elevationRaw} m`
+        : 'N/A';
+    const statusText = sopData.status || (sopData.lineOfSight?.hasLineOfSight ? 'Clear' : 'Blocked') || 'N/A';
+
+    const antennaHeightText = metrics.antennaHeight !== null && metrics.antennaHeight !== undefined
+        ? `${formatScoreValue(metrics.antennaHeight)} m`
+        : 'N/A';
+    const minClientHeightValue = metrics.minClientHeight !== null && metrics.minClientHeight !== undefined
+        ? metrics.minClientHeight
+        : 0;
+    const minClientHeightText = `${formatScoreValue(minClientHeightValue)} m`;
+    const obstructionCountText = metrics.obstructionCount !== null && metrics.obstructionCount !== undefined
+        ? formatScoreValue(metrics.obstructionCount)
+        : 'N/A';
+    const hasLineOfSightText = metrics.hasLineOfSight === null || metrics.hasLineOfSight === undefined
+        ? 'N/A'
+        : (metrics.hasLineOfSight ? 'true' : 'false');
+
+    const valueScoreText = formatScoreValue(kitScores.valueScore);
+    const techScoreText = formatScoreValue(kitScores.techScore);
+    const linkBudgetText = formatScoreValue(kitScores.linkBudget);
+
+    const infoItems = [
+        { label: 'Distance', value: distanceText },
+        { label: 'Coordinates', value: coordinatesText },
+        { label: 'Elevation', value: elevationText },
+        { label: 'Status', value: statusText },
+        { label: 'Antena height', value: antennaHeightText },
+        { label: 'Minimum client height', value: minClientHeightText },
+        { label: 'Obstruction count', value: obstructionCountText },
+        { label: 'Has line of sight', value: hasLineOfSightText },
+        { label: 'recomValueScore', value: valueScoreText },
+        { label: 'recomTechScore', value: techScoreText },
+        { label: 'recomLinkBudget', value: linkBudgetText }
+    ];
+
+    const infoGridHtml = infoItems.map((item) => `
+        <div class="info-item">
+            <div class="info-label" style="color:#333;">${escapeHtml(item.label)}</div>
+            <div class="info-value" style="color:#222;">${escapeHtml(item.value)}</div>
+        </div>
+    `).join('');
+
     const isSuccess = sopData.status === 'Clear' || sopData.status === 'clear' || sopData.lineOfSight?.hasLineOfSight;
     const chartId = `report-chart-${sopData.SOP ? sopData.SOP.replace('-', '') : 'unknown'}`;
     sopDetailsContainer.innerHTML = `
@@ -1534,22 +1873,7 @@ function populateSOPDetails() {
             </div>
         </div>
         <div class="info-grid">
-            <div class="info-item">
-                <div class="info-label" style="color:#333;">Distance</div>
-                <div class="info-value" style="color:#222;">${sopData.distance_km || sopData.distance || 'N/A'} km</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label" style="color:#333;">Coordinates</div>
-                <div class="info-value" style="color:#222;">${sopData.Coordenadas || sopData.coordinates || 'N/A'}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label" style="color:#333;">Elevation</div>
-                <div class="info-value" style="color:#222;">${sopData.elevation || sopData['Altura (mts)'] || 'N/A'} m</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label" style="color:#333;">Status</div>
-                <div class="info-value" style="color:#222;">${sopData.status || (sopData.lineOfSight?.hasLineOfSight ? 'Clear' : 'Blocked') || 'N/A'}</div>
-            </div>
+            ${infoGridHtml}
         </div>
         <div class="recommendation" style="margin-top:1rem;color:#222;">
             <strong>Recommendation:</strong> ${sopData.lineOfSight?.summary?.recommendation || 'Analysis completed'}
@@ -1586,43 +1910,195 @@ function populateKitDetails() {
     const kitDetailsContainer = document.getElementById('report-kit-details');
     if (!kitDetailsContainer || !confirmedKit) return;
     
-    kitDetailsContainer.innerHTML = `
-        <h4>${confirmedKit.name}</h4>
+    const radios = Array.isArray(confirmedKit.equipmentRadios) ? confirmedKit.equipmentRadios : [];
+    const safeText = (value) => {
+        if (value === null || value === undefined || value === '') {
+            return 'N/A';
+        }
+        return escapeHtml(value);
+    };
+
+    const baseDetails = `
         <div class="kit-details-grid">
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Radio</span>
-                <span class="kit-detail-value">${confirmedKit.radio}</span>
+                <span class="kit-detail-value">${safeText(confirmedKit.radio)}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Antena</span>
-                <span class="kit-detail-value">${confirmedKit.antenna}</span>
+                <span class="kit-detail-value">${safeText(confirmedKit.antenna)}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Banda de Frecuencia</span>
-                <span class="kit-detail-value">${confirmedKit.frequency_band}</span>
+                <span class="kit-detail-value">${safeText(confirmedKit.frequency_band)}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Throughput Máximo</span>
-                <span class="kit-detail-value">${confirmedKit.max_throughput}</span>
+                <span class="kit-detail-value">${safeText(confirmedKit.max_throughput)}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Potencia de Transmisión</span>
-                <span class="kit-detail-value">${confirmedKit.transmit_power}</span>
+                <span class="kit-detail-value">${safeText(confirmedKit.transmit_power)}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Ganancia de Antena</span>
-                <span class="kit-detail-value">${confirmedKit.antenna_gain}</span>
+                <span class="kit-detail-value">${safeText(confirmedKit.antenna_gain)}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Margen de Enlace</span>
-                <span class="kit-detail-value highlight">${confirmedKit.link_margin}</span>
+                <span class="kit-detail-value highlight">${safeText(confirmedKit.link_margin)}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Costo</span>
-                <span class="kit-detail-value highlight">${confirmedKit.cost}</span>
+                <span class="kit-detail-value highlight">${safeText(confirmedKit.cost)}</span>
             </div>
         </div>
     `;
+
+    const radiosSection = renderKitRadios(radios);
+
+    kitDetailsContainer.innerHTML = `
+        <h4>${safeText(confirmedKit.name)}</h4>
+        ${baseDetails}
+        ${radiosSection}
+    `;
+}
+
+function renderKitRadios(radios) {
+    if (!Array.isArray(radios) || radios.length === 0) {
+        return `
+            <div class="kit-radios-section" style="margin-top:1.5rem;">
+                <h5 style="margin-bottom:0.75rem;color:#222;">Radios del Kit</h5>
+                <div class="no-data" style="color:#666;text-align:center;">No hay información adicional de radios disponible.</div>
+            </div>
+        `;
+    }
+    const cards = radios
+        .map((radio, index) => renderKitRadioCard(radio, index))
+        .filter((card) => card && card.trim().length > 0);
+
+    if (!cards.length) {
+        return `
+            <div class="kit-radios-section" style="margin-top:1.5rem;">
+                <h5 style="margin-bottom:0.75rem;color:#222;">Radios del Kit</h5>
+                <div class="no-data" style="color:#666;text-align:center;">No se encontraron campos relevantes para mostrar.</div>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="kit-radios-section" style="margin-top:1.5rem;">
+            <h5 style="margin-bottom:0.75rem;color:#222;">Radios del Kit</h5>
+            ${cards.join('')}
+        </div>
+    `;
+}
+
+function renderKitRadioCard(radio, index) {
+    if (!radio || typeof radio !== 'object') {
+        return '';
+    }
+    const filteredEntries = Object.entries(radio).filter(([key, value]) => {
+        if (value === null || value === undefined || value === '') {
+            return false;
+        }
+        return !/sensitivity/i.test(key);
+    });
+
+    if (!filteredEntries.length) {
+        return '';
+    }
+
+    const titleParts = [];
+    const primaryLabel = radio.Radio || radio.radio || radio.name || radio.model || null;
+    if (primaryLabel) {
+        titleParts.push(primaryLabel);
+    }
+    const secondaryLabel = radio['Modelo Radio'] || radio.model_number || radio.modelName || null;
+    if (secondaryLabel) {
+        titleParts.push(secondaryLabel);
+    }
+    const headingSuffix = titleParts.length ? ` - ${escapeHtml(titleParts.join(' · '))}` : '';
+
+    const rows = filteredEntries.map(([key, value]) => `
+        <div class="kit-radio-item" style="display:flex;flex-direction:column;">
+            <span class="kit-radio-label" style="font-size:0.85rem;color:#555;">${escapeHtml(formatKeyLabel(key))}</span>
+            <span class="kit-radio-value" style="font-size:0.95rem;color:#222;">${escapeHtml(formatRadioValue(value))}</span>
+        </div>
+    `).join('');
+
+    return `
+        <div class="kit-radio-card" style="border:1px solid #dee2e6;padding:12px;border-radius:8px;margin-bottom:12px;background:#ffffff;">
+            <div class="kit-radio-title" style="font-weight:600;margin-bottom:8px;color:#222;">Radio ${index + 1}${headingSuffix}</div>
+            <div class="kit-radio-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;">
+                ${rows}
+            </div>
+        </div>
+    `;
+}
+
+async function prepareReportData() {
+    console.log('Preparing report data for final report...');
+    const sopDataForMetrics = confirmedSOP?.data || null;
+    const selectedSopId = sopDataForMetrics?.SOP || confirmedSOP?.id || null;
+    const kitName = confirmedKit?.name || confirmedKit?.KIT || null;
+
+    if (!confirmedKit) {
+        confirmedKit = window.selectedKitData ? { ...window.selectedKitData } : {};
+    }
+
+    let logData = null;
+    if (currentAigentID) {
+        try {
+            logData = await fetchReportLogEntry(currentAigentID, { retries: 3, delayMs: 1200 });
+            latestLogEntry = logData;
+        } catch (error) {
+            console.warn('Unable to fetch report log entry:', error);
+        }
+    }
+
+    const fallbackMetrics = computeSopMetricsFromData(sopDataForMetrics);
+    const logMetrics = logData ? extractSopMetricsFromLog(logData, selectedSopId) : null;
+    if (!confirmedSOP) {
+        confirmedSOP = {
+            id: selectedSopId,
+            data: sopDataForMetrics || {}
+        };
+    }
+    confirmedSOP.metrics = combineMetricSources(logMetrics, fallbackMetrics);
+
+    if (logData) {
+        const kitScores = extractKitScoresFromLog(logData);
+        confirmedKit.scores = kitScores || confirmedKit.scores || {
+            valueScore: null,
+            techScore: null,
+            linkBudget: null
+        };
+    } else if (!confirmedKit.scores) {
+        confirmedKit.scores = {
+            valueScore: null,
+            techScore: null,
+            linkBudget: null
+        };
+    }
+
+    if (kitName) {
+        try {
+            const equipmentDetails = await fetchEquipmentKitDetails(kitName);
+            if (equipmentDetails) {
+                confirmedKit.equipmentRadios = Array.isArray(equipmentDetails.radios) ? equipmentDetails.radios : [];
+            } else if (!Array.isArray(confirmedKit.equipmentRadios)) {
+                confirmedKit.equipmentRadios = [];
+            }
+        } catch (error) {
+            console.warn('Unable to fetch equipment details:', error);
+            if (!Array.isArray(confirmedKit.equipmentRadios)) {
+                confirmedKit.equipmentRadios = [];
+            }
+        }
+    } else if (!Array.isArray(confirmedKit.equipmentRadios)) {
+        confirmedKit.equipmentRadios = [];
+    }
 }
 
 // Function to handle kit confirmation
@@ -1680,6 +2156,23 @@ async function handleKitConfirmation() {
         
         // Store confirmed kit for final report
         confirmedKit = window.selectedKitData;
+        if (!Array.isArray(confirmedKit.equipmentRadios)) {
+            confirmedKit.equipmentRadios = [];
+        }
+        if (!confirmedKit.scores) {
+            confirmedKit.scores = {
+                valueScore: null,
+                techScore: null,
+                linkBudget: null
+            };
+        }
+
+        showStatusMessage('Preparando datos finales para el reporte...', 'info', 'report');
+        try {
+            await prepareReportData();
+        } catch (prepareError) {
+            console.warn('Error preparing report data:', prepareError);
+        }
         
         // Hide loading and show success state
         hideKitConfirmationLoading();
