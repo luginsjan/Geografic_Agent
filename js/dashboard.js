@@ -145,7 +145,8 @@
             prices: [],
             antennas: []
         },
-        analyticsTotals: null
+        analyticsTotals: null,
+        popularKits: []
     };
 
     let dashboardState = null;
@@ -207,6 +208,11 @@
             }
             base.data.prices = base.data.prices.map(normalizePriceEntry);
             base.data.antennas = base.data.antennas.map(normalizeAntennaEntry);
+            base.analyticsTotals =
+                partial.analyticsTotals && typeof partial.analyticsTotals === 'object'
+                    ? partial.analyticsTotals
+                    : base.analyticsTotals;
+            base.popularKits = Array.isArray(partial.popularKits) ? partial.popularKits : base.popularKits;
             base.stateVersion = DASHBOARD_STATE_VERSION;
             return base;
         }
@@ -218,6 +224,9 @@
         }
         if (partial.analyticsTotals && typeof partial.analyticsTotals === 'object') {
             base.analyticsTotals = partial.analyticsTotals;
+        }
+        if (Array.isArray(partial.popularKits)) {
+            base.popularKits = partial.popularKits;
         }
         if (partial.metrics) {
             const incomingMetrics = partial.metrics;
@@ -278,7 +287,8 @@
                 metrics: dashboardState.metrics,
                 trend: dashboardState.trend,
                 data: dashboardState.data,
-                analyticsTotals: dashboardState.analyticsTotals
+                analyticsTotals: dashboardState.analyticsTotals,
+                popularKits: dashboardState.popularKits
             };
             localStorage.setItem(DASHBOARD_STORAGE_KEY, JSON.stringify(serializable));
         } catch (error) {
@@ -665,6 +675,8 @@
             if (payload.totals && typeof payload.totals === 'object') {
                 state.analyticsTotals = payload.totals;
             }
+
+            state.popularKits = Array.isArray(payload.popularKits) ? payload.popularKits : [];
 
             saveDashboardState();
             refreshDashboard();

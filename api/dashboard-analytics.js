@@ -1,32 +1,18 @@
+const { connectToDatabase } = require('./mongodb.js');
+
 const DEFAULT_ALLOWED_ORIGIN = process.env.CORS_ALLOW_ORIGIN || 'https://geografic-agent.vercel.app';
 const DEFAULT_MANUAL_FLOW_MINUTES = Number.parseFloat(process.env.DASHBOARD_MANUAL_FLOW_MINUTES || '30');
 const DEFAULT_TREND_DAYS = Number.parseInt(process.env.DASHBOARD_TREND_DAYS || '7', 10);
 const DEFAULT_WEEK_WINDOW_DAYS = Number.parseInt(process.env.DASHBOARD_WEEK_WINDOW_DAYS || '7', 10);
 const DEFAULT_MONTH_WINDOW_DAYS = Number.parseInt(process.env.DASHBOARD_MONTH_WINDOW_DAYS || '30', 10);
 const DEFAULT_YEAR_WINDOW_DAYS = Number.parseInt(process.env.DASHBOARD_YEAR_WINDOW_DAYS || '365', 10);
-const DEFAULT_FETCH_LIMIT = Number.parseInt(process.env.N8N_LOG_FETCH_LIMIT || '500', 10);
-const DEFAULT_FETCH_TIMEOUT_MS = Number.parseInt(process.env.N8N_API_TIMEOUT_MS || '15000', 10);
-
-const N8N_API_KEY =
-  process.env.N8N_API_KEY ||
-  process.env.N8N_PERSONAL_ACCESS_TOKEN ||
-  process.env.N8N_API_TOKEN ||
-  null;
-const N8N_API_BASE_URL = process.env.N8N_API_BASE_URL || 'https://aigentinc.app.n8n.cloud';
-const N8N_PROJECT_ID = process.env.N8N_PROJECT_ID || 'MuE8xfSnYnRfOrWg';
-const N8N_LOG_TABLE_ID = process.env.N8N_LOG_TABLE_ID || 'VUiSEAGTqXgEXXzh';
-const N8N_LOG_DATA_URL =
-  process.env.N8N_LOG_DATA_URL ||
-  `${normalizeBaseUrl(N8N_API_BASE_URL)}/rest/projects/${N8N_PROJECT_ID}/datatables/${N8N_LOG_TABLE_ID}/data`;
+const LOG_COLLECTION_NAME = process.env.LOG_COLLECTION_NAME || 'logs';
+const DEFAULT_FETCH_LIMIT = Number.parseInt(
+  process.env.LOG_FETCH_LIMIT || process.env.N8N_LOG_FETCH_LIMIT || '1000',
+  10
+);
 
 const ALLOWED_METHODS = ['GET', 'OPTIONS'];
-
-function normalizeBaseUrl(url) {
-  if (!url) {
-    return '';
-  }
-  return url.endsWith('/') ? url.slice(0, -1) : url;
-}
 
 function toCorsHeaders(origin = DEFAULT_ALLOWED_ORIGIN) {
   return {
@@ -165,7 +151,14 @@ function normalizeLogEntry(row) {
     executionMinutes,
     aigentId: fields.AigentID || fields.agentId || null,
     clientAddress: fields.clientAdress || fields.clientAddress || null,
-    bandwidth: fields.Bandwidth || fields.bandwidth || null
+    bandwidth: fields.Bandwidth || fields.bandwidth || null,
+    kitConfirmation:
+      fields.kitConfirmation ||
+      fields.kit ||
+      fields.selectedKit ||
+      row.kitConfirmation ||
+      row.kit ||
+      null
   };
 }
 
@@ -212,6 +205,7 @@ function computeAnalytics(entries, manualFlowMinutes, trendDays) {
   let totalExecutionMinutes = 0;
   let executionSamples = 0;
   let totalTimeSaved = 0;
+  const kitCounts = new Map();
 
   entries.forEach((entry) => {
     if (!entry || !entry.timestamp) {
@@ -263,6 +257,11 @@ function computeAnalytics(entries, manualFlowMinutes, trendDays) {
     if (entryDate >= yearStart) {
       metrics.executions.year += 1;
     }
+
+    const kit = entry.kitConfirmation ? String(entry.kitConfirmation).trim() : '';
+    if (kit) {
+      kitCounts.set(kit, (kitCounts.get(kit) || 0) + 1);
+    }
   });
 
   metrics.avgExecutionMinutes =
@@ -300,112 +299,32 @@ function computeAnalytics(entries, manualFlowMinutes, trendDays) {
       executionSamples,
       totalExecutionMinutes,
       totalTimeSavedMinutes: totalTimeSaved
-    }
+    },
+    popularKits: Array.from(kitCounts.entries())
+      .map(([kit, count]) => ({
+        kit,
+        executions: count,
+        ratio: entries.length > 0 ? count / entries.length : 0
+      }))
+      .sort((a, b) => b.executions - a.executions)
   };
 }
 
-function extractRowsFromPayload(payload) {
-  if (!payload) {
-    return [];
-  }
-
-  if (Array.isArray(payload)) {
-    return payload;
-  }
-
-  const candidates = [
-    'data',
-    'items',
-    'rows',
-    'records',
-    'entries',
-    'results',
-    'values'
-  ];
-
-  for (const key of candidates) {
-    if (Array.isArray(payload[key])) {
-      return payload[key];
-    }
-    if (payload[key] && typeof payload[key] === 'object') {
-      for (const nestedKey of candidates) {
-        if (Array.isArray(payload[key][nestedKey])) {
-          return payload[key][nestedKey];
-        }
-      }
-    }
-  }
-
-  if (payload?.data?.edges && Array.isArray(payload.data.edges)) {
-    return payload.data.edges.map((edge) => edge.node || edge);
-  }
-
-  return [];
-}
-
 async function fetchLogEntries() {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), DEFAULT_FETCH_TIMEOUT_MS);
+  const { db } = await connectToDatabase();
+  const collection = db.collection(LOG_COLLECTION_NAME);
 
-  try {
-    const headers = {
-      Accept: 'application/json'
-    };
+  const limit = Number.isFinite(DEFAULT_FETCH_LIMIT) && DEFAULT_FETCH_LIMIT > 0 ? DEFAULT_FETCH_LIMIT : 1000;
 
-    if (N8N_API_KEY) {
-      headers.Authorization = `Bearer ${N8N_API_KEY}`;
-      headers['X-N8N-API-KEY'] = N8N_API_KEY;
-    }
+  const documents = await collection
+    .find({})
+    .sort({ createdAt: -1, _id: -1 })
+    .limit(limit)
+    .toArray();
 
-    const url = new URL(N8N_LOG_DATA_URL);
-    if (!url.searchParams.has('take') && DEFAULT_FETCH_LIMIT > 0) {
-      url.searchParams.set('take', String(DEFAULT_FETCH_LIMIT));
-    }
-
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers,
-      signal: controller.signal
-    });
-
-    if (response.status === 404) {
-      console.warn('XCIEN log datatable not found (HTTP 404). Returning empty analytics dataset.');
-      return [];
-    }
-
-    if (!response.ok) {
-      const error = new Error(`Failed to fetch XCIEN Log data: HTTP ${response.status}`);
-      error.status = response.status;
-      try {
-        error.body = await response.text();
-      } catch (bodyError) {
-        error.body = null;
-      }
-      throw error;
-    }
-
-    const payload = await response.json();
-    const rows = extractRowsFromPayload(payload);
-
-    if (!Array.isArray(rows)) {
-      return [];
-    }
-
-    const normalized = rows
-      .map((row) => normalizeLogEntry(row))
-      .filter((entry) => entry && entry.timestamp instanceof Date);
-
-    return normalized;
-  } catch (error) {
-    if (error.name === 'AbortError') {
-      const timeoutError = new Error('Request to fetch XCIEN Log data timed out');
-      timeoutError.code = 'FETCH_TIMEOUT';
-      throw timeoutError;
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
+  return documents
+    .map((doc) => normalizeLogEntry(doc))
+    .filter((entry) => entry && entry.timestamp instanceof Date);
 }
 
 async function buildDashboardAnalytics() {
@@ -424,10 +343,10 @@ async function buildDashboardAnalytics() {
     trend: analytics.trend,
     totals: analytics.totals,
     dataSource: {
-      projectId: N8N_PROJECT_ID,
-      tableId: N8N_LOG_TABLE_ID,
+      collection: LOG_COLLECTION_NAME,
       fetchLimit: DEFAULT_FETCH_LIMIT
     },
+    popularKits: analytics.popularKits,
     updatedAt: new Date().toISOString()
   };
 }
@@ -450,13 +369,6 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    if (!N8N_LOG_DATA_URL) {
-      return res.status(500).json({
-        error: 'Missing configuration',
-        message: 'La URL del Data Table XCIEN no está configurada (N8N_LOG_DATA_URL).'
-      });
-    }
-
     const analytics = await buildDashboardAnalytics();
     return res.status(200).json(analytics);
   } catch (error) {
