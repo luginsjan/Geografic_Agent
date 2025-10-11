@@ -837,27 +837,62 @@ function createElevationChart(result, canvasId) {
     }
 
     try {
+        // Create datasets with obstruction points as additional datasets
+        const datasets = [{
+            label: 'Elevación del Terreno',
+            data: elevationData,
+            borderColor: hasObstructions ? '#f44336' : '#4CAF50',
+            backgroundColor: hasObstructions ? 'rgba(244, 67, 54, 0.1)' : 'rgba(76, 175, 80, 0.1)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 1
+        }, {
+            label: 'Línea de Vista',
+            data: sightLineData,
+            borderColor: '#2196F3',
+            backgroundColor: 'transparent',
+            borderDash: [5, 5],
+            fill: false,
+            pointRadius: 1
+        }];
+
+        // Add obstruction points as separate datasets
+        if (obstructionPoints.length > 0) {
+            const buildingPoints = obstructionPoints.filter(p => p.type === 'building');
+            const terrainPoints = obstructionPoints.filter(p => p.type === 'terrain');
+
+            if (buildingPoints.length > 0) {
+                datasets.push({
+                    label: 'Obstrucciones - Edificios',
+                    data: buildingPoints.map(p => ({ x: p.x, y: p.y })),
+                    backgroundColor: '#ff9800',
+                    borderColor: '#ff9800',
+                    pointRadius: 8,
+                    pointHoverRadius: 10,
+                    showLine: false,
+                    pointStyle: 'circle'
+                });
+            }
+
+            if (terrainPoints.length > 0) {
+                datasets.push({
+                    label: 'Obstrucciones - Terreno',
+                    data: terrainPoints.map(p => ({ x: p.x, y: p.y })),
+                    backgroundColor: '#9c27b0',
+                    borderColor: '#9c27b0',
+                    pointRadius: 8,
+                    pointHoverRadius: 10,
+                    showLine: false,
+                    pointStyle: 'circle'
+                });
+            }
+        }
+
         const chart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
-                datasets: [{
-                    label: 'Elevación del Terreno',
-                    data: elevationData,
-                    borderColor: hasObstructions ? '#f44336' : '#4CAF50',
-                    backgroundColor: hasObstructions ? 'rgba(244, 67, 54, 0.1)' : 'rgba(76, 175, 80, 0.1)',
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 1
-                }, {
-                    label: 'Línea de Vista',
-                    data: sightLineData,
-                    borderColor: '#2196F3',
-                    backgroundColor: 'transparent',
-                    borderDash: [5, 5],
-                    fill: false,
-                    pointRadius: 1
-                }]
+                datasets: datasets
             },
             options: {
                 responsive: true,
@@ -882,44 +917,29 @@ function createElevationChart(result, canvasId) {
                 },
                 plugins: { 
                     legend: { position: 'top' },
-                    annotation: obstructionPoints.length > 0 ? {
-                        annotations: obstructionPoints.reduce((annotations, point, index) => {
-                            const color = point.type === 'building' ? '#ff9800' : '#9c27b0';
-                            const icon = point.type === 'building' ? '🏢' : '🏔️';
-                            const typeLabel = point.type === 'building' ? 'Edificio' : 'Terreno';
-                            
-                            // Create label with obstruction percentage
-                            let labelContent = `${icon} ${typeLabel}\n${point.obstruction.toFixed(1)}m bloqueo\n${point.distance.toFixed(2)}km`;
-                            if (point.percentage) {
-                                labelContent += `\n${point.percentage}% del camino`;
-                            }
-                            
-                            annotations[`obstruction-${index}`] = {
-                                type: 'point',
-                                xValue: point.x,
-                                yValue: point.y,
-                                backgroundColor: color,
-                                borderColor: color,
-                                borderWidth: 3,
-                                radius: 8,
-                                label: {
-                                    content: labelContent,
-                                    enabled: true,
-                                    position: 'top',
-                                    backgroundColor: color,
-                                    color: 'white',
-                                    font: {
-                                        size: 10,
-                                        weight: 'bold'
-                                    },
-                                    padding: 5,
-                                    borderRadius: 4,
-                                    display: true
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                const point = obstructionPoints.find(p => Math.abs(p.x - context[0].parsed.x) < 0.1);
+                                if (point) {
+                                    const typeLabel = point.type === 'building' ? 'Edificio' : 'Terreno';
+                                    return `🏢 ${typeLabel} - ${point.distance.toFixed(2)}km`;
                                 }
-                            };
-                            return annotations;
-                        }, {})
-                    } : {}
+                                return context[0].label + ' km';
+                            },
+                            label: function(context) {
+                                const point = obstructionPoints.find(p => Math.abs(p.x - context.parsed.x) < 0.1);
+                                if (point) {
+                                    return [
+                                        `Bloqueo: ${point.obstruction.toFixed(1)}m`,
+                                        `Elevación: ${context.parsed.y.toFixed(1)}m`,
+                                        `Porcentaje: ${point.percentage || 'N/A'}% del camino`
+                                    ];
+                                }
+                                return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + 'm';
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -2926,19 +2946,19 @@ function populateResultsBlock(responseData) {
                     <div class="info-value coordinates">${userCoordinates}</div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">firstpoint: heightBreakdown</div>
+                    <div class="info-label">Altura SOP</div>
                     <div class="info-value">${firstPointHeightBreakdown}</div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">lastpoint: heightBreakdown</div>
+                    <div class="info-label">Altura Cliente</div>
                     <div class="info-value">${lastPointHeightBreakdown}</div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">userAntennaHeight</div>
+                    <div class="info-label">Altura Cliente Min</div>
                     <div class="info-value">${userMinHeight.toFixed(1)} m</div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">sopAntennaHeight</div>
+                    <div class="info-label">Altura SOP Min</div>
                     <div class="info-value">${sopMinHeight.toFixed(1)} m</div>
                 </div>
                 <div class="info-item">
@@ -2983,8 +3003,12 @@ function populateResultsBlock(responseData) {
             ` : ''}
             
             <div class="recommendation">
-                <strong>Recomendación:</strong> ${recommendation}
-                <br><strong>Solución Rápida:</strong> ${quickSolution}
+                <div class="recommendation-section">
+                    <strong>Recomendación:</strong> ${recommendation}
+                </div>
+                <div class="recommendation-section">
+                    <strong>Solución Rápida:</strong> ${quickSolution}
+                </div>
             </div>
             <div class="chart-container">
                 <div class="chart-title">Perfil de Elevación</div>

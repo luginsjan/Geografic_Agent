@@ -301,6 +301,9 @@ section {
     flex-direction: column;
     cursor: pointer;
     position: relative;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .card:hover {
@@ -517,6 +520,14 @@ section {
     font-weight: 500;
     margin-bottom: 10px;
     color: #666;
+}
+
+.recommendation-section {
+    margin-bottom: 10px;
+}
+
+.recommendation-section:last-child {
+    margin-bottom: 0;
 }
 
 .chart-container {
