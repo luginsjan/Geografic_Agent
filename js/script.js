@@ -776,19 +776,47 @@ function createElevationChart(result, canvasId) {
 
     // Prepare obstruction data for chart annotations
     const obstructions = result.lineOfSight?.obstructions || [];
-    const obstructionPoints = obstructions.map(obs => {
-        // Calculate the exact index based on distance from start
+    const visualizationData = result.lineOfSight?.visualizationData || {};
+    const obstructionPercentages = visualizationData.obstructionPercentages || [];
+    
+    // Create obstruction points from both obstructions array and visualization data
+    const obstructionPoints = [];
+    
+    // Add points from obstructions array
+    obstructions.forEach(obs => {
         const totalDistanceMeters = totalDistance * 1000;
         const exactIndex = (obs.distanceFromStart / totalDistanceMeters) * (result.results.length - 1);
         
-        return {
+        obstructionPoints.push({
             x: exactIndex,
             y: obs.totalObstructionHeight,
             type: obs.obstructionType,
             obstruction: obs.obstruction,
-            distance: obs.distanceFromStart / 1000, // Convert to km
-            index: obs.index // Use the actual obstruction index from the data
-        };
+            distance: obs.distanceFromStart / 1000,
+            index: obs.index,
+            percentage: obs.percentageOfPath
+        });
+    });
+    
+    // Add points from visualization data if available
+    obstructionPercentages.forEach(visObs => {
+        const distanceKm = parseFloat(visObs.atDistance.replace('km', ''));
+        const totalDistanceMeters = totalDistance * 1000;
+        const exactIndex = (distanceKm * 1000 / totalDistanceMeters) * (result.results.length - 1);
+        
+        // Find corresponding elevation data point
+        const elevationIndex = Math.round(exactIndex);
+        const elevation = elevationIndex < result.results.length ? result.results[elevationIndex].elevation : 0;
+        
+        obstructionPoints.push({
+            x: exactIndex,
+            y: elevation,
+            type: visObs.type,
+            obstruction: parseFloat(visObs.blockage.replace('m', '')),
+            distance: distanceKm,
+            percentage: visObs.percentOfPath,
+            fromVisualization: true
+        });
     });
 
     console.log('Chart data prepared:', {
@@ -860,6 +888,12 @@ function createElevationChart(result, canvasId) {
                             const icon = point.type === 'building' ? '🏢' : '🏔️';
                             const typeLabel = point.type === 'building' ? 'Edificio' : 'Terreno';
                             
+                            // Create label with obstruction percentage
+                            let labelContent = `${icon} ${typeLabel}\n${point.obstruction.toFixed(1)}m bloqueo\n${point.distance.toFixed(2)}km`;
+                            if (point.percentage) {
+                                labelContent += `\n${point.percentage}% del camino`;
+                            }
+                            
                             annotations[`obstruction-${index}`] = {
                                 type: 'point',
                                 xValue: point.x,
@@ -869,16 +903,16 @@ function createElevationChart(result, canvasId) {
                                 borderWidth: 3,
                                 radius: 8,
                                 label: {
-                                    content: `${icon} ${typeLabel}\n${point.obstruction.toFixed(1)}m bloqueo\n${point.distance.toFixed(2)}km`,
+                                    content: labelContent,
                                     enabled: true,
                                     position: 'top',
                                     backgroundColor: color,
                                     color: 'white',
                                     font: {
-                                        size: 11,
+                                        size: 10,
                                         weight: 'bold'
                                     },
-                                    padding: 6,
+                                    padding: 5,
                                     borderRadius: 4,
                                     display: true
                                 }
@@ -2861,6 +2895,15 @@ function populateResultsBlock(responseData) {
         const userMinHeight = safeGet(minimumHeights, 'user.antenna', 0);
         const sopMinHeight = safeGet(minimumHeights, 'sop.antenna', 0);
         const quickSolution = safeGet(summary, 'quickSolution', 'Análisis completado');
+        const recommendation = safeGet(summary, 'recommendation', 'Análisis completado');
+
+        // Get additional data points
+        const firstPoint = safeGet(losData, 'firstPoint', {});
+        const lastPoint = safeGet(losData, 'lastPoint', {});
+        const firstPointHeightBreakdown = safeGet(firstPoint, 'heightBreakdown', 'N/A');
+        const lastPointHeightBreakdown = safeGet(lastPoint, 'heightBreakdown', 'N/A');
+        const userCoordinates = safeGet(result, 'user_coordinates', 'N/A');
+        const sopCoordinates = safeGet(result, 'Coordenadas', 'N/A');
 
         // Card header
         card.innerHTML = `
@@ -2875,16 +2918,32 @@ function populateResultsBlock(responseData) {
                     <div class="info-value">${result.distance_km} km</div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">Obstrucciones</div>
-                    <div class="info-value">${obstructionCount}</div>
+                    <div class="info-label">Coordenadas SOP</div>
+                    <div class="info-value coordinates">${sopCoordinates}</div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">Coordenadas Objetivo</div>
-                    <div class="info-value coordinates">${result.Coordenadas}</div>
+                    <div class="info-label">user_coordinates</div>
+                    <div class="info-value coordinates">${userCoordinates}</div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">Altura Antena Actual</div>
-                    <div class="info-value">${result['Altura (mts)']} m</div>
+                    <div class="info-label">firstpoint: heightBreakdown</div>
+                    <div class="info-value">${firstPointHeightBreakdown}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">lastpoint: heightBreakdown</div>
+                    <div class="info-value">${lastPointHeightBreakdown}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">userAntennaHeight</div>
+                    <div class="info-value">${userMinHeight.toFixed(1)} m</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">sopAntennaHeight</div>
+                    <div class="info-value">${sopMinHeight.toFixed(1)} m</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">maxobstruction</div>
+                    <div class="info-value">${maxObstruction.toFixed(1)} m</div>
                 </div>
             </div>
             
@@ -2924,7 +2983,8 @@ function populateResultsBlock(responseData) {
             ` : ''}
             
             <div class="recommendation">
-                <strong>Recomendación:</strong> ${quickSolution}
+                <strong>Recomendación:</strong> ${recommendation}
+                <br><strong>Solución Rápida:</strong> ${quickSolution}
             </div>
             <div class="chart-container">
                 <div class="chart-title">Perfil de Elevación</div>

@@ -381,9 +381,21 @@ section {
 
 .info-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 15px;
     margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+    .info-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
 }
 .info-item {
     background: #f8f9fa;
@@ -448,15 +460,23 @@ section {
 
 .obstruction-label {
     flex: 1;
-    color: #e0e0e0;
+    color: #666666;
+}
+
+.card.is-selected .obstruction-label {
+    color: #333333;
 }
 
 .obstruction-count {
     font-weight: bold;
-    color: #fff;
+    color: #666666;
     background: rgba(255, 255, 255, 0.1);
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
+}
+
+.card.is-selected .obstruction-count {
+    color: #333333;
 }
 
 .minimum-heights {
