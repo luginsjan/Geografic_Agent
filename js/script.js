@@ -427,8 +427,7 @@ let workflowEndTime = null;
 
 // Authentication constants
 const AUTH_SESSION_KEY = 'agenteGeograficoAuth';
-const AUTH_USERNAME = 'admin';
-const AUTH_PASSWORD = 'admin';
+const AUTH_API_ENDPOINT = '/api/login';
 
 function isAuthenticated() {
     try {
@@ -471,6 +470,48 @@ function showAuthError(message) {
     }
 }
 
+async function authenticateWithServer(username, password) {
+    try {
+        const response = await fetch(AUTH_API_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username,
+                password
+            })
+        });
+
+        const contentType = response.headers?.get('content-type') || '';
+        const isJson = contentType.includes('application/json');
+        const payload = isJson ? await response.json().catch(() => null) : null;
+
+        if (response.ok && payload?.authorized) {
+            return { success: true, payload };
+        }
+
+        if (response.status === 401) {
+            return {
+                success: false,
+                message: payload?.message || 'Credenciales inválidas. Intente nuevamente.'
+            };
+        }
+
+        const fallbackMessage = payload?.message || payload?.error;
+        return {
+            success: false,
+            message: fallbackMessage || 'No fue posible iniciar sesión. Intente nuevamente más tarde.'
+        };
+    } catch (error) {
+        console.error('Authentication request failed', error);
+        return {
+            success: false,
+            message: 'No fue posible contactar el servicio de autenticación. Verifique su conexión e intente nuevamente.'
+        };
+    }
+}
+
 function handleAuthSuccess() {
     showAuthError('');
     unlockInterface();
@@ -502,13 +543,37 @@ function initializeAuthentication() {
 
     authForm.dataset.listenerAttached = 'true';
 
-    authForm.addEventListener('submit', (event) => {
+    authForm.addEventListener('submit', async (event) => {
         event.preventDefault();
 
         const username = (authUsernameInput?.value || '').trim();
         const password = authPasswordInput?.value || '';
 
-        if (username === AUTH_USERNAME && password === AUTH_PASSWORD) {
+        if (!username || !password) {
+            showAuthError('Debe ingresar usuario y contraseña.');
+            if (!username && authUsernameInput) {
+                authUsernameInput.focus();
+            } else if (authPasswordInput) {
+                authPasswordInput.focus();
+            }
+            return;
+        }
+
+        const submitButton = authForm.querySelector('button[type="submit"], input[type="submit"]');
+        const previousDisabledState = submitButton ? submitButton.disabled : false;
+        if (submitButton) {
+            submitButton.disabled = true;
+        }
+
+        showAuthError('');
+
+        const result = await authenticateWithServer(username, password);
+
+        if (submitButton) {
+            submitButton.disabled = previousDisabledState;
+        }
+
+        if (result.success) {
             persistAuthentication(true);
             if (authUsernameInput) {
                 authUsernameInput.value = '';
@@ -517,13 +582,14 @@ function initializeAuthentication() {
                 authPasswordInput.value = '';
             }
             handleAuthSuccess();
-        } else {
-            showAuthError('Credenciales inválidas. Intente nuevamente.');
-            persistAuthentication(false);
-            if (authPasswordInput) {
-                authPasswordInput.value = '';
-                authPasswordInput.focus();
-            }
+            return;
+        }
+
+        showAuthError(result.message || 'Credenciales inválidas. Intente nuevamente.');
+        persistAuthentication(false);
+        if (authPasswordInput) {
+            authPasswordInput.value = '';
+            authPasswordInput.focus();
         }
     });
 }

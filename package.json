@@ -8,6 +8,7 @@
     "lint": "echo \"No lint command specified\""
   },
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "mongodb": "^5.8.0"
   }
 }

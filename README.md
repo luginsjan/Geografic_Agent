@@ -65,6 +65,21 @@ Geografic_Agent/
 2. Open `index.html` in your web browser
 3. The website should load immediately with all functionality working
 
+## Authentication Setup
+
+- Set `MONGODB_URI` (and optionally `MONGODB_DB_NAME`, `CREDENTIALS_COLLECTION`) in your Vercel project so the API routes can reach MongoDB.
+- Insert at least one credential document into the `credentials` collection with a hashed password created via `bcryptjs`, for example:
+
+```js
+// Run this once in a Node REPL or script
+const bcrypt = require('bcryptjs');
+const hash = await bcrypt.hash('name', 12);
+// Then store a document similar to:
+// { username: 'name', normalizedUsername: 'name', passwordHash: hash }
+```
+
+- The frontend now authenticates by calling `/api/login`, which verifies the hash in MongoDB; no hardcoded usernames or passwords remain in the client bundle.
+
 ## Browser Support
 
 - Chrome (latest)
