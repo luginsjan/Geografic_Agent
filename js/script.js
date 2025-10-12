@@ -965,16 +965,18 @@ function createElevationChart(result, canvasId) {
                 maintainAspectRatio: false,
                 scales: {
                     x: { 
-                        title: { display: true, text: 'Distancia (km)' },
+                        title: { display: true, text: 'Distancia (km)', color: '#ffffff' },
                         ticks: {
+                            color: '#ffffff',
                             callback: function(value) {
                                 return value.toFixed(1) + ' km';
                             }
                         }
                     },
                     y: { 
-                        title: { display: true, text: 'Elevación (m)' },
+                        title: { display: true, text: 'Elevación (m)', color: '#ffffff' },
                         ticks: {
+                            color: '#ffffff',
                             callback: function(value) {
                                 return value.toFixed(0) + ' m';
                             }
@@ -982,7 +984,7 @@ function createElevationChart(result, canvasId) {
                     }
                 },
                 plugins: { 
-                    legend: { position: 'top' },
+                    legend: { position: 'top', labels: { color: '#ffffff' } },
                     tooltip: {
                         callbacks: {
                             title: function(context) {
@@ -1994,19 +1996,19 @@ function populateSOPDetails() {
     const chartId = `report-chart-${sopData.SOP ? sopData.SOP.replace('-', '') : 'unknown'}`;
     sopDetailsContainer.innerHTML = `
         <div class="card-header">
-            <div class="card-title" style="color:#222;">${sopData.SOP || sopData.id || 'SOP'} - ${sopData.Plaza || sopData.plaza || ''}</div>
-            <div class="status-badge ${isSuccess ? 'status-success' : 'status-blocked'}" style="color:#fff;">
+            <div class="card-title">${sopData.SOP || sopData.id || 'SOP'} - ${sopData.Plaza || sopData.plaza || ''}</div>
+            <div class="status-badge ${isSuccess ? 'status-success' : 'status-blocked'}">
                 ${isSuccess ? '✓ Clear' : '✗ Blocked'}
             </div>
         </div>
         <div class="info-grid">
             ${infoGridHtml}
         </div>
-        <div class="recommendation" style="margin-top:1rem;color:#222;">
+        <div class="recommendation" style="margin-top:1rem;">
             <strong>Recommendation:</strong> ${sopData.lineOfSight?.summary?.recommendation || 'Analysis completed'}
         </div>
         <div class="chart-container" style="height:220px; margin-top:1.5rem;">
-            <div class="chart-title" style="color:#222;">Elevation Profile</div>
+            <div class="chart-title">Elevation Profile</div>
             <canvas id="${chartId}" style="max-width:100%;height:200px;"></canvas>
         </div>
     `;
