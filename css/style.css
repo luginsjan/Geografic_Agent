@@ -486,10 +486,10 @@ section {
     }
 }
 .info-item {
-    background: #f8f9fa;
+    background: rgba(255, 255, 255, 0.05);
     padding: 0.75rem;
     border-radius: 8px;
-    border-left: 4px solid #1f1f1f;
+    border-left: 4px solid #ff9800;
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
@@ -2077,10 +2077,10 @@ section {
 
 /* SOP Details in Report */
 .sop-details {
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 10px;
     padding: 1.5rem;
-    color: #333;
+    color: #ffffff;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
@@ -2090,13 +2090,13 @@ section {
     align-items: center;
     margin-bottom: 1rem;
     padding-bottom: 0.5rem;
-    border-bottom: 2px solid #f0f0f0;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .sop-details .card-title {
     font-size: 1.2rem;
     font-weight: bold;
-    color: #333;
+    color: #ffffff;
 }
 
 .sop-details .status-badge {
@@ -2126,7 +2126,7 @@ section {
 }
 
 .sop-details .info-label {
-    color: #666;
+    color: #a0a0a0;
     font-size: 0.8rem;
     font-weight: 500;
     text-transform: uppercase;
@@ -2134,7 +2134,7 @@ section {
 }
 
 .sop-details .info-value {
-    color: #333;
+    color: #ffffff;
     font-weight: 500;
 }
 
