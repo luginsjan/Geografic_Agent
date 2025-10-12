@@ -4375,11 +4375,6 @@ function initializePageState() {
         homeSection.style.visibility = 'visible';
         homeSection.style.opacity = '1';
     }
-    
-    // Scroll to home section with a slight delay to ensure DOM is ready
-    setTimeout(() => {
-        scrollToSection('home');
-    }, 50);
 }
 
 // Auto-scroll to home section on page load

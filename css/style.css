@@ -94,6 +94,21 @@ section {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
+    width: 100%;
+    max-width: 90%;
+    margin: 0 auto;
+}
+
+@media (min-width: 1200px) {
+    .form-box {
+        max-width: 85%;
+    }
+}
+
+@media (min-width: 1400px) {
+    .form-box {
+        max-width: 80%;
+    }
 }
 
 .form-box::before {
@@ -1473,6 +1488,7 @@ section {
     
     .form-box {
         padding: 1.5rem;
+        max-width: 98%;
     }
     
     .results-container {
@@ -1562,6 +1578,7 @@ section {
     
     .form-box {
         padding: 1rem;
+        max-width: 98%;
     }
     
     .result-item-box {
@@ -1607,6 +1624,7 @@ section {
     
     .form-box {
         padding: 0.75rem;
+        max-width: 98%;
     }
     
     .about-content, .work-grid, .contact-content {
@@ -1814,24 +1832,12 @@ section {
 /* Recommendation Block Styles */
 #recommendation-block {
     width: 100%;
-    max-width: 90%;
+    max-width: 100%;
     margin: 2rem auto;
     opacity: 0;
     transform: translateY(30px);
     transition: opacity 0.8s ease, transform 0.8s ease;
     padding: 0 1rem;
-}
-
-@media (min-width: 1200px) {
-    #recommendation-block {
-        max-width: 85%;
-    }
-}
-
-@media (min-width: 1400px) {
-    #recommendation-block {
-        max-width: 80%;
-    }
 }
 
 #recommendation-block.visible {
@@ -1856,6 +1862,21 @@ section {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     min-height: 300px;
     transition: all 0.5s ease;
+    width: 100%;
+    max-width: 90%;
+    margin: 0 auto;
+}
+
+@media (min-width: 1200px) {
+    .recommendation-container {
+        max-width: 85%;
+    }
+}
+
+@media (min-width: 1400px) {
+    .recommendation-container {
+        max-width: 80%;
+    }
 }
 
 /* Recommendation Loading State */
@@ -2235,18 +2256,50 @@ section {
 }
 
 .confirm-kit-button {
-    background: linear-gradient(135deg, #4CAF50, #45a049);
-    color: white;
+    width: 100%;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    color: #000000;
     border: none;
-    border-radius: 25px;
-    font-size: 1.1rem;
-    font-weight: bold;
-    padding: 15px 30px;
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
     cursor: pointer;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: 12px;
+    box-shadow: 
+        0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    position: relative;
+    overflow: hidden;
     opacity: 0.6;
-    transform: translateY(0);
+    max-width: 90%;
+    margin: 0 auto;
+    display: block;
+}
+
+@media (min-width: 1200px) {
+    .confirm-kit-button {
+        max-width: 85%;
+    }
+}
+
+@media (min-width: 1400px) {
+    .confirm-kit-button {
+        max-width: 80%;
+    }
+}
+
+.confirm-kit-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
 }
 
 .confirm-kit-button:enabled {
@@ -2255,14 +2308,22 @@ section {
 }
 
 .confirm-kit-button:enabled:hover {
-    background: linear-gradient(135deg, #45a049, #3d8b40);
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+    box-shadow: 
+        0 10px 15px -3px rgba(0, 0, 0, 0.1),
+        0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.confirm-kit-button:enabled:hover::before {
+    left: 100%;
 }
 
 .confirm-kit-button:enabled:active {
     transform: translateY(0);
-    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    box-shadow: 
+        0 2px 4px -1px rgba(0, 0, 0, 0.1),
+        0 1px 2px -1px rgba(0, 0, 0, 0.06);
 }
 
 .confirm-kit-button:disabled {
@@ -2294,11 +2355,13 @@ section {
     
     .recommendation-container {
         padding: 1.5rem;
+        max-width: 98%;
     }
     
     .confirm-kit-button {
         padding: 12px 24px;
         font-size: 1rem;
+        max-width: 98%;
     }
     
     .error-message {
@@ -2373,11 +2436,23 @@ section {
     backdrop-filter: blur(10px);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     transition: all 0.5s ease;
-    max-width: 100%;
-    margin: 0 auto;
     width: 100%;
+    max-width: 90%;
+    margin: 0 auto;
     box-sizing: border-box;
     overflow: visible;
+}
+
+@media (min-width: 1200px) {
+    .final-report-container {
+        max-width: 85%;
+    }
+}
+
+@media (min-width: 1400px) {
+    .final-report-container {
+        max-width: 80%;
+    }
 }
 
 /* Report Header */
@@ -2746,6 +2821,7 @@ section {
 @media (max-width: 768px) {
     .final-report-container {
         padding: 1.5rem;
+        max-width: 98%;
     }
     
     .report-meta {
@@ -2786,6 +2862,7 @@ section {
 @media (max-width: 480px) {
     .final-report-container {
         padding: 1rem;
+        max-width: 98%;
     }
     
     .report-section {
