@@ -2045,25 +2045,93 @@ function populateKitDetails() {
         return escapeHtml(value);
     };
 
-    const baseDetails = `
+    // Helper function to safely format cost values
+    const formatCost = (cost) => {
+        if (cost === null || cost === undefined || cost === '') {
+            return 'TBD';
+        }
+        return `$${cost} USD`;
+    };
+    
+    // Helper function to safely format distance values
+    const formatDistance = (distance) => {
+        if (distance === null || distance === undefined || distance === '') {
+            return 'Flexible';
+        }
+        return `${distance} km`;
+    };
+
+    // Generate radios section HTML
+    const radiosSection = Array.isArray(confirmedKit.radios) && confirmedKit.radios.length > 0 ? 
+        confirmedKit.radios.map((radio, index) => `
+            <div class="radio-card">
+                <h3>
+                    Radio ${index + 1}
+                    ${confirmedKit.radios.length > 1 ? '<span class="badge-ptp">PTP</span>' : ''}
+                </h3>
+                <div class="radio-specs">
+                    <p><strong>Modelo:</strong> ${safeText(radio.Radio)}</p>
+                    <p><strong>Modelo Número:</strong> ${safeText(radio['Modelo Radio'])}</p>
+                    <p><strong>Banda de Frecuencia:</strong> ${safeText(radio['FrequencyBand (GHz)'])} GHz</p>
+                    <p><strong>Throughput Máximo:</strong> ${safeText(radio['MaxThroughput (Mbps)'])} Mbps</p>
+                    <p><strong>Potencia de Transmisión:</strong> ${safeText(radio['TransmitPower (dBm)'])} dBm</p>
+                    <p><strong>Ganancia de Antena:</strong> ${safeText(radio['AntennaGain (dBi)'])} dBi</p>
+                    ${radio['ReceiverSensitivity (dBm)'] ? `
+                        <div class="receiver-sensitivity">
+                            <strong>Sensibilidad del Receptor:</strong>
+                            <pre>${safeText(radio['ReceiverSensitivity (dBm)'])}</pre>
+                        </div>
+                    ` : ''}
+                    ${radio.FSPL_dB ? `
+                        <div class="rf-calculations">
+                            <h4>Análisis RF del Enlace</h4>
+                            <p><strong>Pérdida en Espacio Libre:</strong> ${radio.FSPL_dB} dB</p>
+                            <p><strong>Potencia Recibida:</strong> ${radio.ReceivedPower_dBm} dBm</p>
+                            <p><strong>Margen de Enlace:</strong> ${radio.LinkMargin_dB} dB</p>
+                            <p class="quality-${radio.linkAnalysis?.quality?.toLowerCase() || 'unknown'}">
+                                <strong>Calidad del Enlace:</strong> ${radio.linkAnalysis?.quality || 'N/A'}
+                            </p>
+                            <p class="recommendation">${radio.linkAnalysis?.recommendation || ''}</p>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `).join('') : `
+            <div class="radio-card">
+                <h3>Radio</h3>
+                <div class="radio-specs">
+                    <p><strong>Modelo:</strong> ${safeText(confirmedKit.radio)}</p>
+                    <p><strong>Banda de Frecuencia:</strong> ${safeText(confirmedKit.frequency_band)}</p>
+                    <p><strong>Throughput Máximo:</strong> ${safeText(confirmedKit.max_throughput)}</p>
+                    <p><strong>Potencia de Transmisión:</strong> ${safeText(confirmedKit.transmit_power)}</p>
+                    <p><strong>Ganancia de Antena:</strong> ${safeText(confirmedKit.antenna_gain)}</p>
+                </div>
+            </div>
+        `;
+
+    kitDetailsContainer.innerHTML = `
+        <h4>${safeText(confirmedKit.KIT || confirmedKit.name)}</h4>
         <div class="kit-details-grid">
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Antena</span>
+                <span class="kit-detail-value">${safeText(confirmedKit.Antena || confirmedKit.antenna)}</span>
+            </div>
+            <div class="kit-detail-item">
+                <span class="kit-detail-label">Distancia Máxima</span>
+                <span class="kit-detail-value">${formatDistance(confirmedKit['Distancia (km)'] || confirmedKit.distance)}</span>
+            </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Margen de Enlace</span>
                 <span class="kit-detail-value highlight">${safeText(confirmedKit.link_margin)}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Costo</span>
-                <span class="kit-detail-value highlight">${safeText(confirmedKit.cost)}</span>
+                <span class="kit-detail-value highlight">${formatCost(confirmedKit['Cost (USD)'] || confirmedKit.cost)}</span>
             </div>
         </div>
-    `;
-
-    const radiosSection = renderKitRadios(radios);
-
-    kitDetailsContainer.innerHTML = `
-        <h4>${safeText(confirmedKit.name)}</h4>
-        ${baseDetails}
-        ${radiosSection}
+        <div class="radios-section">
+            ${radiosSection}
+        </div>
     `;
 }
 

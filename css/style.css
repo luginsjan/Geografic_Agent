@@ -2146,6 +2146,132 @@ section {
     backdrop-filter: blur(10px);
 }
 
+/* Radio Cards Section */
+.radios-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.radio-card {
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(5px);
+}
+
+.radio-card h3 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #4CAF50;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.badge-ptp {
+    background: #4CAF50;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.radio-specs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.5rem;
+}
+
+.radio-specs p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #ffffff;
+}
+
+.radio-specs strong {
+    color: #a0a0a0;
+    font-weight: 500;
+}
+
+.receiver-sensitivity {
+    grid-column: 1 / -1;
+    margin-top: 0.5rem;
+}
+
+.receiver-sensitivity strong {
+    color: #a0a0a0;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.receiver-sensitivity pre {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    margin: 0;
+    color: #ffffff;
+    white-space: pre-wrap;
+    font-family: 'Courier New', monospace;
+}
+
+.rf-calculations {
+    grid-column: 1 / -1;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    border-radius: 6px;
+}
+
+.rf-calculations h4 {
+    color: #4CAF50;
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.75rem 0;
+}
+
+.rf-calculations p {
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+}
+
+.rf-calculations strong {
+    color: #a0a0a0;
+    font-weight: 500;
+}
+
+.quality-excellent {
+    color: #16a34a !important;
+}
+
+.quality-good {
+    color: #2563eb !important;
+}
+
+.quality-marginal {
+    color: #f59e0b !important;
+}
+
+.quality-poor {
+    color: #ef4444 !important;
+}
+
+.recommendation {
+    font-style: italic;
+    color: #cccccc !important;
+    margin-top: 0.5rem !important;
+}
+
 .kit-details h4 {
     color: #4CAF50;
     font-size: 1.2rem;
@@ -2247,6 +2373,15 @@ section {
     .kit-details .kit-details-grid {
         grid-template-columns: 1fr;
         gap: 0.8rem;
+    }
+    
+    .radio-specs {
+        grid-template-columns: 1fr;
+        gap: 0.4rem;
+    }
+    
+    .rf-calculations {
+        padding: 0.75rem;
     }
     
     .download-pdf-button {
