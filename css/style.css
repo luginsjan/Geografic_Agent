@@ -408,7 +408,7 @@ section {
 .card-title {
     font-size: 1.3rem;
     font-weight: bold;
-    color: #333;
+    color: #ffffff;
 }
 .status-badge {
     padding: 8px 16px;
@@ -419,8 +419,8 @@ section {
     letter-spacing: 0.5px;
 }
 .status-success {
-    background: linear-gradient(135deg, #4CAF50, #45a049);
-    color: white;
+    background: transparent;
+    color: #4CAF50;
 }
 .status-blocked {
     background: linear-gradient(135deg, #f44336, #d32f2f);
@@ -681,12 +681,12 @@ section {
 .recommendation {
     margin-top: 15px;
     padding: 15px;
-    background: #f8f9fa;
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
-    border-left: 4px solid #1f1f1f;
+    border-left: 4px solid #ff9800;
     font-weight: 500;
     margin-bottom: 10px;
-    color: #666;
+    color: #ffffff;
 }
 
 .recommendation-section {
@@ -704,11 +704,12 @@ section {
     padding: 15px;
     height: 250px;
     position: relative;
+    color: #ffffff;
 }
 .chart-title {
     text-align: center;
     font-weight: bold;
-    color: #333;
+    color: #ffffff;
     margin-bottom: 10px;
 }
 
@@ -2108,8 +2109,8 @@ section {
 }
 
 .sop-details .status-success {
-    background: linear-gradient(135deg, #4CAF50, #45a049);
-    color: white;
+    background: transparent;
+    color: #4CAF50;
 }
 
 .sop-details .info-grid {
