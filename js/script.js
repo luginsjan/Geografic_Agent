@@ -3207,11 +3207,21 @@ function populateResultsBlock(responseData) {
         successSection.innerHTML = '<h2 class="section-title">✅ Conexiones Exitosas</h2>';
         const successGrid = document.createElement('div');
         successGrid.className = 'results-container';
-        responseData.trueResults.forEach(result => {
-            successGrid.appendChild(createCard(result, true));
+        responseData.trueResults.forEach((result, index) => {
+            const card = createCard(result, true);
+            if (index === 0) {
+                card.classList.add('is-selected');
+            }
+            successGrid.appendChild(card);
         });
         successSection.appendChild(successGrid);
         resultsContainer.appendChild(successSection);
+        
+        // Enable confirm button since first card is pre-selected
+        const confirmSelectionBtn = document.getElementById('confirm-selection-button');
+        if (confirmSelectionBtn) {
+            confirmSelectionBtn.classList.add('enabled');
+        }
     }
 
     // Blocked section
