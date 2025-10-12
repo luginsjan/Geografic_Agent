@@ -120,7 +120,7 @@ function scrollToTop() {
     }
 }
 
-// Scroll to bottom (last unlocked section)
+// Scroll to bottom (last unlocked section's confirmation button)
 function scrollToBottom() {
     const unlockedSections = sectionOrder.filter(section => 
         sectionStates[section].unlocked
@@ -128,13 +128,23 @@ function scrollToBottom() {
     
     if (unlockedSections.length > 0) {
         const lastUnlockedSection = unlockedSections[unlockedSections.length - 1];
-        const targetSection = document.getElementById(lastUnlockedSection);
+        const confirmButton = getConfirmationButton(lastUnlockedSection);
         
-        if (targetSection) {
+        if (confirmButton && confirmButton.offsetParent !== null) {
+            // Scroll to the confirmation button
             window.scrollTo({
-                top: targetSection.offsetTop - 80,
+                top: confirmButton.getBoundingClientRect().top + window.pageYOffset - 100,
                 behavior: 'smooth'
             });
+        } else {
+            // Fallback to section if no button found
+            const targetSection = document.getElementById(lastUnlockedSection);
+            if (targetSection) {
+                window.scrollTo({
+                    top: targetSection.offsetTop - 80,
+                    behavior: 'smooth'
+                });
+            }
         }
     }
 }
@@ -185,20 +195,33 @@ function handleScrollControl() {
         const targetSection = getCurrentSection();
         
         if (!isScrollAllowed(targetSection)) {
-            // Find the last unlocked section and scroll back to it
+            // Find the last unlocked section and scroll back to its confirmation button
             const unlockedSections = sectionOrder.filter(section => 
                 sectionStates[section].unlocked
             );
             
             if (unlockedSections.length > 0) {
                 const lastUnlockedSection = unlockedSections[unlockedSections.length - 1];
-                const targetElement = document.getElementById(lastUnlockedSection);
+                const confirmButton = getConfirmationButton(lastUnlockedSection);
                 
-                if (targetElement) {
+                if (confirmButton) {
+                    // Scroll to the confirmation button
                     window.scrollTo({
-                        top: targetElement.offsetTop - 80,
+                        top: confirmButton.getBoundingClientRect().top + window.pageYOffset - 100,
                         behavior: 'smooth'
                     });
+                    
+                    // Animate the confirmation button to show it needs to be clicked
+                    animateConfirmationButton(confirmButton);
+                } else {
+                    // Fallback to section if no button found
+                    const targetElement = document.getElementById(lastUnlockedSection);
+                    if (targetElement) {
+                        window.scrollTo({
+                            top: targetElement.offsetTop - 80,
+                            behavior: 'smooth'
+                        });
+                    }
                 }
             }
         }
@@ -216,6 +239,53 @@ function disableScrollControl() {
 // Enable scroll control
 function enableScrollControl() {
     scrollControlEnabled = true;
+}
+
+// Get the confirmation button for a specific section
+function getConfirmationButton(sectionId) {
+    switch (sectionId) {
+        case 'home':
+            return document.getElementById('confirm-address-button');
+        case 'analysis':
+            return document.getElementById('confirm-selection-button');
+        case 'recommendations':
+            return document.getElementById('confirm-kit-selection-button');
+        case 'report':
+            return null; // Report section doesn't have a confirmation button
+        default:
+            return null;
+    }
+}
+
+// Animate the confirmation button to draw attention
+function animateConfirmationButton(button) {
+    if (!button) return;
+    
+    // Add animation class
+    button.classList.add('confirmation-needed');
+    
+    // Create a pulsing effect
+    let pulseCount = 0;
+    const maxPulses = 3;
+    
+    const pulseInterval = setInterval(() => {
+        button.style.transform = 'scale(1.05)';
+        button.style.boxShadow = '0 0 20px rgba(255, 255, 255, 0.5)';
+        
+        setTimeout(() => {
+            button.style.transform = 'scale(1)';
+            button.style.boxShadow = '';
+        }, 200);
+        
+        pulseCount++;
+        if (pulseCount >= maxPulses) {
+            clearInterval(pulseInterval);
+            // Remove the class after animation
+            setTimeout(() => {
+                button.classList.remove('confirmation-needed');
+            }, 500);
+        }
+    }, 400);
 }
 
 // ============================================================================

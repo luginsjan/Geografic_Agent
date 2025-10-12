@@ -211,6 +211,26 @@ section {
     transform: translateY(0);
 }
 
+/* Confirmation button animation for scroll control */
+.confirmation-needed {
+    animation: confirmationPulse 0.4s ease-in-out;
+}
+
+@keyframes confirmationPulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 5px 15px rgba(255, 255, 255, 0.2);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 25px rgba(255, 255, 255, 0.6), 0 5px 15px rgba(255, 255, 255, 0.2);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 5px 15px rgba(255, 255, 255, 0.2);
+    }
+}
+
 /* Loading Block */
 #loading-block {
     width: 100%;
@@ -395,6 +415,10 @@ section {
 
 #confirm-selection-button:active {
     transform: translateY(0);
+}
+
+#confirm-selection-button.confirmation-needed {
+    animation: confirmationPulse 0.4s ease-in-out;
 }
 
 .card-header {
@@ -1975,6 +1999,10 @@ section {
     opacity: 0.6;
     cursor: not-allowed;
     background: linear-gradient(135deg, #666, #555);
+}
+
+.confirm-kit-button.confirmation-needed {
+    animation: confirmationPulse 0.4s ease-in-out;
 }
 
 /* Mobile Responsiveness for Recommendation Block */
