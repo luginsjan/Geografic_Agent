@@ -1987,8 +1987,8 @@ function populateSOPDetails() {
 
     const infoGridHtml = infoItems.map((item) => `
         <div class="info-item">
-            <div class="info-label" style="color:#333;">${escapeHtml(item.label)}</div>
-            <div class="info-value" style="color:#222;">${escapeHtml(item.value)}</div>
+            <div class="info-label">${escapeHtml(item.label)}</div>
+            <div class="info-value">${escapeHtml(item.value)}</div>
         </div>
     `).join('');
 

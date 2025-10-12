@@ -588,7 +588,7 @@ section {
 .coordinates {
     font-family: 'Courier New', monospace;
     font-size: 0.9rem;
-    color: #666;
+    color: #ffffff;
 }
 
 .obstruction-details {
@@ -630,23 +630,23 @@ section {
 
 .obstruction-label {
     flex: 1;
-    color: #666666;
+    color: #a0a0a0;
 }
 
 .card.is-selected .obstruction-label {
-    color: #333333;
+    color: #a0a0a0;
 }
 
 .obstruction-count {
-    font-weight: bold;
-    color: #666666;
+    font-weight: 600;
+    color: #ffffff;
     background: rgba(255, 255, 255, 0.1);
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
 }
 
 .card.is-selected .obstruction-count {
-    color: #333333;
+    color: #ffffff;
 }
 
 .minimum-heights {
