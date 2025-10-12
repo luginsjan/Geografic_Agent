@@ -14,6 +14,212 @@ if ('scrollRestoration' in history) {
     history.scrollRestoration = 'manual';
 }
 
+// ============================================================================
+// SCROLL CONTROL SYSTEM
+// ============================================================================
+
+// Section progression state tracking
+const sectionStates = {
+    home: { unlocked: true, confirmed: false },
+    analysis: { unlocked: false, confirmed: false },
+    recommendations: { unlocked: false, confirmed: false },
+    report: { unlocked: false, confirmed: false }
+};
+
+// Current section tracking
+let currentSection = 'home';
+let scrollControlEnabled = true;
+let lastScrollTop = 0;
+
+// Section order for progression control
+const sectionOrder = ['home', 'analysis', 'recommendations', 'report'];
+
+// Scroll arrows elements
+let scrollArrows = null;
+let scrollToTopBtn = null;
+let scrollToBottomBtn = null;
+
+// Initialize scroll control system
+function initializeScrollControl() {
+    scrollArrows = document.getElementById('scroll-arrows');
+    scrollToTopBtn = document.getElementById('scroll-to-top');
+    scrollToBottomBtn = document.getElementById('scroll-to-bottom');
+    
+    if (scrollToTopBtn) {
+        scrollToTopBtn.addEventListener('click', scrollToTop);
+    }
+    
+    if (scrollToBottomBtn) {
+        scrollToBottomBtn.addEventListener('click', scrollToBottom);
+    }
+    
+    // Show scroll arrows after a short delay
+    setTimeout(() => {
+        if (scrollArrows) {
+            scrollArrows.classList.add('visible');
+        }
+    }, 1000);
+    
+    // Update scroll arrow states
+    updateScrollArrowStates();
+}
+
+// Update section state when confirmed
+function confirmSection(sectionId) {
+    if (sectionStates[sectionId]) {
+        sectionStates[sectionId].confirmed = true;
+        
+        // Unlock next section
+        const currentIndex = sectionOrder.indexOf(sectionId);
+        if (currentIndex < sectionOrder.length - 1) {
+            const nextSection = sectionOrder[currentIndex + 1];
+            sectionStates[nextSection].unlocked = true;
+        }
+        
+        updateScrollArrowStates();
+    }
+}
+
+// Check if scrolling to a section is allowed
+function isScrollAllowed(targetSection) {
+    if (!scrollControlEnabled) return true;
+    
+    // Always allow scrolling to top (home section)
+    if (targetSection === 'home') return true;
+    
+    // Check if target section is unlocked
+    return sectionStates[targetSection] && sectionStates[targetSection].unlocked;
+}
+
+// Get current section based on scroll position
+function getCurrentSection() {
+    const sections = document.querySelectorAll('section[id]');
+    const scrollTop = window.pageYOffset;
+    const windowHeight = window.innerHeight;
+    
+    for (let i = sections.length - 1; i >= 0; i--) {
+        const section = sections[i];
+        const sectionTop = section.offsetTop - 100; // Account for navbar
+        
+        if (scrollTop >= sectionTop) {
+            return section.id;
+        }
+    }
+    
+    return 'home';
+}
+
+// Scroll to top
+function scrollToTop() {
+    const homeSection = document.getElementById('home');
+    if (homeSection) {
+        window.scrollTo({
+            top: homeSection.offsetTop - 80,
+            behavior: 'smooth'
+        });
+    }
+}
+
+// Scroll to bottom (last unlocked section)
+function scrollToBottom() {
+    const unlockedSections = sectionOrder.filter(section => 
+        sectionStates[section].unlocked
+    );
+    
+    if (unlockedSections.length > 0) {
+        const lastUnlockedSection = unlockedSections[unlockedSections.length - 1];
+        const targetSection = document.getElementById(lastUnlockedSection);
+        
+        if (targetSection) {
+            window.scrollTo({
+                top: targetSection.offsetTop - 80,
+                behavior: 'smooth'
+            });
+        }
+    }
+}
+
+// Update scroll arrow states
+function updateScrollArrowStates() {
+    if (!scrollToTopBtn || !scrollToBottomBtn) return;
+    
+    const scrollTop = window.pageYOffset;
+    const documentHeight = document.documentElement.scrollHeight;
+    const windowHeight = window.innerHeight;
+    
+    // Top arrow - disable if at top
+    if (scrollTop < 100) {
+        scrollToTopBtn.classList.add('disabled');
+    } else {
+        scrollToTopBtn.classList.remove('disabled');
+    }
+    
+    // Bottom arrow - disable if at bottom or no unlocked sections
+    const unlockedSections = sectionOrder.filter(section => 
+        sectionStates[section].unlocked
+    );
+    
+    if (scrollTop + windowHeight >= documentHeight - 100 || unlockedSections.length <= 1) {
+        scrollToBottomBtn.classList.add('disabled');
+    } else {
+        scrollToBottomBtn.classList.remove('disabled');
+    }
+}
+
+// Main scroll control function
+function handleScrollControl() {
+    if (!scrollControlEnabled) return;
+    
+    const scrollTop = window.pageYOffset;
+    const scrollDirection = scrollTop > lastScrollTop ? 'down' : 'up';
+    lastScrollTop = scrollTop;
+    
+    // Update current section
+    const newCurrentSection = getCurrentSection();
+    if (newCurrentSection !== currentSection) {
+        currentSection = newCurrentSection;
+    }
+    
+    // Prevent scrolling to locked sections when scrolling down
+    if (scrollDirection === 'down') {
+        const targetSection = getCurrentSection();
+        
+        if (!isScrollAllowed(targetSection)) {
+            // Find the last unlocked section and scroll back to it
+            const unlockedSections = sectionOrder.filter(section => 
+                sectionStates[section].unlocked
+            );
+            
+            if (unlockedSections.length > 0) {
+                const lastUnlockedSection = unlockedSections[unlockedSections.length - 1];
+                const targetElement = document.getElementById(lastUnlockedSection);
+                
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
+                }
+            }
+        }
+    }
+    
+    // Update scroll arrow states
+    updateScrollArrowStates();
+}
+
+// Disable scroll control (for special cases)
+function disableScrollControl() {
+    scrollControlEnabled = false;
+}
+
+// Enable scroll control
+function enableScrollControl() {
+    scrollControlEnabled = true;
+}
+
+// ============================================================================
+
 function getPrimaryTechnicalKit() {
     if (latestKitRecommendationData?.recommendedKits?.length) {
         return latestKitRecommendationData.recommendedKits[0];
@@ -375,7 +581,7 @@ async function downloadTechnicalReportPDF() {
     }
 }
 
-// Removed forced scroll-to-top on load
+// Removed forced scroll-to-top on load - now handled by scroll control system
 
 // DOM Elements
 const hamburger = document.querySelector('.hamburger');
@@ -1452,6 +1658,8 @@ async function handleConfirmSelection() {
     console.log('Bandwidth being sent to SOP selection endpoint:', storedBandwidth);
 
     try {
+        // Confirm analysis section and unlock recommendations
+        confirmSection('analysis');
         scrollToSection('recommendations');
         setTimeout(() => {
             showLoadingBlock('recommendations');
@@ -1850,6 +2058,9 @@ function showFinalReport() {
     const technicalBtn = document.getElementById('download-technical-report-button');
     if (technicalBtn) technicalBtn.disabled = false;
     // Scroll to final report
+    // Confirm recommendations section and unlock report
+    confirmSection('recommendations');
+    
     setTimeout(() => {
         if (finalReportBlock) {
             window.scrollTo({
@@ -2356,7 +2567,8 @@ async function handleKitConfirmation() {
             confirmKitButton.textContent = 'Confirmar Selección de Kit';
         }
         
-        // Show final report and scroll to it
+        // Confirm kit selection and show final report
+        confirmSection('recommendations');
         showFinalReport();
         setTimeout(() => {
             scrollToSection('report');
@@ -2888,6 +3100,9 @@ if (confirmAddressButton) {
         confirmAddressButton.disabled = true;
         confirmAddressButton.textContent = 'Procesando...';
         
+        // Confirm home section and unlock analysis
+        confirmSection('home');
+        
         // Scroll to analysis section immediately when button is clicked
         scrollToSection('analysis');
         
@@ -3262,14 +3477,21 @@ navLinks.forEach(link => {
             return;
         }
         e.preventDefault();
-        const targetSection = document.querySelector(targetId);
-
-        if (targetSection) {
-            const offsetTop = targetSection.offsetTop - 80; // Account for fixed navbar
-            window.scrollTo({
-                top: offsetTop,
-                behavior: 'smooth'
-            });
+        const targetSectionId = targetId.substring(1); // Remove the #
+        
+        // Check if scrolling to this section is allowed
+        if (isScrollAllowed(targetSectionId)) {
+            const targetSection = document.querySelector(targetId);
+            if (targetSection) {
+                const offsetTop = targetSection.offsetTop - 80; // Account for fixed navbar
+                window.scrollTo({
+                    top: offsetTop,
+                    behavior: 'smooth'
+                });
+            }
+        } else {
+            // Show a message or visual feedback that the section is locked
+            console.log(`Section ${targetSectionId} is locked. Please complete the previous section first.`);
         }
     });
 });
@@ -3521,6 +3743,9 @@ function throttle(func, limit) {
 
 // Apply throttling to scroll events
 window.addEventListener('scroll', throttle(() => {
+    // Handle scroll control system
+    handleScrollControl();
+    
     // Navbar scroll effect
     if (window.scrollY > 100) {
         navbar.style.background = 'rgba(0, 0, 0, 0.98)';
@@ -4070,7 +4295,8 @@ function initializePageState() {
         history.replaceState(null, null, window.location.pathname);
     }
     
-    // Removed forced scroll-to-top
+    // Initialize scroll control system
+    initializeScrollControl();
     
     // Ensure home section is visible and at the top
     const homeSection = document.getElementById('home');
