@@ -4287,16 +4287,57 @@ function applyPDFStyles(container) {
         return brightness > 200;
     };
 
+    const getComputedColor = (element) => {
+        const doc = element?.ownerDocument || document;
+        const view = doc.defaultView || window;
+        try {
+            return (view.getComputedStyle(element) || {}).color;
+        } catch (err) {
+            return element?.style?.color || '';
+        }
+    };
+
     const allTextElements = container.querySelectorAll('*');
     allTextElements.forEach(element => {
         if (element.nodeType !== 1) return;
 
-        const computedStyle = window.getComputedStyle(element);
-        const rgb = parseRgbColor(computedStyle.color);
+        const computedColor = getComputedColor(element);
+        const rgb = parseRgbColor(computedColor);
 
         if (isTooLightForPdf(rgb)) {
             element.style.setProperty('color', '#222222', 'important');
         }
+    });
+
+    const enforceColor = (selector, color) => {
+        container.querySelectorAll(selector).forEach(element => {
+            element.style.setProperty('color', color, 'important');
+        });
+    };
+
+    enforceColor('.info-label', '#495057');
+    enforceColor('.info-value', '#1f1f1f');
+    enforceColor('.coordinates', '#1f1f1f');
+    enforceColor('.kit-detail-label', '#495057');
+    enforceColor('.kit-detail-value', '#1f1f1f');
+    enforceColor('.kit-detail-value.highlight', '#0c5da7');
+    enforceColor('.status-badge', '#ffffff');
+    enforceColor('.recommendation', '#1f1f1f');
+
+    const solidifyBackground = (selector, background, borderColor) => {
+        container.querySelectorAll(selector).forEach(element => {
+            element.style.setProperty('background', background, 'important');
+            if (borderColor) {
+                element.style.setProperty('border-color', borderColor, 'important');
+            }
+        });
+    };
+
+    solidifyBackground('.info-item', '#ffffff', '#2c5aa0');
+    solidifyBackground('.kit-detail-item', '#ffffff', '#dee2e6');
+
+    container.querySelectorAll('.status-badge').forEach(element => {
+        element.style.setProperty('background', element.classList.contains('status-success') ? '#28a745' : '#dc3545', 'important');
     });
 }
 
