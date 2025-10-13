@@ -4262,13 +4262,40 @@ function applyPDFStyles(container) {
     }
 
     // Apply styles to all text elements
+    const parseRgbColor = (colorString) => {
+        if (!colorString || colorString === 'inherit' || colorString === 'transparent') {
+            return null;
+        }
+        const match = colorString.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/i);
+        if (!match) {
+            return null;
+        }
+        const [, r, g, b, a] = match;
+        return {
+            r: Number(r),
+            g: Number(g),
+            b: Number(b),
+            a: a === undefined ? 1 : Number(a)
+        };
+    };
+
+    const isTooLightForPdf = (rgb) => {
+        if (!rgb || rgb.a === 0) {
+            return false;
+        }
+        const brightness = (0.299 * rgb.r) + (0.587 * rgb.g) + (0.114 * rgb.b);
+        return brightness > 200;
+    };
+
     const allTextElements = container.querySelectorAll('*');
     allTextElements.forEach(element => {
-        if (element.nodeType === 1) {
-            const computedStyle = window.getComputedStyle(element);
-            if (computedStyle.color !== 'rgb(51, 51, 51)') {
-                element.style.color = '#333 !important';
-            }
+        if (element.nodeType !== 1) return;
+
+        const computedStyle = window.getComputedStyle(element);
+        const rgb = parseRgbColor(computedStyle.color);
+
+        if (isTooLightForPdf(rgb)) {
+            element.style.setProperty('color', '#222222', 'important');
         }
     });
 }
