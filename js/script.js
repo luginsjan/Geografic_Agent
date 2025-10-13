@@ -2686,9 +2686,6 @@ function populateRecommendationBlock(data) {
             <div class="kits-grid" id="alternatives-grid"></div>
         </div>
         <div id="analysis-sections"></div>
-        <div class="kit-confirmation-section">
-            <button id="confirm-kit-selection-button" class="confirm-kit-button" disabled>Confirmar Selección de Kit</button>
-        </div>
     `;
 
     const safe = (fn, fb = null) => { try { const v = fn(); return v == null ? fb : v; } catch(_) { return fb; } };

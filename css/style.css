@@ -1838,6 +1838,10 @@ section {
     transform: translateY(30px);
     transition: opacity 0.8s ease, transform 0.8s ease;
     padding: 0 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 #recommendation-block.visible {
