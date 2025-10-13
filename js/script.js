@@ -4323,6 +4323,16 @@ function applyPDFStyles(container) {
     enforceColor('.kit-detail-value.highlight', '#0c5da7');
     enforceColor('.status-badge', '#ffffff');
     enforceColor('.recommendation', '#1f1f1f');
+    enforceColor('.chart-title', '#1f1f1f');
+    enforceColor('.radio-card h3', '#0c5da7');
+    enforceColor('.radio-specs p', '#1f1f1f');
+    enforceColor('.radio-specs p strong', '#0c5da7');
+    enforceColor('.rf-calculations', '#1f1f1f');
+    enforceColor('.rf-calculations h4', '#0c5da7');
+    enforceColor('.rf-calculations p', '#1f1f1f');
+    enforceColor('.receiver-sensitivity', '#1f1f1f');
+    enforceColor('.receiver-sensitivity pre', '#1f1f1f');
+    enforceColor('.badge-ptp', '#ffffff');
 
     const solidifyBackground = (selector, background, borderColor) => {
         container.querySelectorAll(selector).forEach(element => {
@@ -4335,6 +4345,11 @@ function applyPDFStyles(container) {
 
     solidifyBackground('.info-item', '#ffffff', '#2c5aa0');
     solidifyBackground('.kit-detail-item', '#ffffff', '#dee2e6');
+    solidifyBackground('.radio-card', '#ffffff', '#dee2e6');
+    solidifyBackground('.radio-specs', '#ffffff', '#dee2e6');
+    solidifyBackground('.receiver-sensitivity', '#f8f9fa', '#dee2e6');
+    solidifyBackground('.rf-calculations', '#f8f9fa', '#dee2e6');
+    solidifyBackground('.badge-ptp', '#0c5da7', '#0c5da7');
 
     container.querySelectorAll('.status-badge').forEach(element => {
         element.style.setProperty('background', element.classList.contains('status-success') ? '#28a745' : '#dc3545', 'important');
@@ -4351,10 +4366,49 @@ async function handleChartsForPDF(originalContainer, pdfContainer) {
         const pdfCanvas = pdfCanvases[i];
         
         if (originalCanvas && pdfCanvas) {
+            let chartInstance = null;
+            let originalChartStyles = null;
+
             try {
-                // Create image from canvas
+                chartInstance = typeof Chart !== 'undefined' ? Chart.getChart(originalCanvas) : null;
+
+                if (chartInstance) {
+                    const scales = chartInstance.options.scales || {};
+                    const plugins = chartInstance.options.plugins || {};
+                    originalChartStyles = {
+                        xTitle: scales.x?.title?.color,
+                        xTicks: scales.x?.ticks?.color,
+                        yTitle: scales.y?.title?.color,
+                        yTicks: scales.y?.ticks?.color,
+                        legendLabels: plugins.legend?.labels?.color
+                    };
+
+                    if (scales.x) {
+                        if (scales.x.title) scales.x.title.color = '#1f1f1f';
+                        if (scales.x.ticks) scales.x.ticks.color = '#1f1f1f';
+                    }
+                    if (scales.y) {
+                        if (scales.y.title) scales.y.title.color = '#1f1f1f';
+                        if (scales.y.ticks) scales.y.ticks.color = '#1f1f1f';
+                    }
+                    if (plugins.legend && plugins.legend.labels) {
+                        plugins.legend.labels.color = '#1f1f1f';
+                    }
+
+                    chartInstance.update('none');
+                }
+
+                // Create image from canvas with white background
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = originalCanvas.width;
+                tempCanvas.height = originalCanvas.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.fillStyle = '#ffffff';
+                tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                tempCtx.drawImage(originalCanvas, 0, 0);
+
                 const img = document.createElement('img');
-                img.src = originalCanvas.toDataURL('image/png', 0.95);
+                img.src = tempCanvas.toDataURL('image/png', 0.95);
                 
                 // Style the image for PDF
                 img.style.cssText = `
@@ -4381,6 +4435,24 @@ async function handleChartsForPDF(originalContainer, pdfContainer) {
                 });
             } catch (error) {
                 console.warn('Error converting canvas to image:', error);
+            } finally {
+                if (chartInstance && originalChartStyles) {
+                    const scales = chartInstance.options.scales || {};
+                    const plugins = chartInstance.options.plugins || {};
+
+                    if (scales.x) {
+                        if (scales.x.title) scales.x.title.color = originalChartStyles.xTitle ?? scales.x.title.color;
+                        if (scales.x.ticks) scales.x.ticks.color = originalChartStyles.xTicks ?? scales.x.ticks.color;
+                    }
+                    if (scales.y) {
+                        if (scales.y.title) scales.y.title.color = originalChartStyles.yTitle ?? scales.y.title.color;
+                        if (scales.y.ticks) scales.y.ticks.color = originalChartStyles.yTicks ?? scales.y.ticks.color;
+                    }
+                    if (plugins.legend && plugins.legend.labels) {
+                        plugins.legend.labels.color = originalChartStyles.legendLabels ?? plugins.legend.labels.color;
+                    }
+                    chartInstance.update('none');
+                }
             }
         }
     }
