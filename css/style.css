@@ -1285,6 +1285,7 @@ section {
     justify-content: center;
     width: 100%;
     max-width: 90%;
+    margin: 0 auto;
     gap: 2rem;
 }
 
