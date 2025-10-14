@@ -1340,19 +1340,82 @@ function formatTimestamp(date) {
 function validateAndExtractResponseData(responseData) {
     console.log('Validating response data:', responseData);
     console.log('Response data type:', typeof responseData);
-    console.log('Response data keys:', Object.keys(responseData));
-    
-    // Check if response has the new format with "0" key
-    if (responseData["0"] && (responseData["0"].trueResults || responseData["0"].falseResults)) {
-        console.log('Using new response format with "0" key');
-        return {
-            results: responseData["0"],
-            aigentID: responseData.AigentID || null,
-            format: 'new'
-        };
+    console.log('Response data keys:', Object.keys(responseData || {}));
+
+    const resolveErrorPayload = (payload) => {
+        if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+            return null;
+        }
+
+        const hasResults =
+            payload.trueResults ||
+            payload.falseResults ||
+            payload.results;
+
+        if (hasResults) {
+            return null;
+        }
+
+        if (
+            payload.error === true ||
+            payload.error === 'true' ||
+            payload.error_details ||
+            payload.errorMessage ||
+            payload.message ||
+            payload.error_type ||
+            payload.errorType
+        ) {
+            return {
+                error: true,
+                message:
+                    payload.message ||
+                    payload.errorMessage ||
+                    'Ocurrió un error durante la búsqueda',
+                details:
+                    payload.error_details ||
+                    (typeof payload.error === 'string' ? payload.error : null) ||
+                    null,
+                providedInput: payload.provided_input || payload.input || null,
+                type: payload.error_type || payload.errorType || null
+            };
+        }
+
+        return null;
+    };
+
+    // First check if root payload represents an error
+    const directError = resolveErrorPayload(responseData);
+    if (directError) {
+        console.warn('Detected error payload at root level');
+        return directError;
     }
+
+    // Check if response has the new format with "0" key
+    if (responseData && responseData["0"]) {
+        const zeroError = resolveErrorPayload(responseData["0"]);
+        if (zeroError) {
+            console.warn('Detected error payload in "0" response slot');
+            return zeroError;
+        }
+
+        if (responseData["0"].trueResults || responseData["0"].falseResults) {
+            console.log('Using new response format with "0" key');
+            return {
+                results: responseData["0"],
+                aigentID: responseData.AigentID || null,
+                format: 'new'
+            };
+        }
+    }
+
     // Fallback to old array format
-    else if (Array.isArray(responseData) && responseData.length > 0) {
+    if (Array.isArray(responseData) && responseData.length > 0) {
+        const arrayError = resolveErrorPayload(responseData[0]);
+        if (arrayError) {
+            console.warn('Detected error payload in array response');
+            return arrayError;
+        }
+
         console.log('Using legacy array response format');
         return {
             results: responseData[0],
@@ -1360,8 +1423,9 @@ function validateAndExtractResponseData(responseData) {
             format: 'array'
         };
     }
+
     // Fallback to direct object format
-    else if (responseData.trueResults || responseData.falseResults) {
+    if (responseData && (responseData.trueResults || responseData.falseResults)) {
         console.log('Using direct object response format');
         return {
             results: responseData,
@@ -1369,7 +1433,7 @@ function validateAndExtractResponseData(responseData) {
             format: 'direct'
         };
     }
-    
+
     // If none of the formats match, return null
     console.error('No valid response format found');
     return null;
@@ -3200,6 +3264,14 @@ if (confirmAddressButton) {
             showStatusMessage('Procesando respuesta del servidor...', 'info');
             const responseData = await response.json();
             const validatedData = validateAndExtractResponseData(responseData);
+            if (validatedData?.error) {
+                hideLoadingBlock('analysis');
+                showStatusMessage(validatedData.message || 'Ocurrió un error durante la búsqueda.', 'error', 'analysis');
+                console.warn('Server returned error payload:', validatedData);
+                confirmAddressButton.disabled = false;
+                confirmAddressButton.textContent = 'Confirmar';
+                return;
+            }
             if (!validatedData) {
                 throw new Error('La respuesta del servidor no tiene el formato esperado.');
             }
