@@ -3437,11 +3437,11 @@ function populateResultsBlock(responseData) {
                 </div>
                 <div class="info-item">
                     <div class="info-label">Altura SOP</div>
-                    <div class="info-value">${firstPointHeightBreakdown}</div>
+                    <div class="info-value">${lastPointHeightBreakdown}</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Altura Cliente</div>
-                    <div class="info-value">${lastPointHeightBreakdown}</div>
+                    <div class="info-value">${firstPointHeightBreakdown}</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Altura Cliente Min</div>
