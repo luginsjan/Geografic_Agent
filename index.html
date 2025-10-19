@@ -75,6 +75,42 @@
                             
                             <label for="bandwidth-input">Ancho de banda requerido</label>
                             <input type="text" id="bandwidth-input" placeholder="Introduzca el ancho de banda (Mbps)...">
+                            <div class="form-group service-selection-group">
+                                <label class="form-label">Tipo de Servicio *</label>
+                                <p class="help-text">Selecciona al menos un tipo de servicio</p>
+                                
+                                <div class="checkbox-container">
+                                    <label class="checkbox-wrapper">
+                                        <input 
+                                            type="checkbox" 
+                                            id="service-mype" 
+                                            name="service-type"
+                                            value="mype"
+                                        />
+                                        <span class="checkbox-content">
+                                            <strong>MYPE</strong>
+                                            <small>(incluye MYPE y MYPE PLUS)</small>
+                                        </span>
+                                    </label>
+
+                                    <label class="checkbox-wrapper">
+                                        <input 
+                                            type="checkbox" 
+                                            id="service-dedicado" 
+                                            name="service-type"
+                                            value="dedicado"
+                                        />
+                                        <span class="checkbox-content">
+                                            <strong>Dedicado</strong>
+                                            <small>(todos los demás kits)</small>
+                                        </span>
+                                    </label>
+                                </div>
+
+                                <span id="service-error" class="error-message" style="display: none;">
+                                    Debes seleccionar al menos un tipo de servicio
+                                </span>
+                            </div>
                             
                             <button id="confirm-address-button">Confirmar</button>
                         </div>

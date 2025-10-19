@@ -1786,7 +1786,8 @@ async function handleConfirmSelection() {
         selectedResultId: selectedResultId,
         completeSopData: completeSopData, // Include the complete data
         bandwidth: storedBandwidth, // Include the stored bandwidth value
-        AigentID: currentAigentID // Include the current AigentID
+        AigentID: currentAigentID, // Include the current AigentID
+        selectedServices: ServiceSelection.getSelectedServices()
     };
     console.log('SOP Selection request data being sent:', requestData);
     console.log('Bandwidth being sent to SOP selection endpoint:', storedBandwidth);
@@ -3054,6 +3055,81 @@ const n8nSelectionWebhookUrl = '/api/get-SOP-selection';
 // Vercel API Proxy Kit Selection URL
 const n8nKitSelectionWebhookUrl = '/api/get-KIT-selection';
 
+// Service Selection Storage Module
+const ServiceSelection = {
+    STORAGE_KEY: 'n8n_service_selection',
+    save(mypeChecked, dedicadoChecked) {
+        const selectedServices = [];
+        if (mypeChecked) selectedServices.push('MYPE');
+        if (dedicadoChecked) selectedServices.push('DEDICADO');
+        const data = {
+            mype: mypeChecked,
+            dedicado: dedicadoChecked,
+            selectedServices: selectedServices,
+            timestamp: new Date().toISOString()
+        };
+        try { sessionStorage.setItem(this.STORAGE_KEY, JSON.stringify(data)); } catch (_) {}
+        console.log('✓ Service selection saved:', data);
+        return data;
+    },
+    get() {
+        try {
+            const stored = sessionStorage.getItem(this.STORAGE_KEY);
+            if (!stored) return null;
+            return JSON.parse(stored);
+        } catch (error) {
+            console.error('Error reading service selection:', error);
+            return null;
+        }
+    },
+    getSelectedServices() {
+        const data = this.get();
+        return data ? data.selectedServices : [];
+    },
+    validate() {
+        const mype = document.getElementById('service-mype');
+        const dedicado = document.getElementById('service-dedicado');
+        if (!mype || !dedicado) return false;
+        if (!mype.checked && !dedicado.checked) {
+            this.showError('Debes seleccionar al menos un tipo de servicio');
+            return false;
+        }
+        this.hideError();
+        return true;
+    },
+    showError(message) {
+        const errorElement = document.getElementById('service-error');
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+    },
+    hideError() {
+        const errorElement = document.getElementById('service-error');
+        if (errorElement) {
+            errorElement.style.display = 'none';
+        }
+    },
+    clear() {
+        try { sessionStorage.removeItem(this.STORAGE_KEY); } catch (_) {}
+    }
+};
+
+// Real-time validation on checkbox change
+document.addEventListener('DOMContentLoaded', function() {
+    const mypeCheckbox = document.getElementById('service-mype');
+    const dedicadoCheckbox = document.getElementById('service-dedicado');
+    if (mypeCheckbox && dedicadoCheckbox) {
+        const onCheckboxChange = () => {
+            if (mypeCheckbox.checked || dedicadoCheckbox.checked) {
+                ServiceSelection.hideError();
+            }
+        };
+        mypeCheckbox.addEventListener('change', onCheckboxChange);
+        dedicadoCheckbox.addEventListener('change', onCheckboxChange);
+    }
+});
+
 // Sample data for UX validation
 const sampleData = {
     trueResults: [
@@ -3221,6 +3297,14 @@ if (confirmAddressButton) {
             showStatusMessage('Por favor, introduzca el ancho de banda requerido.', 'error');
             return;
         }
+        // Validate service selection
+        if (!ServiceSelection.validate()) {
+            return;
+        }
+        // Save service selection
+        const mypeChecked = document.getElementById('service-mype')?.checked || false;
+        const dedicadoChecked = document.getElementById('service-dedicado')?.checked || false;
+        ServiceSelection.save(mypeChecked, dedicadoChecked);
         storedBandwidth = bandwidth;
         inputBandwidth = bandwidth;
         inputCoordinates = clientAddress;
