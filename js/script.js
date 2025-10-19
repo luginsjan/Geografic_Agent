@@ -3090,9 +3090,11 @@ const ServiceSelection = {
         const mype = document.getElementById('service-mype');
         const dedicado = document.getElementById('service-dedicado');
         if (!mype || !dedicado) return false;
+        // If neither is selected, treat as if both are selected
         if (!mype.checked && !dedicado.checked) {
-            this.showError('Debes seleccionar al menos un tipo de servicio');
-            return false;
+            // Auto-select both checkboxes
+            mype.checked = true;
+            dedicado.checked = true;
         }
         this.hideError();
         return true;
