@@ -921,23 +921,38 @@ async function fetchReportLogEntry(aigentId, options = {}) {
     let lastError = null;
     while (attempt <= retries) {
         try {
-            const response = await fetch(`/api/report-log?aigentId=${encodeURIComponent(aigentId)}`);
-            if (response.status === 404) {
-                if (attempt < retries) {
-                    attempt += 1;
-                    await wait(delayMs);
-                    continue;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout per attempt
+            
+            try {
+                const response = await fetch(`/api/report-log?aigentId=${encodeURIComponent(aigentId)}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                
+                if (response.status === 404) {
+                    if (attempt < retries) {
+                        attempt += 1;
+                        await wait(delayMs);
+                        continue;
+                    }
+                    reportLogCache.set(cacheKey, null);
+                    return null;
                 }
-                reportLogCache.set(cacheKey, null);
-                return null;
+                if (!response.ok) {
+                    throw new Error(`Request failed with status ${response.status}`);
+                }
+                const payload = await response.json();
+                const data = payload?.data || null;
+                reportLogCache.set(cacheKey, data);
+                return data;
+            } catch (fetchError) {
+                clearTimeout(timeoutId);
+                if (fetchError.name === 'AbortError') {
+                    throw new Error('Request timed out');
+                }
+                throw fetchError;
             }
-            if (!response.ok) {
-                throw new Error(`Request failed with status ${response.status}`);
-            }
-            const payload = await response.json();
-            const data = payload?.data || null;
-            reportLogCache.set(cacheKey, data);
-            return data;
         } catch (error) {
             lastError = error;
             if (attempt >= retries) {
@@ -961,18 +976,34 @@ async function fetchEquipmentKitDetails(kitName) {
     if (equipmentDetailsCache.has(cacheKey)) {
         return equipmentDetailsCache.get(cacheKey);
     }
-    const response = await fetch(`/api/equipment?kitName=${encodeURIComponent(kitName)}`);
-    if (response.status === 404) {
-        equipmentDetailsCache.set(cacheKey, null);
-        return null;
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
+    try {
+        const response = await fetch(`/api/equipment?kitName=${encodeURIComponent(kitName)}`, {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        if (response.status === 404) {
+            equipmentDetailsCache.set(cacheKey, null);
+            return null;
+        }
+        if (!response.ok) {
+            throw new Error(`Equipment request failed with status ${response.status}`);
+        }
+        const payload = await response.json();
+        const data = payload?.data || null;
+        equipmentDetailsCache.set(cacheKey, data);
+        return data;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            console.warn('Equipment request timed out');
+        }
+        throw error;
     }
-    if (!response.ok) {
-        throw new Error(`Equipment request failed with status ${response.status}`);
-    }
-    const payload = await response.json();
-    const data = payload?.data || null;
-    equipmentDetailsCache.set(cacheKey, data);
-    return data;
 }
 
 function extractSopMetricsFromLog(logDoc, selectedSopId) {
@@ -2569,7 +2600,8 @@ async function prepareReportData() {
     let logData = null;
     if (currentAigentID) {
         try {
-            logData = await fetchReportLogEntry(currentAigentID, { retries: 3, delayMs: 1200 });
+            // Use fewer retries and shorter delay since this is non-blocking now
+            logData = await fetchReportLogEntry(currentAigentID, { retries: 1, delayMs: 500 });
             latestLogEntry = logData;
         } catch (error) {
             console.warn('Unable to fetch report log entry:', error);
@@ -2687,13 +2719,8 @@ async function handleKitConfirmation() {
         }
 
         showStatusMessage('Preparando datos finales para el reporte...', 'info', 'report');
-        try {
-            await prepareReportData();
-        } catch (prepareError) {
-            console.warn('Error preparing report data:', prepareError);
-        }
         
-        // Hide loading and show success state
+        // Hide loading and show success state immediately
         hideKitConfirmationLoading();
         
         // Reset button
@@ -2702,9 +2729,18 @@ async function handleKitConfirmation() {
             confirmKitButton.textContent = 'Confirmar Selección de Kit';
         }
         
-        // Confirm kit selection and show final report
+        // Confirm kit selection and show final report immediately (don't wait for API calls)
         confirmSection('recommendations');
         showFinalReport();
+        
+        // Load additional data in background (non-blocking)
+        prepareReportData().then(() => {
+            // Re-populate report when data arrives
+            populateFinalReport();
+        }).catch((prepareError) => {
+            console.warn('Error preparing report data:', prepareError);
+        });
+        
         setTimeout(() => {
             scrollToSection('report');
         }, 1000);
