@@ -1480,27 +1480,32 @@ function extractKitRecommendationData(responseData) {
     // First, check if this is an error response
     if (responseData.isError === true) {
         console.warn('Detected error response from API');
+        console.log('Full error response data:', JSON.stringify(responseData, null, 2));
         // The error data is in responseData.output
         const errorData = responseData.output;
         
         // Check for error array format: [{ error: "[\"message1\",\"message2\"]" }]
         if (Array.isArray(errorData) && errorData.length > 0 && errorData[0].error) {
+            console.log('Found error in array format:', errorData[0].error);
             try {
                 // Try to parse the error string as JSON array
                 const errorArray = JSON.parse(errorData[0].error);
                 if (Array.isArray(errorArray) && errorArray.length > 0) {
                     // Format error messages as bullet list
                     errorMessage = errorArray.map(msg => msg.trim()).filter(msg => msg.length > 0).join('\n');
+                    console.log('Parsed error array into formatted message:', errorMessage);
                 } else {
                     errorMessage = errorData[0].error;
                 }
             } catch (e) {
+                console.warn('Failed to parse error as JSON array:', e);
                 // If parsing fails, use the raw error string
                 errorMessage = errorData[0].error;
             }
         } 
         // Check for direct error object format: { error: "..." }
         else if (errorData && errorData.error) {
+            console.log('Found error in direct object format:', errorData.error);
             try {
                 const errorArray = JSON.parse(errorData.error);
                 if (Array.isArray(errorArray) && errorArray.length > 0) {
@@ -1517,6 +1522,8 @@ function extractKitRecommendationData(responseData) {
         if (!errorMessage) {
             errorMessage = 'Ocurrió un error al obtener las recomendaciones de kit.';
         }
+        
+        console.log('Final error message to display:', errorMessage);
         
         return {
             data: null,
@@ -1646,15 +1653,39 @@ function extractKitRecommendationData(responseData) {
 
 // Function to handle different types of errors from kit recommendations
 function handleKitRecommendationError(errorMessage, section = 'recommendations', requestData = null) {
-    console.error('Kit recommendation error:', errorMessage);
+    console.error('Kit recommendation error received:', errorMessage);
+    console.log('Error message type:', typeof errorMessage);
+    
+    // If the error message is still in array format (string representation), try to parse it
+    let displayMessage = errorMessage;
+    
+    // Handle array input directly
+    if (Array.isArray(errorMessage)) {
+        console.log('Error message is an array, converting to string with newlines');
+        displayMessage = errorMessage.map(msg => String(msg).trim()).filter(msg => msg.length > 0).join('\n');
+    }
+    // Handle stringified array
+    else if (typeof errorMessage === 'string' && errorMessage.startsWith('[') && errorMessage.includes(']')) {
+        console.log('Error message appears to be a stringified array, attempting to parse...');
+        try {
+            const parsedArray = JSON.parse(errorMessage);
+            if (Array.isArray(parsedArray)) {
+                displayMessage = parsedArray.map(msg => String(msg).trim()).filter(msg => msg.length > 0).join('\n');
+                console.log('Successfully parsed array into:', displayMessage);
+            }
+        } catch (e) {
+            console.warn('Failed to parse error message as JSON:', e);
+        }
+    }
     
     // Check if this is a timeout error and provide more helpful message
-    let displayMessage = errorMessage;
-    if (errorMessage.includes('timed out') || errorMessage.includes('timeout') || errorMessage.includes('504')) {
+    if (displayMessage.includes('timed out') || displayMessage.includes('timeout') || displayMessage.includes('504')) {
         displayMessage = 'La solicitud tardó demasiado tiempo en completarse. El servidor puede estar ocupado. Por favor, inténtelo de nuevo.';
-    } else if (errorMessage.includes('500')) {
+    } else if (displayMessage.includes('500')) {
         displayMessage = 'Error interno del servidor. El sistema puede estar experimentando problemas temporales. Por favor, inténtelo de nuevo.';
     }
+    
+    console.log('Final display message:', displayMessage);
     
     // Show error message to user
     showStatusMessage(displayMessage, 'error', section);
@@ -1958,6 +1989,8 @@ async function handleConfirmSelection() {
             
             // If there's an error, display it and don't show recommendations
             if (errorMessage) {
+                console.log('Calling handleKitRecommendationError with errorMessage:', errorMessage);
+                console.log('Error message is of type:', typeof errorMessage);
                 handleKitRecommendationError(errorMessage, 'recommendations', requestData);
                 return;
             }
