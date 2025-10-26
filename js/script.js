@@ -1669,20 +1669,41 @@ function handleKitRecommendationError(errorMessage, section = 'recommendations',
         console.log('Error message appears to be a stringified array, attempting to parse...');
         try {
             // Extract just the JSON array portion from the string
+            // Find the first [ and then find the matching ]
             const jsonStart = errorMessage.indexOf('[');
-            const jsonEnd = errorMessage.lastIndexOf(']') + 1;
-            
-            if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
-                const jsonString = errorMessage.substring(jsonStart, jsonEnd);
-                console.log('Extracted JSON string:', jsonString);
-                const parsedArray = JSON.parse(jsonString);
+            if (jsonStart !== -1) {
+                // Find the matching closing bracket
+                let bracketCount = 0;
+                let jsonEnd = -1;
                 
-                if (Array.isArray(parsedArray)) {
-                    displayMessage = parsedArray.map(msg => String(msg).trim()).filter(msg => msg.length > 0).join('\n');
-                    console.log('Successfully parsed array into:', displayMessage);
+                for (let i = jsonStart; i < errorMessage.length; i++) {
+                    if (errorMessage[i] === '[') {
+                        bracketCount++;
+                    } else if (errorMessage[i] === ']') {
+                        bracketCount--;
+                        if (bracketCount === 0) {
+                            jsonEnd = i + 1;
+                            break;
+                        }
+                    }
+                }
+                
+                if (jsonEnd !== -1) {
+                    const jsonString = errorMessage.substring(jsonStart, jsonEnd);
+                    console.log('Extracted JSON string:', jsonString);
+                    const parsedArray = JSON.parse(jsonString);
+                    
+                    if (Array.isArray(parsedArray)) {
+                        displayMessage = parsedArray.map(msg => String(msg).trim()).filter(msg => msg.length > 0).join('\n');
+                        console.log('Successfully parsed array into:', displayMessage);
+                    }
+                } else {
+                    console.warn('Could not find matching closing bracket in error message');
+                    displayMessage = errorMessage;
                 }
             } else {
-                console.warn('Could not find valid JSON array in error message');
+                console.warn('Could not find JSON array in error message');
+                displayMessage = errorMessage;
             }
         } catch (e) {
             console.warn('Failed to parse error message as JSON:', e);
@@ -1723,6 +1744,9 @@ function handleKitRecommendationError(errorMessage, section = 'recommendations',
     }
     if (recommendationContent) {
         recommendationContent.style.display = 'block';
+        setTimeout(() => {
+            recommendationContent.classList.add('visible');
+        }, 50);
         
         // Enhanced error display with better formatting
         let errorDisplay = displayMessage;
@@ -1781,6 +1805,10 @@ function handleKitRecommendationError(errorMessage, section = 'recommendations',
                 </button>
             </div>
         `;
+        
+        console.log('Error message displayed in UI');
+        console.log('recommendationContent display:', window.getComputedStyle(recommendationContent).display);
+        console.log('recommendationContent visible:', recommendationContent.classList.contains('visible'));
         
         // Add hover effects to the retry button
         const retryButton = document.getElementById('retry_agent_response_kit');
@@ -1994,7 +2022,6 @@ async function handleConfirmSelection() {
         console.log('Selection sent successfully:', responseData);
         console.log('Complete SOP data sent:', completeSopData);
         console.log('AigentID used:', currentAigentID);
-        showStatusMessage(`Selection confirmed: ${selectedResultId}`, 'success', 'recommendations');
         
         // Handle kit recommendations if present in response
         if (responseData) {
@@ -2007,6 +2034,9 @@ async function handleConfirmSelection() {
                 handleKitRecommendationError(errorMessage, 'recommendations', requestData);
                 return;
             }
+            
+            // Only show success message if there are no errors
+            showStatusMessage(`Selection confirmed: ${selectedResultId}`, 'success', 'recommendations');
             
             // If we have recommendation data, display it
             if (recommendationData) {
