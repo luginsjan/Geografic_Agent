@@ -1665,16 +1665,29 @@ function handleKitRecommendationError(errorMessage, section = 'recommendations',
         displayMessage = errorMessage.map(msg => String(msg).trim()).filter(msg => msg.length > 0).join('\n');
     }
     // Handle stringified array
-    else if (typeof errorMessage === 'string' && errorMessage.startsWith('[') && errorMessage.includes(']')) {
+    else if (typeof errorMessage === 'string' && errorMessage.includes('[') && errorMessage.includes(']')) {
         console.log('Error message appears to be a stringified array, attempting to parse...');
         try {
-            const parsedArray = JSON.parse(errorMessage);
-            if (Array.isArray(parsedArray)) {
-                displayMessage = parsedArray.map(msg => String(msg).trim()).filter(msg => msg.length > 0).join('\n');
-                console.log('Successfully parsed array into:', displayMessage);
+            // Extract just the JSON array portion from the string
+            const jsonStart = errorMessage.indexOf('[');
+            const jsonEnd = errorMessage.lastIndexOf(']') + 1;
+            
+            if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+                const jsonString = errorMessage.substring(jsonStart, jsonEnd);
+                console.log('Extracted JSON string:', jsonString);
+                const parsedArray = JSON.parse(jsonString);
+                
+                if (Array.isArray(parsedArray)) {
+                    displayMessage = parsedArray.map(msg => String(msg).trim()).filter(msg => msg.length > 0).join('\n');
+                    console.log('Successfully parsed array into:', displayMessage);
+                }
+            } else {
+                console.warn('Could not find valid JSON array in error message');
             }
         } catch (e) {
             console.warn('Failed to parse error message as JSON:', e);
+            // If parsing fails, just use the original message
+            displayMessage = errorMessage;
         }
     }
     
