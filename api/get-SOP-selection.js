@@ -120,6 +120,25 @@ module.exports = async function handler(req, res) {
       return res.status(n8nResponse.status).send(responseData);
     }
     
+    // Check for error responses from n8n first
+    let hasError = false;
+    if (Array.isArray(parsedData) && parsedData.length > 0 && parsedData[0] && parsedData[0].error) {
+      hasError = true;
+    } else if (parsedData && typeof parsedData === 'object' && parsedData.error) {
+      hasError = true;
+    }
+    
+    // If we have an error, return it early with proper structure
+    if (hasError) {
+      console.log('Detected error response from n8n:', parsedData);
+      res.setHeader('X-Aigent-ID', aigentID);
+      return res.status(n8nResponse.status).json({
+        output: parsedData,
+        AigentID: aigentID,
+        isError: true
+      });
+    }
+    
     // Normalize various possible response formats into a stable shape
     // Target normalized shape consumed by frontend: { output: { ... }, AigentID }
     let normalized;

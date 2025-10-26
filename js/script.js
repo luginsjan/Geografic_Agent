@@ -1477,6 +1477,53 @@ function extractKitRecommendationData(responseData) {
     let recommendationData = null;
     let errorMessage = null;
     
+    // First, check if this is an error response
+    if (responseData.isError === true) {
+        console.warn('Detected error response from API');
+        // The error data is in responseData.output
+        const errorData = responseData.output;
+        
+        // Check for error array format: [{ error: "[\"message1\",\"message2\"]" }]
+        if (Array.isArray(errorData) && errorData.length > 0 && errorData[0].error) {
+            try {
+                // Try to parse the error string as JSON array
+                const errorArray = JSON.parse(errorData[0].error);
+                if (Array.isArray(errorArray) && errorArray.length > 0) {
+                    // Format error messages as bullet list
+                    errorMessage = errorArray.map(msg => msg.trim()).filter(msg => msg.length > 0).join('\n');
+                } else {
+                    errorMessage = errorData[0].error;
+                }
+            } catch (e) {
+                // If parsing fails, use the raw error string
+                errorMessage = errorData[0].error;
+            }
+        } 
+        // Check for direct error object format: { error: "..." }
+        else if (errorData && errorData.error) {
+            try {
+                const errorArray = JSON.parse(errorData.error);
+                if (Array.isArray(errorArray) && errorArray.length > 0) {
+                    errorMessage = errorArray.map(msg => msg.trim()).filter(msg => msg.length > 0).join('\n');
+                } else {
+                    errorMessage = errorData.error;
+                }
+            } catch (e) {
+                errorMessage = errorData.error;
+            }
+        }
+        
+        // If no error message found yet, provide a default
+        if (!errorMessage) {
+            errorMessage = 'Ocurrió un error al obtener las recomendaciones de kit.';
+        }
+        
+        return {
+            data: null,
+            error: errorMessage
+        };
+    }
+    
     // Check if response has "0" key with output property (new format)
     if (responseData["0"] && responseData["0"].output) {
         recommendationData = responseData["0"].output;
@@ -1496,6 +1543,43 @@ function extractKitRecommendationData(responseData) {
     
     // If we found recommendation data, normalize new schema and check for errors
     if (recommendationData) {
+        // Additional check: Look for error data in the output (case where API didn't mark it as error)
+        if (Array.isArray(recommendationData) && recommendationData.length > 0 && recommendationData[0].error) {
+            // This is an error response
+            try {
+                const errorArray = JSON.parse(recommendationData[0].error);
+                if (Array.isArray(errorArray) && errorArray.length > 0) {
+                    errorMessage = errorArray.map(msg => msg.trim()).filter(msg => msg.length > 0).join('\n');
+                } else {
+                    errorMessage = recommendationData[0].error;
+                }
+            } catch (e) {
+                errorMessage = recommendationData[0].error;
+            }
+            return {
+                data: null,
+                error: errorMessage
+            };
+        }
+        
+        // Check if output contains an error field
+        if (typeof recommendationData === 'object' && recommendationData.error) {
+            try {
+                const errorArray = JSON.parse(recommendationData.error);
+                if (Array.isArray(errorArray) && errorArray.length > 0) {
+                    errorMessage = errorArray.map(msg => msg.trim()).filter(msg => msg.length > 0).join('\n');
+                } else {
+                    errorMessage = recommendationData.error;
+                }
+            } catch (e) {
+                errorMessage = recommendationData.error;
+            }
+            return {
+                data: null,
+                error: errorMessage
+            };
+        }
+        
         // If recommendationData is an array (e.g., output: [ { ... } ]), use the first element
         if (Array.isArray(recommendationData) && recommendationData.length > 0 && typeof recommendationData[0] === 'object') {
             recommendationData = recommendationData[0];
@@ -1599,8 +1683,21 @@ function handleKitRecommendationError(errorMessage, section = 'recommendations',
         // Enhanced error display with better formatting
         let errorDisplay = displayMessage;
         
+        // Check if error message contains multiple lines (separated by \n)
+        if (displayMessage.includes('\n')) {
+            const errorLines = displayMessage.split('\n').filter(line => line.trim().length > 0);
+            if (errorLines.length > 1) {
+                errorDisplay = `
+                    <ul style="text-align: left; margin: 1rem 0; padding-left: 2rem; list-style-type: disc;">
+                        ${errorLines.map(line => `<li style="margin-bottom: 0.5rem; color: #ff6b6b;">${line.trim()}</li>`).join('')}
+                    </ul>
+                `;
+            } else {
+                errorDisplay = `<p style="margin-bottom: 1.5rem;">${displayMessage}</p>`;
+            }
+        }
         // Check if error message contains error code format (Error XXX: description)
-        if (displayMessage.includes('Error ') && displayMessage.includes(':')) {
+        else if (displayMessage.includes('Error ') && displayMessage.includes(':')) {
             const parts = displayMessage.split(':');
             const errorCode = parts[0].trim();
             const errorDescription = parts.slice(1).join(':').trim();
