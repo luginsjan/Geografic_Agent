@@ -1712,14 +1712,49 @@ function handleKitRecommendationError(errorMessage, section = 'recommendations',
         }
     }
     
-    // Check if this is a timeout error and provide more helpful message
-    if (displayMessage.includes('timed out') || displayMessage.includes('timeout') || displayMessage.includes('504')) {
-        displayMessage = 'La solicitud tardó demasiado tiempo en completarse. El servidor puede estar ocupado. Por favor, inténtelo de nuevo.';
-    } else if (displayMessage.includes('500')) {
-        displayMessage = 'Error interno del servidor. El sistema puede estar experimentando problemas temporales. Por favor, inténtelo de nuevo.';
+    // Translate error messages from English to Spanish
+    if (displayMessage.includes('\n')) {
+        const lines = displayMessage.split('\n');
+        displayMessage = lines.map(line => {
+            // Translate common error messages
+            if (line.includes('Reduce the requested distance or choose a kit with a higher distance rating')) {
+                return 'Reduzca la distancia solicitada o elija un kit con mayor clasificación de distancia.';
+            } else if (line.includes('Increase the requested bandwidth to meet the minimum')) {
+                return 'Aumente el ancho de banda solicitado para cumplir con el mínimo de rangos como \'10 - 99 MB\'.';
+            } else if (line.includes('Remove or lower the frequency requirement if it is overly restrictive')) {
+                return 'Elimine o reduzca el requisito de frecuencia si es demasiado restrictivo.';
+            } else if (line.includes('Verify that the Equipment Database includes matching kits for the selected service type')) {
+                return 'Verifique que la Base de Datos de Equipos incluya kits compatibles para el tipo de servicio seleccionado upstream.';
+            } else if (line.includes('No hay kits viables para esta ubicación')) {
+                return 'No se encontraron kits viables para esta ubicación.';
+            } else if (line.includes('No hay línea de vista viable para esta ubicación')) {
+                return 'No hay línea de vista viable para esta ubicación.';
+            } else if (line.includes('timed out') || line.includes('timeout')) {
+                return 'La solicitud tardó demasiado tiempo en completarse. El servidor puede estar ocupado. Por favor, inténtelo de nuevo.';
+            } else if (line.includes('error 500') || line.includes('500')) {
+                return 'Error interno del servidor. El sistema puede estar experimentando problemas temporales. Por favor, inténtelo de nuevo.';
+            }
+            // Return original line if no translation needed
+            return line;
+        }).join('\n');
+    } else {
+        // Single line error message - translate it
+        if (displayMessage.includes('timed out') || displayMessage.includes('timeout') || displayMessage.includes('504')) {
+            displayMessage = 'La solicitud tardó demasiado tiempo en completarse. El servidor puede estar ocupado. Por favor, inténtelo de nuevo.';
+        } else if (displayMessage.includes('500')) {
+            displayMessage = 'Error interno del servidor. El sistema puede estar experimentando problemas temporales. Por favor, inténtelo de nuevo.';
+        } else if (displayMessage.includes('Reduce the requested distance')) {
+            displayMessage = 'Reduzca la distancia solicitada o elija un kit con mayor clasificación de distancia.';
+        } else if (displayMessage.includes('Increase the requested bandwidth')) {
+            displayMessage = 'Aumente el ancho de banda solicitado para cumplir con el mínimo de rangos como \'10 - 99 MB\'.';
+        } else if (displayMessage.includes('Remove or lower the frequency')) {
+            displayMessage = 'Elimine o reduzca el requisito de frecuencia si es demasiado restrictivo.';
+        } else if (displayMessage.includes('Verify that the Equipment Database')) {
+            displayMessage = 'Verifique que la Base de Datos de Equipos incluya kits compatibles para el tipo de servicio seleccionado upstream.';
+        }
     }
     
-    console.log('Final display message:', displayMessage);
+    console.log('Final display message (after translation):', displayMessage);
     
     // Show error message to user
     showStatusMessage(displayMessage, 'error', section);
@@ -1889,7 +1924,7 @@ async function retryKitRecommendations() {
               }, 300000); // 5 minute timeout to match API timeout
 
         if (!response.ok) {
-            throw new Error(`Server responded with error: ${response.status} ${response.statusText}`);
+            throw new Error(`El servidor respondió con error: ${response.status} ${response.statusText}`);
         }
 
         const responseData = await response.json();
@@ -1945,7 +1980,7 @@ async function retryKitRecommendations() {
 async function handleConfirmSelection() {
     const selectedCard = document.querySelector('.card.is-selected');
     if (!selectedCard) {
-        showStatusMessage('No card selected', 'error');
+        showStatusMessage('No se seleccionó ninguna tarjeta', 'error');
         return;
     }
 
@@ -1955,7 +1990,7 @@ async function handleConfirmSelection() {
     const selectedResultId = selectedCard.dataset.sop;
     
     if (!selectedResultId) {
-        showStatusMessage('Error: Could not identify selected result', 'error');
+        showStatusMessage('Error: No se pudo identificar el resultado seleccionado', 'error');
         return;
     }
 
@@ -1963,7 +1998,7 @@ async function handleConfirmSelection() {
     const completeSopData = allSopData[selectedResultId];
     
     if (!completeSopData) {
-        showStatusMessage('Error: Complete SOP data not found', 'error');
+        showStatusMessage('Error: No se encontraron los datos completos del SOP', 'error');
         return;
     }
     
@@ -2011,7 +2046,7 @@ async function handleConfirmSelection() {
         }, 300000); // 5 minute timeout to match API timeout
 
         if (!response.ok) {
-            throw new Error(`Server responded with error: ${response.status} ${response.statusText}`);
+            throw new Error(`El servidor respondió con error: ${response.status} ${response.statusText}`);
         }
 
         const responseData = await response.json();
@@ -2036,7 +2071,7 @@ async function handleConfirmSelection() {
             }
             
             // Only show success message if there are no errors
-            showStatusMessage(`Selection confirmed: ${selectedResultId}`, 'success', 'recommendations');
+            showStatusMessage(`Selección confirmada: ${selectedResultId}`, 'success', 'recommendations');
             
             // If we have recommendation data, display it
             if (recommendationData) {
@@ -2870,7 +2905,7 @@ async function handleKitConfirmation() {
         }, 60000); // 60 second timeout
         
         if (!response.ok) {
-            throw new Error(`Server responded with error: ${response.status} ${response.statusText}`);
+            throw new Error(`El servidor respondió con error: ${response.status} ${response.statusText}`);
         }
         
         const responseData = await response.json();
