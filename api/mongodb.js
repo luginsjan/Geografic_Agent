@@ -1,7 +1,7 @@
 const { MongoClient, ServerApiVersion } = require('mongodb');
 
 const uri = process.env.MONGODB_URI;
-const dbName = process.env.MONGODB_DB_NAME || 'test-geografic-agent';
+const dbName = process.env.MONGODB_DB_NAME || 'geografic-agent';
 
 if (!uri) {
   throw new Error('Missing MongoDB connection string. Set the MONGODB_URI environment variable.');
