@@ -3048,7 +3048,7 @@ function populateRecommendationBlock(data) {
                                     ${rel.rain_fade_margin_db >= 0 ? '+' : ''}${rel.rain_fade_margin_db} dB
                                 </span>
                             </div>
-                            <div class="status-badge" style="padding: 4px 8px; border-radius: 4px; text-align: center; font-weight: 600; background: ${color}; color: white; margin-top: 4px;">
+                            <div class="status-badge" style="padding: 4px 8px; border-radius: 4px; text-align: center; font-weight: 600; background: ${color}; color: white; margin-top: 4px; font-size: 0.7rem;">
                                 ${icon} ${rel.status}
                             </div>
                         </div>
@@ -3132,24 +3132,38 @@ function populateRecommendationBlock(data) {
                                 <div class="reliability-section" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
                                     <h5 style="font-size: 0.9rem; color: #6b7280; margin-bottom: 8px;">📊 Análisis de Confiabilidad</h5>
                                     <div class="reliability-grid" style="display: grid; gap: 8px;">
-                                        <div style="display: flex; justify-content: space-between;">
-                                            <span>Disponibilidad (Uptime):</span>
-                                            <span style="font-weight: 600; color: ${reliability.uptime_percent >= 99.9 ? '#10b981' : reliability.uptime_percent >= 99 ? '#f59e0b' : '#ef4444'};">
-                                                ${reliability.uptime_percent}%
-                                            </span>
+                                        <!-- Availability with gap from 99.9% target -->
+                                        <div style="display: grid; gap: 4px;">
+                                            <div style="display: flex; justify-content: space-between;">
+                                                <span>Disponibilidad (Uptime):</span>
+                                                <span style="font-weight: 600; color: ${reliability.uptime_percent >= 99.9 ? '#10b981' : reliability.uptime_percent >= 99 ? '#f59e0b' : '#ef4444'};">
+                                                    ${reliability.uptime_percent}%
+                                                </span>
+                                            </div>
+                                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; padding: 4px 8px; background: ${reliability.uptime_percent >= 99.9 ? '#d1fae5' : '#fee2e2'}; border-radius: 4px;">
+                                                <span style="color: #374151;">Objetivo: 99.9%</span>
+                                                <span style="font-weight: 600; color: ${reliability.uptime_percent >= 99.9 ? '#059669' : '#dc2626'};">
+                                                    ${reliability.uptime_percent >= 99.9 
+                                                        ? `✅ +${(reliability.uptime_percent - 99.9).toFixed(1)}%` 
+                                                        : `⚠️ -${(99.9 - reliability.uptime_percent).toFixed(1)}%`}
+                                                </span>
+                                            </div>
                                         </div>
+                                        <!-- Rain fade margin -->
                                         <div style="display: flex; justify-content: space-between;">
                                             <span>Margen ante Lluvia:</span>
                                             <span style="font-weight: 600; color: ${reliability.rain_fade_margin_db >= 0 ? '#10b981' : '#ef4444'};">
                                                 ${reliability.rain_fade_margin_db >= 0 ? '+' : ''}${reliability.rain_fade_margin_db} dB
                                             </span>
                                         </div>
+                                        <!-- Depth of Link (PASS/FAIL) -->
                                         <div style="display: flex; justify-content: space-between;">
                                             <span>Estado del Enlace:</span>
                                             <span style="font-weight: 600; color: ${linkAvailability?.depthOfLink === 'PASS' ? '#10b981' : '#ef4444'};">
                                                 ${linkAvailability?.depthOfLink || 'N/A'}
                                             </span>
                                         </div>
+                                        <!-- Status message -->
                                         <div class="status-message" style="margin-top: 8px; padding: 8px; background: ${reliability.status && reliability.status.includes('Reliable') ? '#d1fae5' : reliability.status && reliability.status.includes('Marginal') ? '#fef3c7' : '#fee2e2'}; border-radius: 4px; font-size: 0.85rem; color: #374151;">
                                             ${reliability.status || 'N/A'}
                                         </div>
@@ -3274,10 +3288,10 @@ function renderWarnings(warnings, total, critical) {
     if (!warnings || !Array.isArray(warnings) || warnings.length === 0) return '';
     
     return `
-        <div class="warnings-section" style="margin-top: 12px;">
+        <div class="warnings-section" style="margin-top: 12px; display: block;">
             <div class="warnings-header" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: ${critical > 0 ? '#fee2e2' : '#fef3c7'}; border-radius: 6px 6px 0 0; border-left: 4px solid ${critical > 0 ? '#dc2626' : '#f59e0b'}; cursor: pointer;">
                 <span style="font-weight: 600; color: ${critical > 0 ? '#dc2626' : '#d97706'};">
-                    ${critical > 0 ? '🔴' : '⚠️'} ${critical} Críticas, ${total - critical} Advertencias
+                    ${critical > 0 ? '🔴' : '⚠️'} ${critical} Alertas Críticas, ${total - critical} Advertencias
                 </span>
                 <button class="warnings-toggle" style="background: none; border: none; cursor: pointer; color: ${critical > 0 ? '#dc2626' : '#d97706'}; font-size: 1rem;">▼</button>
             </div>
