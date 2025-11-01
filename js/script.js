@@ -2185,6 +2185,16 @@ function displayKitRecommendations(recommendationData) {
         // Populate the recommendation block
         populateRecommendationBlock(recommendationData);
         
+        // Populate missing KPI fields as a safeguard (ensures correct extraction)
+        const topKit = recommendationData.recommendedKits?.find(k => 
+            (k.KIT || k.name) === (recommendationData.summary?.topRecommendation?.kit || recommendationData.summary?.bestTechnicalPerformance?.KIT)
+        ) || recommendationData.recommendedKits?.[0] || null;
+        if (topKit) {
+            setTimeout(() => {
+                populateMissingKPIFields(topKit);
+            }, 100); // Small delay to ensure DOM is ready
+        }
+        
         // Initialize kit selection functionality
         initializeKitSelection();
         
@@ -3013,15 +3023,42 @@ function populateRecommendationBlock(data) {
     const kpiGrid = document.getElementById('kpi-grid');
     if (kpiGrid && topKit) {
         const radio = safe(() => topKit.radios[0], null);
-        const receivedPower = safe(() => radio.ReceivedPower_dBm, null);
+        
+        // ════════════════════════════════════════════════════════════════════════════════════════
+        // EXTRACT KPIs WITH FALLBACK SUPPORT FOR MULTIPLE FIELD NAME FORMATS
+        // ════════════════════════════════════════════════════════════════════════════════════════
+        
+        // Link Margin: Try new format first (with spaces), then fallback to underscore format
+        const linkMargin = safe(() => radio['Link MargindB'], null) || 
+                          safe(() => radio.LinkMargin_dB, null) ||
+                          safe(() => radio.LinkMargin, null) ||
+                          safe(() => topKit.rfCalculationSummary?.averageLinkMargin, null);
+        
+        // Received Power: Try new format first (with spaces), then fallback to underscore format
+        const receivedPower = safe(() => radio['Received PowerdBm'], null) || 
+                             safe(() => radio.ReceivedPower_dBm, null) ||
+                             safe(() => radio.ReceivedPower, null);
+        
+        // Coverage Distance: Try _requirements first (with underscore), then fallback to requirements
+        const coverageKm = safe(() => topKit._requirements?.providedDistanceKm, null) ||
+                         safe(() => topKit.requirements?.providedDistanceKm, null);
+        
         const fsplAvg = safe(() => topKit.rfCalculationSummary.averageFSPL, null);
         const totalRadios = safe(() => topKit.rfCalculationSummary.totalRadios, Array.isArray(topKit.radios) ? topKit.radios.length : null);
         const equipmentType = totalRadios > 1 ? 'Dual Radio System' : 'Single Radio System';
         const reliability = safe(() => radio.Reliability, null);
-        const coverageKm = safe(() => topKit.requirements.providedDistanceKm, null);
 
         const kpis = [
-            { label: 'Received Power', value: receivedPower != null ? `${receivedPower} dBm` : 'N/A' },
+            { 
+                label: 'Link Margin', 
+                value: linkMargin != null ? `${linkMargin.toFixed(2)} dB` : 'N/A',
+                dataKpi: 'margen-enlace'
+            },
+            { 
+                label: 'Received Power', 
+                value: receivedPower != null ? `${receivedPower.toFixed(2)} dBm` : 'N/A',
+                dataKpi: 'received-power'
+            },
             { label: 'FSPL Average', value: fsplAvg != null ? `${fsplAvg} dB` : 'N/A' },
             { label: 'Equipment Type', value: equipmentType },
             { 
@@ -3030,7 +3067,11 @@ function populateRecommendationBlock(data) {
                 isReliability: true,
                 reliability: reliability
             },
-            { label: 'Coverage Distance', value: coverageKm != null ? `${coverageKm} km ✓` : 'N/A' }
+            { 
+                label: 'Coverage Distance', 
+                value: coverageKm != null ? `${coverageKm.toFixed(3)} km` : 'N/A',
+                dataKpi: 'coverage-distance'
+            }
         ];
         kpiGrid.innerHTML = kpis.map(k => {
             if (k.isReliability && k.reliability) {
@@ -3055,7 +3096,8 @@ function populateRecommendationBlock(data) {
                     </div>
                 `;
             }
-            return `<div class="kpi-card ${!k.value || k.value === '—' || k.value === 'N/A' ? 'disabled' : ''}"><div class="kpi-label">${k.label}</div><div class="kpi-value" style="font-size: ${!k.value || k.value === '—' || k.value === 'N/A' ? '1.5rem' : '1.1rem'};">${k.value}</div></div>`;
+            const dataAttr = k.dataKpi ? ` data-kpi="${k.dataKpi}"` : '';
+            return `<div class="kpi-card ${!k.value || k.value === '—' || k.value === 'N/A' ? 'disabled' : ''}"><div class="kpi-label">${k.label}</div><div class="kpi-value"${dataAttr} style="font-size: ${!k.value || k.value === '—' || k.value === 'N/A' ? '1.5rem' : '1.1rem'};">${k.value}</div></div>`;
         }).join('');
     }
 
@@ -3247,6 +3289,109 @@ function populateRecommendationBlock(data) {
             }
         });
     });
+}
+
+/**
+ * Populate missing KPI fields from webhook response
+ * Extracts Link Margin, Received Power, and Coverage Distance
+ * and displays them in their respective HTML elements
+ * 
+ * @param {Object} kit - The kit recommendation object from webhook
+ */
+function populateMissingKPIFields(kit) {
+    if (!kit) {
+        console.warn('populateMissingKPIFields: No kit provided');
+        return;
+    }
+    
+    console.log('populateMissingKPIFields called with kit:', kit);
+
+    // ════════════════════════════════════════════════════════════════════════════════════════
+    // FIELD 1: LINK MARGIN (Margen de Enlace)
+    // Extract from multiple possible sources for robustness
+    // ════════════════════════════════════════════════════════════════════════════════════════
+    
+    const radio = kit.radios?.[0] || null;
+    const linkMargin = 
+        (radio && radio['Link MargindB']) ||                    // Primary source: new format
+        (radio && radio.LinkMargin_dB) ||                       // Fallback: underscore format
+        (radio && radio.LinkMargin) ||                           // Fallback: simple format
+        kit.quickMetrics?.linkMargin ||                         // Fallback: formatted string
+        kit.rfCalculationSummary?.averageLinkMargin ||          // Fallback: from calculation summary
+        'N/A';                                                  // Default if not found
+    
+    // Format the value properly
+    const linkMarginText = typeof linkMargin === 'string' 
+        ? linkMargin  // Already formatted (e.g., "54.48 dB")
+        : (linkMargin !== 'N/A' ? `${linkMargin.toFixed(2)} dB` : 'N/A');  // Format number to 2 decimals
+    
+    // Update DOM element
+    const linkMarginElement = document.querySelector('[data-kpi="margen-enlace"]');
+    if (linkMarginElement) {
+        linkMarginElement.textContent = linkMarginText;
+        
+        // Remove "disabled" class from parent if we have a value
+        if (linkMargin !== 'N/A' && linkMarginElement.parentElement) {
+            linkMarginElement.parentElement.classList.remove('disabled');
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════
+    // FIELD 2: RECEIVED POWER (Potencia Recibida)
+    // Extract from radio object - this is the power received at the antenna
+    // ════════════════════════════════════════════════════════════════════════════════════════
+    
+    const receivedPower = 
+        (radio && radio['Received PowerdBm']) ||    // Primary source: new format with spaces
+        (radio && radio.ReceivedPower_dBm) ||       // Fallback: underscore format
+        (radio && radio.ReceivedPower) ||           // Fallback: simple format
+        'N/A';
+    
+    // Format with proper units (dBm)
+    const receivedPowerText = receivedPower === 'N/A' 
+        ? 'N/A' 
+        : `${receivedPower.toFixed(2)} dBm`;
+    
+    // Update DOM element
+    const receivedPowerElement = document.querySelector('[data-kpi="received-power"]');
+    if (receivedPowerElement) {
+        receivedPowerElement.textContent = receivedPowerText;
+        
+        if (receivedPower !== 'N/A' && receivedPowerElement.parentElement) {
+            receivedPowerElement.parentElement.classList.remove('disabled');
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════
+    // FIELD 3: COVERAGE DISTANCE (Distancia de Cobertura)
+    // Extract from requirements object - distance between transmitter and receiver
+    // ════════════════════════════════════════════════════════════════════════════════════════
+    
+    const coverageDistance = 
+        kit._requirements?.providedDistanceKm ||     // Primary source: with underscore
+        kit.requirements?.providedDistanceKm ||     // Fallback: without underscore
+        'N/A';
+    
+    // Format with proper units (km) and 3 decimals for precision
+    const coverageDistanceText = coverageDistance === 'N/A'
+        ? 'N/A'
+        : `${coverageDistance.toFixed(3)} km`;
+    
+    // Update DOM element
+    const coverageDistanceElement = document.querySelector('[data-kpi="coverage-distance"]');
+    if (coverageDistanceElement) {
+        coverageDistanceElement.textContent = coverageDistanceText;
+        
+        if (coverageDistance !== 'N/A' && coverageDistanceElement.parentElement) {
+            coverageDistanceElement.parentElement.classList.remove('disabled');
+        }
+    }
+
+    // Verification logging
+    console.log('✅ KPI fields populated:');
+    console.log('  - Link Margin (Margen de Enlace):', linkMarginText);
+    console.log('  - Received Power (Potencia Recibida):', receivedPowerText);
+    console.log('  - Coverage Distance (Distancia de Cobertura):', coverageDistanceText);
 }
 
 // Helper: Get reliability status color
