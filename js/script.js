@@ -2658,6 +2658,26 @@ function populateKitDetails() {
         return `${distance} km`;
     };
 
+    // Helper function to safely extract and format Link Margin
+    const formatLinkMargin = (kit) => {
+        const linkMargin = 
+            (kit.radios && kit.radios[0] && kit.radios[0]['Link MargindB']) ||
+            (kit.radios && kit.radios[0] && kit.radios[0].LinkMargin_dB) ||
+            (kit.radios && kit.radios[0] && kit.radios[0].LinkMargin) ||
+            kit.link_margin ||
+            kit.rfCalculationSummary?.averageLinkMargin ||
+            null;
+        
+        if (linkMargin === null || linkMargin === undefined || linkMargin === '') {
+            return 'N/A';
+        }
+        const numValue = typeof linkMargin === 'number' ? linkMargin : parseFloat(linkMargin);
+        if (isNaN(numValue)) {
+            return safeText(linkMargin);
+        }
+        return `${numValue.toFixed(2)} dB`;
+    };
+
     // Generate radios section HTML
     const radiosSection = Array.isArray(confirmedKit.radios) && confirmedKit.radios.length > 0 ? 
         confirmedKit.radios.map((radio, index) => `
@@ -2684,7 +2704,7 @@ function populateKitDetails() {
                             <h4>Análisis RF del Enlace</h4>
                             <p><strong>Pérdida en Espacio Libre:</strong> ${radio.FSPL_dB} dB</p>
                             <p><strong>Potencia Recibida:</strong> ${radio.ReceivedPower_dBm} dBm</p>
-                            <p><strong>Margen de Enlace:</strong> ${radio.LinkMargin_dB} dB</p>
+                            <p><strong>Margen de Enlace:</strong> ${radio['Link MargindB'] || radio.LinkMargin_dB || radio.LinkMargin || 'N/A'}${(radio['Link MargindB'] || radio.LinkMargin_dB || radio.LinkMargin) ? ' dB' : ''}</p>
                             <p class="quality-${radio.linkAnalysis?.quality?.toLowerCase() || 'unknown'}">
                                 <strong>Calidad del Enlace:</strong> ${radio.linkAnalysis?.quality || 'N/A'}
                             </p>
@@ -2719,7 +2739,7 @@ function populateKitDetails() {
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Margen de Enlace</span>
-                <span class="kit-detail-value highlight">${safeText(confirmedKit.link_margin)}</span>
+                <span class="kit-detail-value highlight">${formatLinkMargin(confirmedKit)}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Costo</span>
@@ -3168,7 +3188,12 @@ function populateRecommendationBlock(data) {
                                 <div>Potencia TX: ${safe(() => r['TransmitPower (dBm)'], '—')} dBm</div>
                                 <div>Ganancia Antena: ${safe(() => r['AntennaGain (dBi)'], '—')} dBi</div>
                                 <div>Sensibilidad RX: ${safe(() => r['SelectedReceiverSensitivity (dBm)'], '—')} dBm</div>
-                                <div>Margen Enlace: ${safe(() => r.LinkMargin_dB, '—')} dB</div>
+                                <div>Margen Enlace: ${(() => {
+                                    const lm = r['Link MargindB'] || r.LinkMargin_dB || r.LinkMargin;
+                                    if (lm == null || lm === undefined || lm === '') return '—';
+                                    const num = typeof lm === 'number' ? lm : parseFloat(lm);
+                                    return isNaN(num) ? String(lm) : `${num.toFixed(2)} dB`;
+                                })()}</div>
                             </div>
                             ${reliability ? `
                                 <div class="reliability-section" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
@@ -3463,6 +3488,26 @@ function createKitCard(kit) {
     const getValue = (obj, key, defaultValue = 'N/A') => {
         return obj && obj[key] ? obj[key] : defaultValue;
     };
+    // Helper function to safely extract and format Link Margin
+    const getLinkMargin = (kit) => {
+        const radio = kit.radios && kit.radios[0] ? kit.radios[0] : null;
+        const linkMargin = 
+            (radio && radio['Link MargindB']) ||
+            (radio && radio.LinkMargin_dB) ||
+            (radio && radio.LinkMargin) ||
+            kit.link_margin ||
+            kit.rfCalculationSummary?.averageLinkMargin ||
+            null;
+        
+        if (linkMargin === null || linkMargin === undefined || linkMargin === '') {
+            return 'N/A';
+        }
+        const numValue = typeof linkMargin === 'number' ? linkMargin : parseFloat(linkMargin);
+        if (isNaN(numValue)) {
+            return String(linkMargin);
+        }
+        return `${numValue.toFixed(2)} dB`;
+    };
     // Helper for nested values with safe fallback
     const getNested = (getter, fallback = null) => {
         try {
@@ -3536,7 +3581,7 @@ function createKitCard(kit) {
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Margen de Enlace</span>
-                <span class="kit-detail-value highlight">${(kit.radios && kit.radios[0] && (kit.radios[0].LinkMargin_dB ?? kit.radios[0].LinkMargin)) || getValue(kit, 'link_margin')}</span>
+                <span class="kit-detail-value highlight">${getLinkMargin(kit)}</span>
             </div>
             <div class="kit-detail-item">
                 <span class="kit-detail-label">Costo</span>
