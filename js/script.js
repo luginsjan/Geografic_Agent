@@ -3006,6 +3006,8 @@ function populateRecommendationBlock(data) {
         card.classList.add('selected');
         primary.appendChild(card);
         setTimeout(() => selectKit((topKit.KIT || topKit.name), card), 0);
+        // Initialize warnings toggle for primary card
+        setTimeout(() => initWarningsToggle(), 50);
     }
 
     const kpiGrid = document.getElementById('kpi-grid');
@@ -3015,19 +3017,46 @@ function populateRecommendationBlock(data) {
         const fsplAvg = safe(() => topKit.rfCalculationSummary.averageFSPL, null);
         const totalRadios = safe(() => topKit.rfCalculationSummary.totalRadios, Array.isArray(topKit.radios) ? topKit.radios.length : null);
         const equipmentType = totalRadios > 1 ? 'Dual Radio System' : 'Single Radio System';
-        const reliability = safe(() => radio.linkAnalysis.quality, '—');
+        const reliability = safe(() => radio.Reliability, null);
         const coverageKm = safe(() => topKit.requirements.providedDistanceKm, null);
 
         const kpis = [
             { label: 'Received Power', value: receivedPower != null ? `${receivedPower} dBm` : 'N/A' },
             { label: 'FSPL Average', value: fsplAvg != null ? `${fsplAvg} dB` : 'N/A' },
             { label: 'Equipment Type', value: equipmentType },
-            { label: 'Reliability', value: reliability },
+            { 
+                label: 'Reliability', 
+                value: reliability ? `${reliability.uptime_percent}%` : '—',
+                isReliability: true,
+                reliability: reliability
+            },
             { label: 'Coverage Distance', value: coverageKm != null ? `${coverageKm} km ✓` : 'N/A' }
         ];
-        kpiGrid.innerHTML = kpis.map(k => `
-            <div class="kpi-card"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.value}</div></div>
-        `).join('');
+        kpiGrid.innerHTML = kpis.map(k => {
+            if (k.isReliability && k.reliability) {
+                const rel = k.reliability;
+                const color = getReliabilityColor(rel.status);
+                const icon = getReliabilityIcon(rel.status);
+                return `
+                    <div class="kpi-card" style="position: relative;">
+                        <div class="kpi-label">Confiabilidad</div>
+                        <div class="kpi-value" style="font-size: 1.1rem;">${rel.uptime_percent}%</div>
+                        <div class="reliability-details" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #334155; font-size: 0.75rem; color: #94a3b8;">
+                            <div style="margin-bottom: 4px;">
+                                <span style="color: #64748b;">Margen ante Lluvia:</span>
+                                <span style="color: ${rel.rain_fade_margin_db >= 0 ? '#10b981' : '#ef4444'}; font-weight: 600;">
+                                    ${rel.rain_fade_margin_db >= 0 ? '+' : ''}${rel.rain_fade_margin_db} dB
+                                </span>
+                            </div>
+                            <div class="status-badge" style="padding: 4px 8px; border-radius: 4px; text-align: center; font-weight: 600; background: ${color}; color: white; margin-top: 4px;">
+                                ${icon} ${rel.status}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            return `<div class="kpi-card ${!k.value || k.value === '—' || k.value === 'N/A' ? 'disabled' : ''}"><div class="kpi-label">${k.label}</div><div class="kpi-value" style="font-size: ${!k.value || k.value === '—' || k.value === 'N/A' ? '1.5rem' : '1.1rem'};">${k.value}</div></div>`;
+        }).join('');
     }
 
     const altGrid = document.getElementById('alternatives-grid');
@@ -3035,6 +3064,9 @@ function populateRecommendationBlock(data) {
         kits.filter(k => (k.KIT || k.name) !== (topKit && (topKit.KIT || topKit.name)))
             .forEach(k => altGrid.appendChild(createKitCard(k)));
     }
+    
+    // Initialize warnings toggle functionality after cards are rendered
+    setTimeout(() => initWarningsToggle(), 100);
 
     const analysis = document.getElementById('analysis-sections');
     const fspl = safe(() => topKit.radios[0].detailedCalculations.fspl, null);
@@ -3081,20 +3113,52 @@ function populateRecommendationBlock(data) {
     if (hasEquipment) {
         const specRows = `
             <div class="equipment-specs-grid">
-                ${safe(() => topKit.radios, []).map((r, idx) => `
-                    <div class="equipment-box">
-                        <h4>${idx === 0 ? 'Radio Primario' : 'Radio Secundario'}: ${safe(() => r.Radio, '—')} (${safe(() => r['FrequencyBand (GHz)'], '—')} GHz)</h4>
-                        <div class="equipment-grid">
-                            <div>Modelo: ${safe(() => r['Modelo Radio'], '—')}</div>
-                            <div>Frecuencia: ${safe(() => r['FrequencyBand (GHz)'], '—')} GHz</div>
-                            <div>Throughput Máximo: ${safe(() => r['MaxThroughput (Mbps)'], '—')} Mbps</div>
-                            <div>Potencia TX: ${safe(() => r['TransmitPower (dBm)'], '—')} dBm</div>
-                            <div>Ganancia Antena: ${safe(() => r['AntennaGain (dBi)'], '—')} dBi</div>
-                            <div>Sensibilidad RX: ${safe(() => r['SelectedReceiverSensitivity (dBm)'], '—')} dBm</div>
-                            <div>Margen Enlace: ${safe(() => r.LinkMargin_dB, '—')} dB</div>
+                ${safe(() => topKit.radios, []).map((r, idx) => {
+                    const reliability = safe(() => r.Reliability, null);
+                    const linkAvailability = safe(() => r.LinkAvailability, null);
+                    return `
+                        <div class="equipment-box">
+                            <h4>${idx === 0 ? 'Radio Primario' : 'Radio Secundario'}: ${safe(() => r.Radio, '—')} (${safe(() => r['FrequencyBand (GHz)'], '—')} GHz)</h4>
+                            <div class="equipment-grid">
+                                <div>Modelo: ${safe(() => r['Modelo Radio'], '—')}</div>
+                                <div>Frecuencia: ${safe(() => r['FrequencyBand (GHz)'], '—')} GHz</div>
+                                <div>Throughput Máximo: ${safe(() => r['MaxThroughput (Mbps)'], '—')} Mbps</div>
+                                <div>Potencia TX: ${safe(() => r['TransmitPower (dBm)'], '—')} dBm</div>
+                                <div>Ganancia Antena: ${safe(() => r['AntennaGain (dBi)'], '—')} dBi</div>
+                                <div>Sensibilidad RX: ${safe(() => r['SelectedReceiverSensitivity (dBm)'], '—')} dBm</div>
+                                <div>Margen Enlace: ${safe(() => r.LinkMargin_dB, '—')} dB</div>
+                            </div>
+                            ${reliability ? `
+                                <div class="reliability-section" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                                    <h5 style="font-size: 0.9rem; color: #6b7280; margin-bottom: 8px;">📊 Análisis de Confiabilidad</h5>
+                                    <div class="reliability-grid" style="display: grid; gap: 8px;">
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span>Disponibilidad (Uptime):</span>
+                                            <span style="font-weight: 600; color: ${reliability.uptime_percent >= 99.9 ? '#10b981' : reliability.uptime_percent >= 99 ? '#f59e0b' : '#ef4444'};">
+                                                ${reliability.uptime_percent}%
+                                            </span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span>Margen ante Lluvia:</span>
+                                            <span style="font-weight: 600; color: ${reliability.rain_fade_margin_db >= 0 ? '#10b981' : '#ef4444'};">
+                                                ${reliability.rain_fade_margin_db >= 0 ? '+' : ''}${reliability.rain_fade_margin_db} dB
+                                            </span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span>Estado del Enlace:</span>
+                                            <span style="font-weight: 600; color: ${linkAvailability?.depthOfLink === 'PASS' ? '#10b981' : '#ef4444'};">
+                                                ${linkAvailability?.depthOfLink || 'N/A'}
+                                            </span>
+                                        </div>
+                                        <div class="status-message" style="margin-top: 8px; padding: 8px; background: ${reliability.status && reliability.status.includes('Reliable') ? '#d1fae5' : reliability.status && reliability.status.includes('Marginal') ? '#fef3c7' : '#fee2e2'}; border-radius: 4px; font-size: 0.85rem; color: #374151;">
+                                            ${reliability.status || 'N/A'}
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : '<div style="color: #9ca3af; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 0.85rem;">Análisis de confiabilidad no disponible</div>'}
                         </div>
-                    </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>`;
         sections.push({ id: 'equipment-specs', title: 'Especificaciones del Equipo', content: specRows });
     }
@@ -3171,6 +3235,66 @@ function populateRecommendationBlock(data) {
     });
 }
 
+// Helper: Get reliability status color
+function getReliabilityColor(status) {
+    if (!status) return '#6b7280'; // Gray default
+    const s = String(status);
+    if (s.includes('Reliable for all')) return '#10b981'; // Green
+    if (s.includes('Marginal')) return '#f59e0b'; // Yellow
+    if (s.includes('May experience')) return '#ef4444'; // Red
+    return '#6b7280'; // Gray default
+}
+
+// Helper: Get reliability status icon
+function getReliabilityIcon(status) {
+    if (!status) return '—';
+    const s = String(status);
+    if (s.includes('Reliable for all')) return '✅';
+    if (s.includes('Marginal')) return '⚠️';
+    if (s.includes('May experience')) return '🔴';
+    return '—';
+}
+
+// Helper: Toggle warnings section
+function initWarningsToggle() {
+    document.querySelectorAll('.warnings-header').forEach(header => {
+        header.addEventListener('click', () => {
+            const list = header.nextElementSibling;
+            const btn = header.querySelector('.warnings-toggle');
+            if (!list || !btn) return;
+            const isHidden = list.style.display === 'none';
+            list.style.display = isHidden ? 'block' : 'none';
+            btn.textContent = isHidden ? '▼' : '▶';
+        });
+    });
+}
+
+// Helper: Render warnings section HTML
+function renderWarnings(warnings, total, critical) {
+    if (!warnings || !Array.isArray(warnings) || warnings.length === 0) return '';
+    
+    return `
+        <div class="warnings-section" style="margin-top: 12px;">
+            <div class="warnings-header" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: ${critical > 0 ? '#fee2e2' : '#fef3c7'}; border-radius: 6px 6px 0 0; border-left: 4px solid ${critical > 0 ? '#dc2626' : '#f59e0b'}; cursor: pointer;">
+                <span style="font-weight: 600; color: ${critical > 0 ? '#dc2626' : '#d97706'};">
+                    ${critical > 0 ? '🔴' : '⚠️'} ${critical} Críticas, ${total - critical} Advertencias
+                </span>
+                <button class="warnings-toggle" style="background: none; border: none; cursor: pointer; color: ${critical > 0 ? '#dc2626' : '#d97706'}; font-size: 1rem;">▼</button>
+            </div>
+            <div class="warnings-list" style="max-height: 150px; overflow-y: auto; padding: 8px; background: #fefefe; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 6px 6px;">
+                ${warnings.map(w => {
+                    const isCritical = String(w).includes('🔴');
+                    return `
+                        <div class="warning-item" style="padding: 6px 8px; margin-bottom: 4px; border-radius: 4px; font-size: 0.85rem; line-height: 1.4; background: ${isCritical ? '#fee2e2' : '#fef3c7'}; border-left: 3px solid ${isCritical ? '#dc2626' : '#f59e0b'}; color: #374151;">
+                            ${w}
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
+
 // Function to create a kit card
 function createKitCard(kit) {
     const card = document.createElement('div');
@@ -3217,6 +3341,12 @@ function createKitCard(kit) {
     const linkQualityColor = qualityToColor(linkQuality);
     const linkQualityClass = linkQuality ? `quality-${String(linkQuality).toLowerCase()}` : '';
     const categoryClass = (recommendationCategory ? String(recommendationCategory).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '') : '');
+    
+    // Get warnings data
+    const warnings = Array.isArray(kit.warnings) ? kit.warnings : [];
+    const hasWarnings = getNested(() => kit.quickMetrics?.hasWarnings, false);
+    const warningCount = getNested(() => kit.quickMetrics?.warningCount, 0);
+    const criticalWarnings = getNested(() => kit.quickMetrics?.criticalWarnings, 0);
     
     card.innerHTML = `
         <h4>${getValue(kit, 'KIT', getValue(kit, 'name', 'Kit sin nombre'))}</h4>
@@ -3273,6 +3403,7 @@ function createKitCard(kit) {
                 ${getNested(() => kit.recommendation.confidence, null) ? `<span class="rec-badge">Confianza: ${getNested(() => kit.recommendation.confidence, '')}</span>` : ''}
             </div>
         </div>
+        ${hasWarnings ? renderWarnings(warnings, warningCount, criticalWarnings) : ''}
     `;
     
     return card;
